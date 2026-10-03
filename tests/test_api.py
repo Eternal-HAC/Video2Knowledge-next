@@ -5,6 +5,7 @@ import time
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import quote, unquote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -549,6 +550,75 @@ def test_archive_note_deduplicates_names(monkeypatch, tmp_path) -> None:
     assert (tmp_path / "notes").is_dir()
 
 
+def test_archive_note_default_destination_wins_race_without_overwrite(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """候选名在真正创建前被并发占用时，必须换后缀且保留竞争者内容。"""
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    notes = tmp_path / "notes"
+    raced = notes / "竞态.md"
+    real_open = Path.open
+    injected = False
+
+    def inject_race(path: Path, mode: str = "r", *args, **kwargs):
+        nonlocal injected
+        if path == raced and mode == "x" and not injected:
+            injected = True
+            with real_open(path, "x", encoding="utf-8") as handle:
+                handle.write("并发写入")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", inject_race)
+    archived = main.archive_note("竞态", "当前笔记")
+
+    assert raced.read_text(encoding="utf-8") == "并发写入"
+    assert archived == notes / "竞态-2.md"
+    assert archived.read_text(encoding="utf-8") == "当前笔记"
+
+
+def test_archive_note_default_failure_does_not_delete_replacement(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    notes = tmp_path / "notes"
+    candidate = notes / "替换.md"
+    foreign = tmp_path / "foreign-note.md"
+    foreign.write_text("外来内容", encoding="utf-8")
+    real_open = Path.open
+
+    class ReplacingWriter:
+        def __init__(self, handle) -> None:
+            self.handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args) -> None:
+            if not self.handle.closed:
+                self.handle.close()
+
+        def fileno(self) -> int:
+            return self.handle.fileno()
+
+        def write(self, content: str) -> None:
+            self.handle.close()
+            candidate.unlink()
+            candidate.hardlink_to(foreign)
+            raise OSError("受控写入失败")
+
+    def replace_on_write(path: Path, mode: str = "r", *args, **kwargs):
+        handle = real_open(path, mode, *args, **kwargs)
+        if path == candidate and mode == "x":
+            return ReplacingWriter(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", replace_on_write)
+    assert main.archive_note("替换", "当前内容") is None
+
+    assert candidate.read_text(encoding="utf-8") == "外来内容"
+    assert foreign.read_text(encoding="utf-8") == "外来内容"
+
+
 def test_archive_note_ignored_by_task_discovery(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
     main.archive_note("某个视频", "# 笔记")
@@ -648,6 +718,328 @@ def test_archive_note_points_refs_at_the_task_dir(
     assert archived.read_text(encoding="utf-8") == (
         "![截图 1](../abc123/frames/frame_0000_30s.jpg)"
     )
+
+
+def test_archive_note_exports_only_referenced_task_attachments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """自定义目的地只接收最终笔记与正文实际引用的任务截图。"""
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "知识库" / "视频笔记"
+    task_id = "export-task"
+    frames = workspace / task_id / "frames"
+    frames.mkdir(parents=True)
+    (frames / "used.jpg").write_bytes(b"used")
+    (frames / "unused.jpg").write_bytes(b"unused")
+    (workspace / task_id / "task.json").write_text('{"api_key":"secret"}', encoding="utf-8")
+    (workspace / task_id / "transcript.json").write_text("{}", encoding="utf-8")
+    (workspace / task_id / "input.mp4").write_bytes(b"media")
+    destination.mkdir(parents=True)
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    archived = main.archive_note(
+        "课程：第一讲",
+        "# 笔记\n\n![采用](./frames/used.jpg)\n\n![缺失](./frames/missing.jpg)\n",
+        task_id,
+        destination,
+    )
+
+    assert archived == destination / "课程：第一讲.md"
+    exported = archived.read_text(encoding="utf-8")
+    assert f"./{quote('课程：第一讲-attachments', safe='')}/used.jpg" in exported
+    assert "./frames/missing.jpg" in exported
+    assert (destination / "课程：第一讲-attachments" / "used.jpg").read_bytes() == b"used"
+    assert sorted(path.name for path in destination.iterdir()) == [
+        "课程：第一讲-attachments",
+        "课程：第一讲.md",
+    ]
+    assert not (destination / "课程：第一讲-attachments" / "unused.jpg").exists()
+    assert not any(
+        path.name in {"task.json", "transcript.json", "input.mp4"}
+        for path in destination.rglob("*")
+    )
+
+
+def test_archive_note_custom_destination_collision_keeps_notes_and_attachments_separate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    (frames / "same.jpg").write_bytes(b"first")
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    first = main.archive_note("同名", "![图](./frames/same.jpg)", "task", destination)
+    (frames / "same.jpg").write_bytes(b"second")
+    second = main.archive_note("同名", "![图](./frames/same.jpg)", "task", destination)
+
+    assert first.name == "同名.md"
+    assert second.name == "同名-2.md"
+    assert (destination / "同名-attachments" / "same.jpg").read_bytes() == b"first"
+    assert (destination / "同名-2-attachments" / "same.jpg").read_bytes() == b"second"
+    assert f"./{quote('同名-2-attachments', safe='')}/same.jpg" in second.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_archive_note_custom_attachment_race_keeps_foreign_hardlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    source = frames / "same.jpg"
+    source.write_bytes(b"source")
+    foreign = tmp_path / "foreign.jpg"
+    foreign.write_bytes(b"foreign")
+    raced_target = destination / "并发-attachments" / "same.jpg"
+    real_open = Path.open
+    injected = False
+
+    def inject_hardlink(path: Path, mode: str = "r", *args, **kwargs):
+        nonlocal injected
+        if path == raced_target and mode == "xb" and not injected:
+            injected = True
+            raced_target.hardlink_to(foreign)
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+    monkeypatch.setattr(Path, "open", inject_hardlink)
+    archived = main.archive_note("并发", "![图](./frames/same.jpg)", "task", destination)
+
+    assert raced_target.read_bytes() == b"foreign"
+    assert foreign.read_bytes() == b"foreign"
+    assert archived == destination / "并发-2.md"
+    assert (destination / "并发-2-attachments" / "same.jpg").read_bytes() == b"source"
+
+
+def test_archive_note_uri_encodes_attachment_path_segments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    filename = "截图 (一)#50%.jpg"
+    (frames / filename).write_bytes(b"image")
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    archived = main.archive_note(
+        "中文 标题#50%",
+        "![图](./frames/%E6%88%AA%E5%9B%BE%20%28%E4%B8%80%29%2350%25.jpg)",
+        "task",
+        destination,
+    )
+
+    link = archived.read_text(encoding="utf-8").split("](", 1)[1].rstrip(")")
+    assert " " not in link and "#" not in link and "(" not in link and ")" not in link
+    relative = Path(*[unquote(part) for part in link.removeprefix("./").split("/")])
+    assert (destination / relative).read_bytes() == b"image"
+
+
+def test_archive_note_does_not_follow_task_frame_symlink_outside_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    outside = tmp_path / "outside.jpg"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    outside.write_bytes(b"outside")
+    try:
+        (frames / "escape.jpg").symlink_to(outside)
+    except OSError:
+        pytest.skip("当前系统不允许测试创建符号链接")
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    archived = main.archive_note(
+        "链接边界", "![图](./frames/escape.jpg)", "task", destination
+    )
+
+    assert archived.read_text(encoding="utf-8") == "![图](./frames/escape.jpg)"
+    assert not (destination / "链接边界-attachments").exists()
+
+
+def test_archive_note_custom_export_failure_is_reported_and_cleaned_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    (frames / "used.jpg").write_bytes(b"used")
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    def fail_copy(*args, **kwargs) -> None:
+        raise OSError("private filesystem detail")
+
+    monkeypatch.setattr(main.shutil, "copyfileobj", fail_copy)
+    with pytest.raises(RuntimeError, match="导出笔记失败：请检查笔记目的地和目录写入权限"):
+        main.archive_note("失败", "![图](./frames/used.jpg)", "task", destination)
+
+    assert list(destination.iterdir()) == []
+
+
+def test_archive_note_attachment_failure_does_not_delete_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    (frames / "used.jpg").write_bytes(b"source")
+    foreign = tmp_path / "foreign.jpg"
+    foreign.write_bytes(b"foreign")
+    target = destination / "替换-attachments" / "used.jpg"
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    def replace_then_fail(source_handle, target_handle) -> None:
+        target_handle.close()
+        target.unlink()
+        target.hardlink_to(foreign)
+        raise OSError("受控复制失败")
+
+    monkeypatch.setattr(main.shutil, "copyfileobj", replace_then_fail)
+    with pytest.raises(RuntimeError, match="导出笔记失败：请检查笔记目的地和目录写入权限"):
+        main.archive_note("替换", "![图](./frames/used.jpg)", "task", destination)
+
+    assert target.read_bytes() == b"foreign"
+    assert foreign.read_bytes() == b"foreign"
+
+
+@pytest.mark.parametrize(
+    ("destination", "detail"),
+    [
+        ("relative/vault", "笔记目的地必须是绝对路径"),
+        ("{file}", "笔记目的地必须是目录"),
+    ],
+)
+def test_summarize_rejects_invalid_note_destination_before_queueing(
+    destination: str,
+    detail: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target_file = tmp_path / "not-a-directory"
+    target_file.write_text("x", encoding="utf-8")
+    requested = str(target_file) if destination == "{file}" else destination
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path / "workspace")
+    monkeypatch.setattr(main, "tasks", {})
+
+    response = TestClient(main.app).post(
+        "/api/summarize",
+        json={
+            "video_url": "https://www.bilibili.com/video/BV1xx",
+            "note_destination": requested,
+            "llm_config": {"model_type": "deepseek", "api_key": "do-not-echo"},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == detail
+    assert "do-not-echo" not in response.text
+    assert main.tasks == {}
+
+
+def test_summarize_creates_unicode_note_destination_before_queueing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    queued_requests: list[main.SummarizeRequest] = []
+
+    async def fake_run(task_id, request):
+        queued_requests.append(request)
+        return None
+
+    destination = tmp_path / "我的知识库" / "视频笔记"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+    monkeypatch.setattr(main, "run_queued_video_task", fake_run)
+    monkeypatch.setattr(main, "tasks", {})
+    monkeypatch.setattr(main, "running_jobs", {})
+
+    response = TestClient(main.app).post(
+        "/api/summarize",
+        json={
+            "video_url": "https://www.douyin.com/video/123456",
+            "note_destination": str(destination),
+            "llm_config": {"model_type": "deepseek", "api_key": "test-key"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert destination.is_dir()
+    task_id = response.json()["task_id"]
+    manifest = json.loads((tmp_path / "workspace" / task_id / "task.json").read_text(encoding="utf-8"))
+    assert manifest["note_destination"] == str(destination.resolve())
+    assert "api_key" not in manifest
+    for _ in range(50):
+        if queued_requests:
+            break
+        time.sleep(0.01)
+    assert queued_requests[0].note_destination == str(destination.resolve())
+
+
+def test_summarize_reports_stable_unwritable_destination_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "vault"
+    destination.mkdir()
+    monkeypatch.setattr(main, "tasks", {})
+
+    def deny_probe(path: Path) -> None:
+        raise OSError("secret operating system detail")
+
+    monkeypatch.setattr(main, "probe_note_destination", deny_probe)
+    response = TestClient(main.app).post(
+        "/api/summarize",
+        json={
+            "video_url": "https://www.bilibili.com/video/BV1xx",
+            "note_destination": str(destination),
+            "llm_config": {"model_type": "deepseek", "api_key": "do-not-echo"},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "笔记目的地不可写：请检查目录写入权限"
+    assert "secret operating system detail" not in response.text
+    assert "do-not-echo" not in response.text
+
+
+def test_summarize_reports_stable_destination_creation_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "missing" / "vault"
+    real_mkdir = Path.mkdir
+
+    def deny_destination_mkdir(path: Path, *args, **kwargs) -> None:
+        if path == destination:
+            raise OSError("private filesystem detail")
+        real_mkdir(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", deny_destination_mkdir)
+    monkeypatch.setattr(main, "tasks", {})
+    response = TestClient(main.app).post(
+        "/api/summarize",
+        json={
+            "video_url": "https://www.bilibili.com/video/BV1xx",
+            "note_destination": str(destination),
+            "llm_config": {"model_type": "deepseek", "api_key": "do-not-echo"},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "无法创建笔记目的地：请检查父目录和写入权限"
+    assert "private filesystem detail" not in response.text
+    assert "do-not-echo" not in response.text
 
 
 @pytest.mark.asyncio

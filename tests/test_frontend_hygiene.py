@@ -43,6 +43,16 @@ def test_script_tag_carries_a_cache_version() -> None:
     assert SCRIPT_TAG.search(PAGE), "script.js 必须带 ?v=YYYYMMDD-N（DEVELOPMENT.md 前端约定）"
 
 
+def test_note_destination_is_persisted_and_only_sent_for_note_tasks() -> None:
+    assert 'id="noteDestination"' in PAGE
+    assert "'note_destination'" in SCRIPT.split("const GLOBAL_PREF_KEYS =", 1)[1].split("];", 1)[0]
+    assert "values.note_destination = byId('noteDestination').value.trim()" in SCRIPT
+    builder = SCRIPT.split("function buildSummarizeConfig(", 1)[1].split("\n}\n", 1)[0]
+    transcript_branch, note_branch = builder.split("} else {", 1)
+    assert "note_destination" not in transcript_branch
+    assert "config.note_destination = noteDestination" in note_branch
+
+
 def test_note_images_are_resolved_on_every_output_path() -> None:
     """截图只在预览里改路径、导出全是坏链，就是 1.4.1 修的那个问题。"""
     assert "(?:frames|images)" in SCRIPT, "预览要同时认 frames 与历史笔记里的 images"

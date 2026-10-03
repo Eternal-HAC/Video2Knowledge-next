@@ -17,7 +17,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
 import aiofiles
 import uvicorn
@@ -388,6 +388,7 @@ class SummarizeRequest(BaseModel):
     processing_mode: Literal["reuse", "restart"] = "reuse"
     # transcript：只做「视频 → 带时间轴转录」，不调用大模型，产物到 transcript.json 为止
     output: Literal["note", "transcript"] = "note"
+    note_destination: str | None = None
     summary_style: Literal["detailed", "faithful", "concise"] = "detailed"
     reasoning_effort: Literal["auto", "off", "high", "max"] = "auto"
     prefer_subtitles: bool = True
@@ -704,6 +705,7 @@ def write_task_manifest(
         "uploaded_filename": uploaded_filename,
         "processing_mode": request.processing_mode,
         "output": request.output,
+        "note_destination": request.note_destination,
         # origin=agent 的纯转录任务不进网页端历史（见 list_recent_tasks）
         "origin": origin,
         "summary_style": request.summary_style,
@@ -727,6 +729,46 @@ def write_upload_manifest(task_id: str, filename: str) -> None:
     (task_directory(task_id) / "task.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+
+def probe_note_destination(path: Path) -> None:
+    """用一次不覆盖的临时写入确认目录当前可写。"""
+    probe = path / f".video2knowledge-write-test-{uuid.uuid4().hex}"
+    try:
+        with probe.open("x", encoding="utf-8") as handle:
+            handle.write("ok")
+    finally:
+        probe.unlink(missing_ok=True)
+
+
+def validate_note_destination(value: str) -> str | None:
+    """在任务创建前规范化并验证可选的最终笔记目录。"""
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    path = Path(cleaned)
+    if not path.is_absolute():
+        raise HTTPException(status_code=422, detail="笔记目的地必须是绝对路径")
+    try:
+        if path.exists() and not path.is_dir():
+            raise HTTPException(status_code=422, detail="笔记目的地必须是目录")
+        path.mkdir(parents=True, exist_ok=True)
+        resolved = path.resolve(strict=True)
+    except HTTPException:
+        raise
+    except OSError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="无法创建笔记目的地：请检查父目录和写入权限",
+        ) from exc
+    try:
+        probe_note_destination(resolved)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="笔记目的地不可写：请检查目录写入权限",
+        ) from exc
+    return str(resolved)
 
 
 @app.post("/api/summarize")
@@ -755,6 +797,10 @@ async def submit_video_task(
 ) -> dict[str, str | None]:
     if request.whisper_model not in ASR_MODELS:
         raise HTTPException(status_code=422, detail="不支持的转写模型")
+    if request.output == "note" and request.note_destination:
+        request.note_destination = validate_note_destination(request.note_destination)
+    else:
+        request.note_destination = None
     uploaded_task = None
     if request.upload_task_id:
         # 本地上传的媒体位置记在上传任务上；此时 video_url 是后端目录里的文件路径，
@@ -1473,22 +1519,44 @@ async def download_summary_markdown(task_id: str) -> Response:
     )
 
 
+def referenced_note_attachments(note_text: str, task_dir: Path) -> list[tuple[str, Path]]:
+    """返回正文引用且确实位于当前任务截图目录内的附件。"""
+    frames_dir = task_dir / FRAMES_DIR_NAME
+    try:
+        task_root = task_dir.resolve(strict=True)
+        frames_root = frames_dir.resolve(strict=True)
+    except OSError:
+        return []
+    if not frames_root.is_relative_to(task_root):
+        return []
+    attachments: list[tuple[str, Path]] = []
+    seen: set[str] = set()
+    for match in NOTE_IMAGE_REF_RE.finditer(note_text):
+        name = Path(unquote(match.group(2))).name
+        if name in seen:
+            continue
+        try:
+            source = (frames_root / name).resolve(strict=True)
+        except OSError:
+            continue
+        if not source.is_relative_to(frames_root) or not source.is_file():
+            continue
+        seen.add(name)
+        attachments.append((name, source))
+    return attachments
+
+
 def build_note_bundle(note_text: str, task_dir: Path, note_filename: str) -> bytes | None:
     """把笔记和它引用的截图打成一个包；正文里没有可解析的截图时返回 None。"""
-    frames_dir = task_dir / FRAMES_DIR_NAME
-    names: list[str] = []
-    for match in NOTE_IMAGE_REF_RE.finditer(note_text):
-        name = Path(match.group(2)).name
-        if name not in names and (frames_dir / name).is_file():
-            names.append(name)
-    if not names:
+    attachments = referenced_note_attachments(note_text, task_dir)
+    if not attachments:
         return None
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as archive:
         archive.writestr(note_filename, rewrite_note_image_refs(note_text, "./"))
-        for name in names:
+        for name, source in attachments:
             archive.writestr(
-                f"{FRAMES_DIR_NAME}/{name}", (frames_dir / name).read_bytes()
+                f"{FRAMES_DIR_NAME}/{name}", source.read_bytes()
             )
     return buffer.getvalue()
 
@@ -2020,7 +2088,9 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
 
         task_dir = WORKSPACE_DIR / task_id
         (task_dir / "notes.md").write_text(summary, encoding="utf-8")
-        archived_path = archive_note(title, summary, task_id)
+        archived_path = archive_note(
+            title, summary, task_id, request.note_destination
+        )
         if archived_path:
             task["logs"].append(f"笔记已归档：{archived_path}")
         elapsed = finish_task_timing(task)
@@ -2330,27 +2400,141 @@ def rewrite_note_image_refs(content: str, prefix: str) -> str:
     )
 
 
-def archive_note(title: str, content: str, task_id: str | None = None) -> Path | None:
-    """把笔记归档到 workspace/notes/ 下（按标题命名，重名自动加序号），便于集中回顾。
+def rewrite_exported_note_image_refs(
+    content: str, attachment_dir: str, attachment_names: set[str]
+) -> str:
+    def replace(match: re.Match[str]) -> str:
+        name = Path(unquote(match.group(2))).name
+        if name not in attachment_names:
+            return match.group(0)
+        encoded_dir = quote(attachment_dir, safe="")
+        encoded_name = quote(name, safe="")
+        return f"{match.group(1)}./{encoded_dir}/{encoded_name})"
 
-    截图不复制：归档在 notes/ 下，与任务目录同在 workspace/ 里，引用改写成
-    ../<task_id>/frames/ 就能就地看图，代价是删掉任务后归档里的图失效。
+    return NOTE_IMAGE_REF_RE.sub(replace, content)
 
-    返回归档路径；写入失败时返回 None（不影响任务本身）。
+
+def opened_file_identity(handle: Any) -> tuple[int, int] | None:
+    """返回可用于失败清理的稳定文件身份；不可靠时放弃删除。"""
+    try:
+        stat = os.fstat(handle.fileno())
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(stat.st_dev, int) or not isinstance(stat.st_ino, int):
+        return None
+    if stat.st_ino == 0:
+        return None
+    return stat.st_dev, stat.st_ino
+
+
+def unlink_if_identity_matches(path: Path, identity: tuple[int, int] | None) -> bool:
+    """仅删除仍指向本次排他创建文件的路径。"""
+    if identity is None:
+        return False
+    try:
+        current = path.stat(follow_symlinks=False)
+        if (current.st_dev, current.st_ino) != identity:
+            return False
+        path.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def archive_note(
+    title: str,
+    content: str,
+    task_id: str | None = None,
+    destination: str | Path | None = None,
+) -> Path | None:
+    """归档最终笔记；自定义目的地同时复制正文实际引用的任务附件。
+
+    留空目的地时保持原行为：归档到 workspace/notes，不复制截图，引用改写为
+    ../<task_id>/frames/。自定义目的地写入失败会抛出稳定错误，让任务进入失败状态。
+
+    默认归档写入失败仍返回 None，以保持上游兼容行为。
     """
-    notes_root = WORKSPACE_DIR / "notes"
+    notes_root = Path(destination) if destination else WORKSPACE_DIR / "notes"
+    if destination:
+        task_dir = WORKSPACE_DIR / task_id if task_id else WORKSPACE_DIR
+        attachments = referenced_note_attachments(content, task_dir)
+        try:
+            notes_root.mkdir(parents=True, exist_ok=True)
+            safe = _safe_filename(title)
+            index = 1
+            while True:
+                stem = safe if index == 1 else f"{safe}-{index}"
+                candidate = notes_root / f"{stem}.md"
+                attachment_dir = f"{stem}-attachments"
+                attachment_root = notes_root / attachment_dir
+                if candidate.exists() or attachment_root.exists():
+                    index += 1
+                    continue
+                created_attachments = False
+                created_note_identity: tuple[int, int] | None = None
+                created_files: list[tuple[Path, tuple[int, int] | None]] = []
+
+                def clean_up_created_paths() -> None:
+                    unlink_if_identity_matches(candidate, created_note_identity)
+                    for path, identity in reversed(created_files):
+                        unlink_if_identity_matches(path, identity)
+                    if created_attachments:
+                        try:
+                            attachment_root.rmdir()
+                        except OSError:
+                            pass
+
+                try:
+                    if attachments:
+                        attachment_root.mkdir(exist_ok=False)
+                        created_attachments = True
+                        for name, source in attachments:
+                            target = attachment_root / name
+                            with source.open("rb") as source_handle, target.open(
+                                "xb"
+                            ) as target_handle:
+                                created_files.append(
+                                    (target, opened_file_identity(target_handle))
+                                )
+                                shutil.copyfileobj(source_handle, target_handle)
+                    exported = rewrite_exported_note_image_refs(
+                        content, attachment_dir, {name for name, _ in attachments}
+                    )
+                    with candidate.open("x", encoding="utf-8") as handle:
+                        created_note_identity = opened_file_identity(handle)
+                        handle.write(exported)
+                    return candidate
+                except FileExistsError:
+                    clean_up_created_paths()
+                    index += 1
+                except OSError:
+                    clean_up_created_paths()
+                    raise
+        except OSError as exc:
+            raise RuntimeError(
+                "导出笔记失败：请检查笔记目的地和目录写入权限"
+            ) from exc
+
     if task_id:
         content = rewrite_note_image_refs(content, f"../{task_id}/")
     try:
         notes_root.mkdir(parents=True, exist_ok=True)
         safe = _safe_filename(title)
-        candidate = notes_root / f"{safe}.md"
-        index = 2
-        while candidate.exists():
-            candidate = notes_root / f"{safe}-{index}.md"
-            index += 1
-        candidate.write_text(content, encoding="utf-8")
-        return candidate
+        index = 1
+        while True:
+            stem = safe if index == 1 else f"{safe}-{index}"
+            candidate = notes_root / f"{stem}.md"
+            created_note_identity: tuple[int, int] | None = None
+            try:
+                with candidate.open("x", encoding="utf-8") as handle:
+                    created_note_identity = opened_file_identity(handle)
+                    handle.write(content)
+                return candidate
+            except FileExistsError:
+                index += 1
+            except OSError:
+                unlink_if_identity_matches(candidate, created_note_identity)
+                return None
     except OSError:
         return None
 

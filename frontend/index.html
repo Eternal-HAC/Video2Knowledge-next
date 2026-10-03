@@ -137,6 +137,15 @@
             </label>
         </section>
 
+        <section class="config-section" aria-labelledby="destinationTitle">
+            <h2 id="destinationTitle">笔记目的地</h2>
+            <label class="field">
+                <span>普通目录或 Obsidian Vault 子目录（可选）</span>
+                <input type="text" id="noteDestination" placeholder="绝对路径；留空使用 workspace/notes" autocomplete="off">
+                <small>只导出最终 Markdown 与正文引用的附件，任务中间文件仍留在工作区。</small>
+            </label>
+        </section>
+
         <details id="credentialsSection" class="config-section collapsible-section">
             <summary>B 站访问凭据（可选）</summary>
             <p class="section-note">仅在公开访问受限时填写。凭据只保留到页面关闭。</p>
@@ -401,6 +410,6 @@
 </div>
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-<script src="script.js?v=20260924-1"></script>
+<script src="script.js?v=20261004-1"></script>
 </body>
 </html>

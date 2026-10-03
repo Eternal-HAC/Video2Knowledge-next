@@ -4,9 +4,11 @@ Updated: 2026-10-04
 
 ## Current stage
 
-`gap verification before customization`
+`successor customization in progress`
 
 The successor Fork is established and synchronized. The current task is to verify which product requirements are already satisfied by VideoToNo and customize only demonstrated gaps.
+
+The first successor gap is now closed: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior.
 
 ## Baseline
 
@@ -31,7 +33,7 @@ Current code and tests show that the upstream-derived implementation already pro
 
 The following items remain open or partial:
 
-- dedicated output to a selected normal directory or Obsidian Vault: partial;
+- dedicated output to a selected normal directory or Obsidian Vault: implemented and covered by automated tests;
 - personal Markdown templates: gap;
 - default cleanup of downloaded, uploaded, and intermediate media: partial;
 - YAML Frontmatter behavior: UNKNOWN;
@@ -51,6 +53,12 @@ This is evaluation evidence for the adopted upstream baseline. It does not count
 
 ## Current constraints
 
-- No functionality changes have started after the Fork baseline.
+- The only successor functionality change so far is configurable final-note export.
+- Custom destinations receive only the final Markdown and attachments referenced by that note. Task manifests, transcripts, downloaded media, model cache, and credentials remain in the workspace.
+- Relative paths, ordinary files, and unavailable destinations are rejected before media processing with stable validation errors.
+- Default and custom destinations use exclusive file creation. Controlled race and hard-link tests verify that concurrent foreign content is neither overwritten nor deleted.
+- Failed-write cleanup compares the opened file's `fstat` identity with a non-following path `stat`; replaced paths and platforms without a reliable identity are retained instead of risking deletion of foreign content.
+- Exported attachment link segments are URI-encoded and resolve back to Unicode and reserved-character filenames.
+- The source-boundary implementation rejects attachments that resolve outside the task directory. Its Windows symbolic-link test is skipped when the host does not grant symbolic-link creation permission.
 - Real providers, media downloads, model downloads, platform login, cookies, and credentials require explicit user approval.
 - Publication of each local commit requires separate user approval.

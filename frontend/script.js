@@ -572,7 +572,8 @@ const GLOBAL_PREF_KEYS = [
     'summary_style',
     'reasoning_effort',
     'processing_mode',
-    'output_mode'
+    'output_mode',
+    'note_destination'
 ];
 
 function defaultProvider() {
@@ -595,7 +596,8 @@ function defaultPrefs() {
             summary_style: 'detailed',
             reasoning_effort: 'auto',
             processing_mode: 'restart',
-            output_mode: 'note'
+            output_mode: 'note',
+            note_destination: ''
         },
         ui: { theme: 'system', mcp_hint_seen: false }
     };
@@ -874,6 +876,7 @@ function applyPreferencesToForm() {
     byId('summaryStyle').value = prefs.global.summary_style;
     byId('reasoningEffort').value = ['auto', 'off', 'high', 'max'].includes(prefs.global.reasoning_effort)
         ? prefs.global.reasoning_effort : 'auto';
+    byId('noteDestination').value = prefs.global.note_destination || '';
     const processingModeInput = document.querySelector(
         `input[name="processingMode"][value="${prefs.global.processing_mode}"]`
     );
@@ -921,6 +924,7 @@ function persistGlobals() {
         || values.processing_mode;
     values.output_mode = document.querySelector('input[name="outputMode"]:checked')?.value
         || values.output_mode;
+    values.note_destination = byId('noteDestination').value.trim();
     persistPrefs();
 }
 
@@ -948,6 +952,8 @@ function bindPreferenceAutoSave() {
     });
     bindListener('screenshotInterval', 'change', persistGlobals);
     bindListener('screenshotInterval', 'input', () => schedulePersist(persistGlobals));
+    bindListener('noteDestination', 'change', persistGlobals);
+    bindListener('noteDestination', 'input', () => schedulePersist(persistGlobals));
     ['customBaseUrl', 'customModelName'].forEach((id) => {
         const element = byId(id);
         if (!element) return;
@@ -2141,6 +2147,8 @@ function buildSummarizeConfig(
         config.include_screenshots = byId('includeScreenshots').checked;
         config.summary_style = byId('summaryStyle').value;
         config.reasoning_effort = byId('reasoningEffort').value;
+        const noteDestination = byId('noteDestination').value.trim();
+        if (noteDestination) config.note_destination = noteDestination;
         config.llm_config = llmConfig;
     }
 
