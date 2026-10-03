@@ -25,6 +25,11 @@ def make_snapshot_files(snapshot: Path, model_bin_size: int = 64) -> None:
 def test_model_loader_uses_project_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from huggingface_hub import constants as huggingface_constants
+
+    monkeypatch.setattr(
+        huggingface_constants, "HF_HUB_CACHE", str(tmp_path / "huggingface-cache")
+    )
     captured: dict = {}
 
     class FakeModel:
@@ -648,4 +653,3 @@ async def test_gpu_construction_failure_is_remembered(
     assert second["fallback_note"] is None
     # 第二次直接命中已缓存的 CPU 模型：既不再试 cuda，也不再重新加载
     assert constructed == ["cuda", "cpu"]
-
