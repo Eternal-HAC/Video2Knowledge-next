@@ -4,7 +4,7 @@ Updated: 2026-10-04
 
 ## Current stage
 
-`note template milestone complete locally`
+`media retention milestone complete locally`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -41,8 +41,8 @@ The successor customizations now provide:
 
 The following items remain open or partial:
 
-- default cleanup of downloaded, uploaded, and intermediate media: partial;
-- Obsidian detection and Feishu upload: later milestone.
+- age-based cleanup of retained media from failed or interrupted tasks: later option;
+- Obsidian detection and Feishu upload: next milestone.
 
 ## Platform support levels
 
@@ -83,9 +83,22 @@ Acceptance evidence:
 - the temporary smoke-test template file was removed after verification;
 - the independent architect review's four required fixes were applied. A later direct independent Review covered the complete milestone diff and found one P3 frontend error-hint ordering defect; the fix and regression test are included. The earlier dedicated code-reviewer lane did not return a verdict because its execution quota was interrupted, so there is no claim of two-lane formal review approval.
 
+## Completed media retention milestone
+
+- After a note task completes successfully and any custom-destination export has succeeded, the task's own `input.*`, `audio.*`, `audio_pN.*` (positive page numbers only), `preview.*`, and matching `.part` / `.ytdl` sidecars are removed.
+- Notes, transcripts, the task manifest, everything under `frames/`, unknown files, and custom-destination exports are preserved; cleanup never crosses into another task directory, never recurses, and never follows symlinks.
+- Failed, cancelled, upload-only, and transcript-only tasks keep all retry material; restart restoration for uploaded and interrupted work is unchanged.
+- Cleanup is idempotent, runs only after the completed state has been durably persisted (a completion-persist failure keeps retry media and fails the task), and an unlink failure degrades to a task-log warning with the file retained and the task still completed.
+
+Acceptance evidence:
+
+- focused retention tests (successful remote/local/multi-page cleanup, artifact preservation, failure and transcript-only retention, idempotency, directory/symlink guards, unlink-failure degradation, and completion-persist ordering) plus the full automated suite: `388 passed, 1 skipped`;
+- `git diff --check`: clean;
+- the first failing-test run proved the gap before implementation (4 failed on the uncleaned success paths).
+
 ## Next milestone
 
-Media and intermediate-file retention. The first task is read-only lifecycle inspection followed by focused tests. Implementation begins only after those tests demonstrate a gap against the approved success/failure retention policy.
+Obsidian detection and Vault experience, followed by opt-in Feishu CLI Markdown upload. The first task is read-only inspection of the current export experience followed by focused tests. Implementation begins only after those tests demonstrate a gap, and age-based cleanup or new-platform work stays out of scope.
 
 ## Current constraints
 

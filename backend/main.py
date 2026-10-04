@@ -498,6 +498,56 @@ def task_directory(task_id: str) -> Path:
     return candidate
 
 
+# 成功笔记任务允许清理的自有媒体词干：上传输入、在线下载音频、分 P 音频、
+# 截图预览视频。其余一律不匹配（未知文件、frames/、笔记与转录都保留）。
+_OWNED_MEDIA_RE = re.compile(r"^(input|audio|preview|audio_p[0-9]+)\..+$")
+
+
+def _is_owned_media_name(name: str) -> bool:
+    match = _OWNED_MEDIA_RE.match(name)
+    if not match:
+        return False
+    stem = match.group(1)
+    if stem.startswith("audio_p"):
+        return int(stem[len("audio_p"):]) >= 1  # 分 P 从 1 开始
+    return True
+
+
+def cleanup_successful_task_media(task_id: str) -> tuple[list[str], list[str]]:
+    """成功笔记任务的媒体清理：只删除本任务目录直属的已知媒体文件。
+
+    返回 (removed_names, warnings)。只列目录第一层、只按文件名白名单匹配，
+    不递归、不碰其他任务。符号链接、同名目录、归属无法确认的文件一律保留并
+    记 warning。普通清理失败绝不抛异常——笔记已经生成，不能因此改判失败。
+    """
+    removed: list[str] = []
+    warnings: list[str] = []
+    try:
+        directory = task_directory(task_id)
+    except ValueError:
+        return removed, ["任务 ID 非法，跳过媒体清理"]
+    try:
+        children = list(directory.iterdir())
+    except OSError:
+        return removed, ["无法列出任务目录，媒体未清理"]
+    for child in sorted(children, key=lambda path: path.name):
+        name = child.name
+        if not _is_owned_media_name(name):
+            continue
+        try:
+            if child.is_symlink() or not child.is_file():
+                warnings.append(f"保留非常规文件：{name}")
+                continue
+            if child.resolve().parent != directory:
+                warnings.append(f"保留无法确认归属的文件：{name}")
+                continue
+            child.unlink(missing_ok=True)
+            removed.append(name)
+        except OSError:
+            warnings.append(f"未能清理媒体文件：{name}")
+    return removed, warnings
+
+
 def get_template_store() -> note_templates.TemplateStore:
     """自定义模板存工作区内（已被 .gitignore 忽略），每次调用按当前 WORKSPACE_DIR 解析。"""
     return note_templates.TemplateStore(WORKSPACE_DIR / "note_templates")
@@ -2261,8 +2311,28 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             status="completed", step=7, step_name="完成", progress=100, error=None
         )
         task["logs"].append("视频笔记生成完成")
-        notify_task("任务完成", f"视频笔记已生成：{title}")
         persist_task_runtime(task_id)
+        # 成功通知必须在完成态落盘之后：否则持久化失败时用户会先收成功、
+        # 再收外层失败分支的失败通知，两条互相矛盾。
+        notify_task("任务完成", f"视频笔记已生成：{title}")
+        # 完成态已经成功落盘，此后才允许清理本任务的源媒体与中间文件：
+        # 若清理先于持久化，完成态写盘失败会把任务改判 failed，
+        # 而重试媒体已经被删，违反「失败任务保留重试材料」。
+        # 清理只碰当前任务目录；清理失败降级为警告，不改判任务状态。
+        removed_media, cleanup_warnings = cleanup_successful_task_media(task_id)
+        if removed_media:
+            task["logs"].append(
+                f"已清理源媒体与中间文件：{'、'.join(removed_media)}"
+            )
+        for cleanup_warning in cleanup_warnings:
+            task["logs"].append(f"媒体清理警告：{cleanup_warning}")
+        if removed_media or cleanup_warnings:
+            # best-effort 二次持久化清理结果：即使失败也不能让异常逃到外层
+            # 失败分支——完成态已经落盘，任务不允许被改回 failed。
+            try:
+                persist_task_runtime(task_id)
+            except Exception:
+                task["logs"].append("媒体清理结果未能写入 task.json（仅影响日志完整性）")
     except asyncio.CancelledError:
         finish_task_timing(task)
         task.update(status="cancelled", step_name="已取消", error=None)

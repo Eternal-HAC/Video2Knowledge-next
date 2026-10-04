@@ -66,7 +66,7 @@ The note-template milestone is complete locally with the following contract:
 | Selected directory or Vault output | Note tasks accept an optional absolute final-note destination. Custom destinations receive only the final Markdown and referenced task attachments; leaving it empty preserves `workspace/notes`. Collision, Unicode-path, invalid-path, and credential-boundary tests cover the contract. | Successor customization implemented. Final real-chain acceptance is pending. |
 | Personal Markdown template | Four immutable built-ins, backend-stored custom templates, safe deterministic layouts, task snapshots, transcript-reuse regeneration, and frontend management are covered by code and tests. | Successor customization implemented locally. |
 | Credential safety | API keys use masked/encrypted local storage on Windows, are bound to endpoints, and errors are scrubbed before persistence. Temporary platform cookie files are deleted. | Covered by code and tests; real-provider validation remains separately authorized. |
-| Media retention | Large uploaded video may be replaced by extracted audio, and deleting a task removes its directory. Downloaded or uploaded task media otherwise remains available for reuse. | Partial. The desired default cleanup policy is not established. |
+| Media retention | Successful note tasks delete only their own known source and intermediate media (`input.*`, `audio.*`, `audio_pN.*`, `preview.*`, and matching download sidecars) after the note and any custom-destination export succeed. Notes, transcripts, manifests, frames, unknown files, and retry material for failed, cancelled, upload-only, and transcript-only tasks are preserved. Cleanup failures degrade to task-log warnings. | Successor customization implemented locally. Age-based cleanup is a later option. |
 | Same-name output | Default and custom destinations use exclusive creation, safe Unicode filenames, and `-2`, `-3`, and later suffixes. Controlled race tests cover notes and attachment directories without overwriting foreign content. | Covered by automated tests. |
 | LLM failure preserves transcript | Transcript artifacts are written before the LLM step and remain readable for failed note tasks. | Covered by code and tests. |
 | Unicode and Frontmatter | UTF-8 reads/writes, Chinese filenames, Unicode destination paths, URI-encoded attachment links, deterministic YAML Frontmatter, and YAML-sensitive Unicode escaping are tested. | Covered by automated tests. |
@@ -75,7 +75,7 @@ The note-template milestone is complete locally with the following contract:
 
 1. Fork baseline, attribution, and configurable Markdown destination: complete locally.
 2. Note template system: complete locally.
-3. Media retention policy: next milestone. First inspect and test the current lifecycle, then after successful note generation keep Markdown, transcript, and referenced screenshots while deleting downloaded or uploaded source media and extracted audio; retain retry material on failure, then add optional age-based cleanup later.
+3. Media retention policy: complete locally. Optional age-based cleanup of failed-task media remains a later option.
 4. Obsidian detection and Vault experience, followed by opt-in Feishu CLI Markdown upload. A screenshot note also uploads a Markdown-plus-attachments ZIP until native cloud image blocks are implemented.
 5. On-demand real checks and repairs for YouTube, Bilibili, and Douyin.
 6. Separate research and adaptation for Xiaoe-tech and other requested platforms.

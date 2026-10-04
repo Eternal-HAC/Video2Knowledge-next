@@ -2799,3 +2799,293 @@ def test_previous_bili_pages_returns_latest_explicit_selection(
         encoding="utf-8",
     )
     assert main.previous_bili_pages("https://www.bilibili.com/video/BV1ab") is None
+
+# ---------------------------------------------------------------------------
+# 媒体保留策略：成功笔记任务清理本任务的源媒体/中间文件，其余路径一律保留
+# ---------------------------------------------------------------------------
+
+async def _run_note_task_with_media(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    files: list[str],
+    *,
+    output: str = "note",
+    summarizer_cls=None,
+    old_task_media: list[str] | None = None,
+) -> tuple[str, Path, Path]:
+    """复用旧任务转录跑通 process_video_task，新任务目录里预置各形态文件。"""
+    old_task_id = "ret-old"
+    new_task_id = "ret-new"
+    old_dir = tmp_path / old_task_id
+    old_dir.mkdir()
+    new_dir = tmp_path / new_task_id
+    new_dir.mkdir()
+    (old_dir / "transcript.json").write_text(
+        '{"language":"zh","source":"faster_whisper","segments":'
+        '[{"start":0,"end":12,"text":"这是一段原始内容"}]}',
+        encoding="utf-8",
+    )
+    for name in old_task_media or []:
+        (old_dir / name).write_text("old", encoding="utf-8")
+    for name in files:
+        target = new_dir / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("media", encoding="utf-8")
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("reuse path must not call the platform or Whisper")
+
+    class FakeProcessor:
+        @staticmethod
+        def detect_source(*args, **kwargs):
+            return main.VideoSource.BILIBILI
+
+        get_video_info = forbidden
+        fetch_subtitles = forbidden
+        download_audio = forbidden
+        download_preview_video = forbidden
+
+    class FakeTranscriber:
+        transcribe = forbidden
+
+    if summarizer_cls is None:
+
+        class FakeSummarizer:
+            def __init__(self, **kwargs):
+                pass
+
+            def describe_effort(self, reasoning_effort: str, style: str) -> str:
+                return reasoning_effort
+
+            async def generate_summary(self, *args, **kwargs):
+                return "# 保留测试笔记"
+
+        summarizer_cls = FakeSummarizer
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "video_processor", FakeProcessor())
+    monkeypatch.setattr(main, "transcriber", FakeTranscriber())
+    monkeypatch.setattr(main, "LLMSummarizer", summarizer_cls)
+    main.tasks[new_task_id] = main.new_task()
+    main.tasks[new_task_id]["resume_task_id"] = old_task_id
+    request = main.SummarizeRequest(
+        video_url="https://www.bilibili.com/video/BV1xx",
+        output=output,
+        llm_config=main.LLMConfig(model_type="glm", api_key="test-key"),
+    )
+    await main.process_video_task(new_task_id, request)
+    return new_task_id, new_dir, old_dir
+
+
+@pytest.mark.asyncio
+async def test_successful_note_cleans_owned_media_and_preserves_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    notifications: list[str] = []
+    monkeypatch.setattr(
+        main, "notify_task", lambda title, message: notifications.append(title)
+    )
+    new_task_id, new_dir, old_dir = await _run_note_task_with_media(
+        tmp_path,
+        monkeypatch,
+        [
+            "audio.m4a",
+            "audio.m4a.part",       # 下载临时侧文件
+            "audio.m4a.ytdl",
+            "preview.mp4",
+            "preview.mp4.part",
+            "input.mp4",
+            "evidence.bin",          # 未知文件：保留
+            "audio_backup.m4a",      # 非同名词干：保留
+            "frames/f1.jpg",         # 截图：保留
+        ],
+        old_task_media=["audio.m4a"],  # 跨任务文件绝不能被动到
+    )
+    task = main.tasks[new_task_id]
+    assert task["status"] == "completed"
+    for removed in (
+        "audio.m4a",
+        "audio.m4a.part",
+        "audio.m4a.ytdl",
+        "preview.mp4",
+        "preview.mp4.part",
+        "input.mp4",
+    ):
+        assert not (new_dir / removed).exists(), removed
+    for kept in (
+        "notes.md",
+        "transcript.json",
+        "transcript.md",
+        "task.json",
+        "evidence.bin",
+        "audio_backup.m4a",
+        "frames/f1.jpg",
+    ):
+        assert (new_dir / kept).is_file(), kept
+    assert (old_dir / "audio.m4a").is_file()
+    assert any("已清理" in log for log in task["logs"])
+    # 清理日志只记文件名，不泄漏绝对路径
+    cleanup_logs = [log for log in task["logs"] if "清理" in log]
+    assert cleanup_logs
+    assert not any(str(tmp_path) in log for log in cleanup_logs)
+    # 正常成功路径：恰好一次成功通知，没有失败通知
+    assert notifications.count("任务完成") == 1
+    assert "任务失败" not in notifications
+
+
+@pytest.mark.asyncio
+async def test_successful_multipage_note_cleans_audio_pages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    new_task_id, new_dir, _ = await _run_note_task_with_media(
+        tmp_path,
+        monkeypatch,
+        [
+            "audio_p1.m4a",
+            "audio_p2.webm",
+            "audio_p2.webm.part",
+            "audio_p0.m4a",   # 0 不是正整数分 P：保留
+            "audio_px.m4a",   # 非数字分 P：保留
+        ],
+    )
+    assert main.tasks[new_task_id]["status"] == "completed"
+    assert not (new_dir / "audio_p1.m4a").exists()
+    assert not (new_dir / "audio_p2.webm").exists()
+    assert not (new_dir / "audio_p2.webm.part").exists()
+    assert (new_dir / "audio_p0.m4a").is_file()
+    assert (new_dir / "audio_px.m4a").is_file()
+
+
+@pytest.mark.asyncio
+async def test_failed_note_task_preserves_all_retry_material(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FailingSummarizer:
+        def __init__(self, **kwargs):
+            pass
+
+        def describe_effort(self, reasoning_effort: str, style: str) -> str:
+            return reasoning_effort
+
+        async def generate_summary(self, *args, **kwargs):
+            raise RuntimeError("LLM 接口失败")
+
+    new_task_id, new_dir, _ = await _run_note_task_with_media(
+        tmp_path,
+        monkeypatch,
+        ["audio.m4a", "preview.mp4", "input.mp4"],
+        summarizer_cls=FailingSummarizer,
+    )
+    assert main.tasks[new_task_id]["status"] == "failed"
+    for kept in ("audio.m4a", "preview.mp4", "input.mp4", "transcript.json"):
+        assert (new_dir / kept).is_file(), kept
+
+
+@pytest.mark.asyncio
+async def test_transcript_only_task_preserves_media(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    new_task_id, new_dir, _ = await _run_note_task_with_media(
+        tmp_path,
+        monkeypatch,
+        ["audio.m4a", "preview.mp4", "input.mp4"],
+        output="transcript",
+    )
+    assert main.tasks[new_task_id]["status"] == "completed"
+    assert main.tasks[new_task_id]["result"]["output"] == "transcript"
+    for kept in ("audio.m4a", "preview.mp4", "input.mp4", "transcript.json"):
+        assert (new_dir / kept).is_file(), kept
+
+
+def test_media_cleanup_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    task_dir = tmp_path / "ret-idem"
+    task_dir.mkdir()
+    (task_dir / "audio.m4a").write_text("x", encoding="utf-8")
+    first_removed, first_warnings = main.cleanup_successful_task_media("ret-idem")
+    assert first_removed == ["audio.m4a"]
+    assert first_warnings == []
+    second_removed, second_warnings = main.cleanup_successful_task_media("ret-idem")
+    assert second_removed == []
+    assert second_warnings == []
+
+
+def test_media_cleanup_rejects_directories_symlinks_and_escape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    task_dir = tmp_path / "ret-guard"
+    task_dir.mkdir()
+    (task_dir / "input.mp4").mkdir()  # 同名目录：不递归删除
+    outside = tmp_path / "outside.m4a"
+    outside.write_text("keep", encoding="utf-8")
+    link = task_dir / "audio.m4a"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        link = None  # Windows 无权限时只验证目录保护
+    removed, warnings = main.cleanup_successful_task_media("ret-guard")
+    assert removed == []
+    assert (task_dir / "input.mp4").is_dir()
+    if link is not None:
+        assert link.exists()  # os.path.exists 跟随 symlink；目标保留即可
+        assert outside.is_file()
+        assert warnings
+
+
+@pytest.mark.asyncio
+async def test_cleanup_unlink_failure_keeps_note_completed_and_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_unlink = Path.unlink
+
+    def flaky_unlink(self, *args, **kwargs):
+        if self.name == "audio.m4a":
+            raise OSError("simulated denial")
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", flaky_unlink)
+    new_task_id, new_dir, _ = await _run_note_task_with_media(
+        tmp_path, monkeypatch, ["audio.m4a"]
+    )
+    task = main.tasks[new_task_id]
+    # 清理失败不能把已经成功的笔记改成失败；文件保留，警告进日志与 task.json
+    assert task["status"] == "completed"
+    assert (new_dir / "audio.m4a").is_file()
+    assert any("audio.m4a" in log and "清理" in log for log in task["logs"])
+    manifest = json.loads((new_dir / "task.json").read_text(encoding="utf-8"))
+    runtime_logs = manifest["runtime"]["logs"]
+    assert any("audio.m4a" in log and "清理" in log for log in runtime_logs)
+
+
+@pytest.mark.asyncio
+async def test_completion_persist_failure_keeps_retry_media(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """回归：完成态首次持久化失败 → 任务改判 failed 时，重试媒体必须还在。
+
+    清理只能发生在完成态成功落盘之后，否则失败任务会失去重试材料。
+    """
+    original_persist = main.persist_task_runtime
+
+    def flaky_persist(task_id: str) -> None:
+        # 只在「即将持久化 completed 状态」时失败一次，其余调用照常
+        task = main.tasks.get(task_id)
+        if task is not None and task.get("status") == "completed":
+            raise OSError("simulated persist failure")
+        return original_persist(task_id)
+
+    monkeypatch.setattr(main, "persist_task_runtime", flaky_persist)
+    notifications: list[str] = []
+    monkeypatch.setattr(
+        main, "notify_task", lambda title, message: notifications.append(title)
+    )
+    new_task_id, new_dir, _ = await _run_note_task_with_media(
+        tmp_path, monkeypatch, ["audio.m4a"]
+    )
+    task = main.tasks[new_task_id]
+    assert task["status"] == "failed"
+    assert (new_dir / "audio.m4a").is_file()  # 媒体未被提前清理
+    # 完成态没落盘就不允许发成功通知，否则用户会先收成功后收失败
+    assert "任务完成" not in notifications
+    assert notifications.count("任务失败") == 1
