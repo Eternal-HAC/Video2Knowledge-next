@@ -1433,8 +1433,9 @@ function renderNoteTemplateOptions(preferredId = null) {
     select.replaceChildren();
     const desc = byId('noteTemplateDesc');
     if (noteTemplatesStatus === 'error') {
-        if (desc) desc.textContent = '模板列表加载失败，点击「开始生成」会自动重试';
         updateNoteTemplateDetails();
+        // updateNoteTemplateDetails 会把说明清空，错误提示必须在它之后写入
+        if (desc) desc.textContent = '模板列表加载失败，点击「开始生成」会自动重试';
         return;
     }
     noteTemplates.forEach((template) => {

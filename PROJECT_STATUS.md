@@ -77,11 +77,11 @@ This is evaluation evidence for the adopted upstream baseline. It does not repla
 
 Acceptance evidence:
 
-- full automated suite: `379 passed, 1 skipped`;
+- full automated suite: `380 passed, 1 skipped`;
 - JavaScript syntax check and `git diff --check`: passed;
 - local browser smoke check: built-ins loaded; custom create and edit worked; clone form preserved all fields; transcript-only mode hid template controls and note mode restored them; a stale stored template ID fell back to the default after successful template loading;
 - the temporary smoke-test template file was removed after verification;
-- the independent architect review's four required fixes were applied. The separate code-reviewer lane did not return a verdict because its execution quota was interrupted, so there is no claim of two-lane formal review approval.
+- the independent architect review's four required fixes were applied. A later direct independent Review covered the complete milestone diff and found one P3 frontend error-hint ordering defect; the fix and regression test are included. The earlier dedicated code-reviewer lane did not return a verdict because its execution quota was interrupted, so there is no claim of two-lane formal review approval.
 
 ## Next milestone
 

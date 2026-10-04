@@ -69,6 +69,16 @@ def test_note_submit_is_blocked_until_template_list_is_ready() -> None:
     assert SCRIPT.count("noteTemplatesStatus = 'ready'") == 1
 
 
+def test_template_load_error_hint_survives_detail_refresh() -> None:
+    """回归：error 分支里 updateNoteTemplateDetails() 会把说明清空成空串，
+    错误提示必须在它之后写入，否则用户看不到加载失败的原因。"""
+    renderer = SCRIPT.split("function renderNoteTemplateOptions(", 1)[1].split("\n}\n", 1)[0]
+    error_branch = renderer.split("noteTemplatesStatus === 'error'", 1)[1]
+    hint_pos = error_branch.index("模板列表加载失败")
+    refresh_pos = error_branch.index("updateNoteTemplateDetails()")
+    assert refresh_pos < hint_pos, "错误提示必须在 updateNoteTemplateDetails() 之后写入"
+
+
 def test_note_images_are_resolved_on_every_output_path() -> None:
     """截图只在预览里改路径、导出全是坏链，就是 1.4.1 修的那个问题。"""
     assert "(?:frames|images)" in SCRIPT, "预览要同时认 frames 与历史笔记里的 images"
