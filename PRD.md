@@ -50,13 +50,13 @@ All six paths must also confirm the configured destination, collision-safe namin
 | --- | --- | --- |
 | Subtitle preference and ASR fallback | `prefer_subtitles` defaults to true; platform subtitles and automatic captions are checked before local ASR; regression tests cover subtitle reuse and ASR paths. | Upstream capability present. Final successor end-to-end acceptance is pending. |
 | Markdown and transcript artifacts | Upstream writes UTF-8 `notes.md`, `transcript.md`, and `transcript.json`, and exposes completed transcripts through API/MCP paths. | Upstream capability present. |
-| Selected directory or Vault output | The workspace root is configurable and notes are archived under `workspace/notes`; the request contract has no separate final-note destination. | Partial. A dedicated directory/Vault output contract requires tests and likely minimal customization. |
+| Selected directory or Vault output | Note tasks accept an optional absolute final-note destination. Custom destinations receive only the final Markdown and referenced task attachments; leaving it empty preserves `workspace/notes`. Collision, Unicode-path, invalid-path, and credential-boundary tests cover the contract. | Successor customization implemented. Final real-chain acceptance is pending. |
 | Personal Markdown template | The backend exposes three built-in summary styles and deterministic metadata formatting. No personal-template field or renderer is present in the inspected backend contract. | Gap. |
 | Credential safety | API keys use masked/encrypted local storage on Windows, are bound to endpoints, and errors are scrubbed before persistence. Temporary platform cookie files are deleted. | Covered by code and tests; real-provider validation remains separately authorized. |
 | Media retention | Large uploaded video may be replaced by extracted audio, and deleting a task removes its directory. Downloaded or uploaded task media otherwise remains available for reuse. | Partial. The desired default cleanup policy is not established. |
-| Same-name output | Archived Markdown uses a safe Unicode filename and adds `-2`, `-3`, and later suffixes on collisions. | Covered for current workspace archive. Recheck when custom destinations are added. |
+| Same-name output | Default and custom destinations use exclusive creation, safe Unicode filenames, and `-2`, `-3`, and later suffixes. Controlled race tests cover notes and attachment directories without overwriting foreign content. | Covered by automated tests. |
 | LLM failure preserves transcript | Transcript artifacts are written before the LLM step and remain readable for failed note tasks. | Covered by code and tests. |
-| Unicode and Frontmatter | UTF-8 reads/writes and Chinese filenames are tested. Current note metadata is Markdown text, not verified YAML Frontmatter. | Unicode covered; Frontmatter is UNKNOWN and requires a product decision plus tests. |
+| Unicode and Frontmatter | UTF-8 reads/writes, Chinese filenames, Unicode destination paths, and URI-encoded attachment links are tested. Current note metadata is Markdown text, not verified YAML Frontmatter. | Unicode covered; Frontmatter is UNKNOWN and requires a product decision plus tests. |
 
 ## Non-goals for the current phase
 

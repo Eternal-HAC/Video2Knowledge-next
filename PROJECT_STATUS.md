@@ -6,9 +6,9 @@ Updated: 2026-10-04
 
 `successor customization in progress`
 
-The successor Fork is established and synchronized. The current task is to verify which product requirements are already satisfied by VideoToNo and customize only demonstrated gaps.
+The successor Fork and product baseline are established. The current phase verifies which product requirements are already satisfied by VideoToNo and customizes only demonstrated gaps.
 
-The first successor gap is now closed: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior.
+The first successor customization is complete in local commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. The feature commit has not been pushed, so local `main` remains ahead of `origin/main`.
 
 ## Baseline
 
@@ -31,9 +31,12 @@ Current code and tests show that the upstream-derived implementation already pro
 - collision-safe filenames for the current `workspace/notes` archive;
 - Unicode-safe note filenames.
 
+The first successor customization now provides:
+
+- dedicated output to a selected normal directory or Obsidian Vault, covered by automated tests.
+
 The following items remain open or partial:
 
-- dedicated output to a selected normal directory or Obsidian Vault: implemented and covered by automated tests;
 - personal Markdown templates: gap;
 - default cleanup of downloaded, uploaded, and intermediate media: partial;
 - YAML Frontmatter behavior: UNKNOWN;

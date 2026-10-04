@@ -35,3 +35,15 @@ Alternatives considered: Copy the old documentation tree; create roadmap, archit
 Impact: Current work, product scope, status, and long-term decisions each have one clear home.
 
 Review condition: Add a document only when existing files can no longer hold the required information without becoming ambiguous or difficult to maintain.
+
+## 2026-10-04: Separate final-note export from task workspace
+
+Decision: Add an optional request-level absolute note destination. When configured, export only the final Markdown and attachments referenced by that note. Keep manifests, transcripts, downloaded media, model caches, and credentials in the task workspace. Leave the setting empty to retain the upstream `workspace/notes` behavior.
+
+Reason: A normal directory or Obsidian Vault needs portable final artifacts without receiving runtime state or sensitive files. Preserving the empty-setting path keeps upstream behavior compatible.
+
+Alternatives considered: Move the entire task directory into the Vault; redefine the global workspace root; add a separate export subsystem or Obsidian plugin.
+
+Impact: The frontend stores the optional path as a non-sensitive local preference. The backend validates it before media processing, uses exclusive collision-safe creation, copies only resolved in-task attachments, and reports custom-export failures instead of silently falling back.
+
+Review condition: Revisit if personal templates, cleanup policy, or a future Obsidian integration requires a different artifact layout or persistent destination model.
