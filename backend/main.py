@@ -44,7 +44,7 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 from pydantic import BaseModel, Field, SecretStr
 
-from . import paraformer_asr, secret_box
+from . import note_templates, paraformer_asr, secret_box
 from .config_store import BiliCredentialsUnavailable, LLM_KEYS_FILE, ConfigStore
 from .llm_summarizer import (
     LONG_TRANSCRIPT_CHARACTERS,
@@ -390,6 +390,8 @@ class SummarizeRequest(BaseModel):
     output: Literal["note", "transcript"] = "note"
     note_destination: str | None = None
     summary_style: Literal["detailed", "faithful", "concise"] = "detailed"
+    # None/空 = 通用结构化内置模板；提交时解析并整体快照进 task.json（见 note_templates）
+    note_template_id: str | None = None
     reasoning_effort: Literal["auto", "off", "high", "max"] = "auto"
     prefer_subtitles: bool = True
     include_screenshots: bool = False
@@ -424,6 +426,24 @@ class BiliPagesRequest(BaseModel):
 
     video_url: str
     bilibili_cookie: BilibiliCookie | None = None
+
+
+class NoteTemplateCreatePayload(BaseModel):
+    """`POST /api/note-templates`：自定义模板的完整字段。"""
+
+    name: str
+    description: str = ""
+    instructions: str = ""
+    layout: str
+
+
+class NoteTemplateUpdatePayload(BaseModel):
+    """`PUT /api/note-templates/{id}`：只更新给出的字段，版本号 +1。"""
+
+    name: str | None = None
+    description: str | None = None
+    instructions: str | None = None
+    layout: str | None = None
 
 
 def new_task(status: str = "pending", task_id: str | None = None) -> dict[str, Any]:
@@ -476,6 +496,33 @@ def task_directory(task_id: str) -> Path:
     if candidate.parent != WORKSPACE_DIR:
         raise ValueError("非法任务 ID")
     return candidate
+
+
+def get_template_store() -> note_templates.TemplateStore:
+    """自定义模板存工作区内（已被 .gitignore 忽略），每次调用按当前 WORKSPACE_DIR 解析。"""
+    return note_templates.TemplateStore(WORKSPACE_DIR / "note_templates")
+
+
+def resolve_task_template_snapshot(
+    task_id: str, request: SummarizeRequest
+) -> dict[str, Any]:
+    """取任务提交时落盘的模板快照；直接调用（无 manifest）时按请求现场解析。
+
+    快照包含模板全文（含布局与指令），之后的模板修改/删除不改写已排队任务与历史任务。
+    """
+    manifest = read_task_manifest(task_id)
+    snapshot = manifest.get("note_template_snapshot")
+    if isinstance(snapshot, dict) and snapshot.get("id") and isinstance(
+        snapshot.get("layout"), str
+    ):
+        return dict(snapshot)
+    store = get_template_store()
+    template = store.get((request.note_template_id or "").strip())
+    if template is None:
+        template = store.get(note_templates.DEFAULT_TEMPLATE_ID)
+    if template is None:  # 内置模板永远存在，这只是防御
+        raise RuntimeError("内置笔记模板缺失")
+    return template.snapshot()
 
 
 def persist_task_runtime(task_id: str) -> None:
@@ -631,9 +678,11 @@ def load_reused_video_info(
     if not title:
         notes_path = task_dir / "notes.md"
         try:
-            first_line = notes_path.read_text(encoding="utf-8").splitlines()[0]
-            if first_line.startswith("# 视频笔记：《") and first_line.endswith("》"):
-                title = first_line.removeprefix("# 视频笔记：《")[:-1]
+            # 1.4.3 起笔记带 YAML Frontmatter，标题行不再一定是第一行
+            for line in notes_path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("# 视频笔记：《") and line.endswith("》"):
+                    title = line.removeprefix("# 视频笔记：《")[:-1]
+                    break
         except (OSError, IndexError):
             pass
     if not title:
@@ -691,6 +740,7 @@ def write_task_manifest(
     request: SummarizeRequest,
     reused_task_id: str | None,
     origin: str,
+    template_snapshot: dict[str, Any] | None = None,
 ) -> None:
     uploaded_filename = tasks.get(task_id, {}).get("uploaded_filename")
     payload = {
@@ -714,6 +764,12 @@ def write_task_manifest(
         # 分 P 勾选随任务落盘：同一视频重新处理时，/bili-pages 用它预勾上次的范围
         "bilibili_pages": getattr(request, "bilibili_pages", None),
     }
+    if template_snapshot is not None:
+        payload["note_template"] = {
+            "id": template_snapshot.get("id"),
+            "version": template_snapshot.get("version"),
+        }
+        payload["note_template_snapshot"] = template_snapshot
     (task_directory(task_id) / "task.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -828,6 +884,14 @@ async def submit_video_task(
         if not resume_dir.is_dir():
             raise HTTPException(status_code=404, detail="要继续的任务目录不存在")
 
+    template_snapshot = None
+    if request.output == "note":
+        template_id = (request.note_template_id or "").strip()
+        template = get_template_store().get(template_id or note_templates.DEFAULT_TEMPLATE_ID)
+        if template is None:
+            raise HTTPException(status_code=404, detail="笔记模板不存在，请刷新模板列表后重试")
+        template_snapshot = template.snapshot()
+
     task_id = request.upload_task_id or str(uuid.uuid4())
     if uploaded_task is not None:
         tasks[task_id] = new_task(task_id=task_id)
@@ -857,7 +921,7 @@ async def submit_video_task(
         if old_filename:
             tasks[task_id]["uploaded_filename"] = old_filename
         tasks[task_id]["logs"].append(f"将从任务 {reused_task_id} 复用已有产物")
-    write_task_manifest(task_id, request, reused_task_id, origin)
+    write_task_manifest(task_id, request, reused_task_id, origin, template_snapshot)
     persist_task_runtime(task_id)
 
     job = asyncio.create_task(run_queued_video_task(task_id, request))
@@ -1328,6 +1392,63 @@ async def preview_bilibili_pages(request: BiliPagesRequest) -> dict[str, Any]:
         # 该视频上次任务显式勾选的分 P；前端拿它做默认勾选（优先于 ?p=N）
         "previous_pages": previous_bili_pages(normalize_source_url(url)),
     }
+
+
+@app.get("/api/note-templates")
+async def list_note_templates() -> dict[str, Any]:
+    """列出全部模板：四个内置在前，自定义按名称排序。"""
+    return {
+        "templates": [
+            template.to_dict() for template in get_template_store().list_templates()
+        ]
+    }
+
+
+@app.post("/api/note-templates")
+async def create_note_template(payload: NoteTemplateCreatePayload) -> dict[str, Any]:
+    try:
+        template = get_template_store().create(
+            name=payload.name,
+            description=payload.description,
+            instructions=payload.instructions,
+            layout=payload.layout,
+        )
+    except note_templates.TemplateValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return template.to_dict()
+
+
+@app.put("/api/note-templates/{template_id}")
+async def update_note_template(
+    template_id: str, payload: NoteTemplateUpdatePayload
+) -> dict[str, Any]:
+    try:
+        template = get_template_store().update(
+            template_id,
+            name=payload.name,
+            description=payload.description,
+            instructions=payload.instructions,
+            layout=payload.layout,
+        )
+    except note_templates.TemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="笔记模板不存在") from exc
+    except (
+        note_templates.TemplateImmutableError,
+        note_templates.TemplateValidationError,
+    ) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return template.to_dict()
+
+
+@app.delete("/api/note-templates/{template_id}")
+async def delete_note_template(template_id: str) -> dict[str, bool]:
+    try:
+        get_template_store().delete(template_id)
+    except note_templates.TemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="笔记模板不存在") from exc
+    except note_templates.TemplateImmutableError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"deleted": True}
 
 
 @app.get("/api/health")
@@ -2021,6 +2142,9 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             task["advisory"] = advisory
             task["logs"].append(advisory)
         set_progress(task, 6, "生成笔记", 55, "正在规划笔记生成流程")
+        # 提交时已快照：此处读到的是不可变快照，模板后续的修改/删除不影响本任务
+        template_snapshot = resolve_task_template_snapshot(task_id, request)
+        task["logs"].append(f"笔记模板：{template_snapshot.get('name')}")
         config = request.llm_config
         base_url = config.base_url or config.custom_base_url
         model = config.model or config.custom_model_name
@@ -2065,6 +2189,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             reasoning_effort=request.reasoning_effort,
             progress_callback=report_llm_progress,
             should_abort=should_abort,
+            organization_instructions=template_snapshot.get("instructions") or "",
         )
         raise_if_cancel_requested(task)
         for warning in getattr(summarizer, "warnings", []):
@@ -2078,8 +2203,30 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                 f"![截图 {index}](./{FRAMES_DIR_NAME}/{path.name})"
                 for index, path in enumerate(screenshots, start=1)
             )
+        # 确定性收尾：布局包住草稿（草稿自带的文档标题交给布局的标题占位符），
+        # 再生成 YAML Frontmatter；均不触发额外的大模型调用。
+        note_values: dict[str, Any] = {
+            "title": title,
+            "source_url": source_url,
+            "platform": (
+                VideoSource.LOCAL.value if is_local else info.get("source", "other")
+            ),
+            "author": info.get("owner") or None,
+            "published_at": format_publish_time(info),
+            "duration": (
+                format_duration(info.get("duration", 0)) if info.get("duration") else None
+            ),
+            "created_at": task.get("created_at"),
+            "transcript_source": transcript_result["source"],
+            "template_name": template_snapshot.get("name") or "",
+        }
+        note_values["template"] = note_values["template_name"]
+        content = strip_document_heading(summary)
+        note_text = note_templates.render_note(
+            template_snapshot["layout"], note_values, content
+        )
         summary = append_note_footer(
-            summary,
+            note_text,
             source_url,
             config.model_type,
             model,
@@ -2107,6 +2254,8 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             "output_directory": str(task_dir),
             "archived_path": str(archived_path) if archived_path else None,
             "processing_seconds": elapsed,
+            "note_template_id": template_snapshot.get("id"),
+            "note_template_version": template_snapshot.get("version"),
         }
         task.update(
             status="completed", step=7, step_name="完成", progress=100, error=None
@@ -2265,6 +2414,23 @@ def format_duration(seconds: float) -> str:
     if not seconds:
         return "未知"
     return format_timestamp(float(seconds))
+
+
+def strip_document_heading(text: str) -> str:
+    """去掉草稿首行的成品文档标题：布局里的 {{title}} 才是文档标题的唯一来源。
+
+    只剥「# 视频笔记：《…》」这一种成品标题（管线提示词与兜底标题都固定长这样）；
+    模型自拟的其他一级标题属于正文内容，保留。独立成模块函数——测试与复用路径
+    会把 main.LLMSummarizer 整体换成假类，不能依赖类上的静态方法。
+    """
+    lines = text.strip().splitlines()
+    if (
+        lines
+        and lines[0].startswith("# 视频笔记：《")
+        and lines[0].endswith("》")
+    ):
+        lines.pop(0)
+    return "\n".join(lines).strip()
 
 
 def format_bytes_size(num_bytes: float) -> str:

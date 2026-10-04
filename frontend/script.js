@@ -5,6 +5,8 @@ const MAX_POLL_ERRORS = 5;
 const CUSTOM_MODEL_ID = '__custom__';
 // 档案下拉里自定义档案的取值前缀（内置 Provider 直接用 provider 名）。
 const CUSTOM_PROFILE_PREFIX = 'custom:';
+// 存储的模板 id 失效（模板被删或换库）时回退到内置默认模板。
+const DEFAULT_NOTE_TEMPLATE_ID = 'builtin-general-structured';
 // 所有偏好集中在一个命名空间对象里写入，"浏览器存储中没有任何密钥"因此是
 // 单个函数（persistPrefs）的性质，而不是 13 个散装键的逐处审查结果。
 const PREFS_KEY = 'vtn_prefs';
@@ -150,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeStep(toggleSourceType, '初始化来源切换');
     safeStep(applyMcpAccess, '初始化 MCP 接入信息');
     loadAppVersion();
+    loadNoteTemplates();
     loadRecentTasks(true);
     window.__videoToNoReady = true;
 });
@@ -288,6 +291,12 @@ function bindEvents() {
     bindListener('clearKeyBtn', 'click', clearSavedKey);
     bindListener('customProfileAddBtn', 'click', addCustomProfile);
     bindListener('customProfileDeleteBtn', 'click', deleteCustomProfile);
+    bindListener('copyTemplateBtn', 'click', () => openTemplateEditor('copy'));
+    bindListener('newTemplateBtn', 'click', () => openTemplateEditor('new'));
+    bindListener('editTemplateBtn', 'click', () => openTemplateEditor('edit'));
+    bindListener('deleteTemplateBtn', 'click', deleteSelectedTemplate);
+    bindListener('saveTemplateBtn', 'click', saveTemplate);
+    bindListener('cancelTemplateBtn', 'click', closeTemplateEditor);
     bindListener('manualModelBtn', 'click', manualImportWhisperModel);
     bindListener('copyMcpUrlBtn', 'click', () => copyTextToClipboard(mcpSseUrl(), 'MCP 地址已复制'));
     bindListener('copyMcpConfigBtn', 'click', () =>
@@ -573,7 +582,8 @@ const GLOBAL_PREF_KEYS = [
     'reasoning_effort',
     'processing_mode',
     'output_mode',
-    'note_destination'
+    'note_destination',
+    'note_template_id'
 ];
 
 function defaultProvider() {
@@ -597,7 +607,8 @@ function defaultPrefs() {
             reasoning_effort: 'auto',
             processing_mode: 'restart',
             output_mode: 'note',
-            note_destination: ''
+            note_destination: '',
+            note_template_id: DEFAULT_NOTE_TEMPLATE_ID
         },
         ui: { theme: 'system', mcp_hint_seen: false }
     };
@@ -925,6 +936,8 @@ function persistGlobals() {
     values.output_mode = document.querySelector('input[name="outputMode"]:checked')?.value
         || values.output_mode;
     values.note_destination = byId('noteDestination').value.trim();
+    const templateSelect = byId('noteTemplate');
+    if (templateSelect) values.note_template_id = templateSelect.value;
     persistPrefs();
 }
 
@@ -954,6 +967,10 @@ function bindPreferenceAutoSave() {
     bindListener('screenshotInterval', 'input', () => schedulePersist(persistGlobals));
     bindListener('noteDestination', 'change', persistGlobals);
     bindListener('noteDestination', 'input', () => schedulePersist(persistGlobals));
+    bindListener('noteTemplate', 'change', () => {
+        updateNoteTemplateDetails();
+        persistGlobals();
+    });
     ['customBaseUrl', 'customModelName'].forEach((id) => {
         const element = byId(id);
         if (!element) return;
@@ -1367,11 +1384,13 @@ function setOutputMode(mode) {
 function applyOutputMode() {
     const transcript = isTranscriptMode();
     // 笔记专用设置整组藏掉（不是灰掉）：这条路上没有大模型调用，也没有第 5 步截图
-    ['summaryStyleField', 'reasoningEffortField', 'includeScreenshotsField', 'screenshotIntervalField']
+    ['summaryStyleField', 'reasoningEffortField', 'includeScreenshotsField', 'screenshotIntervalField',
+        'noteTemplateField']
         .forEach((id) => {
             const element = byId(id);
             if (element) element.hidden = transcript;
         });
+    if (transcript) closeTemplateEditor();
     const hint = byId('outputModeHint');
     if (hint) {
         hint.hidden = !transcript;
@@ -1381,6 +1400,180 @@ function applyOutputMode() {
             : '';
     }
     resetSubmitLabel();
+}
+
+// ---- 笔记模板：下拉选择 + 新建/复制/编辑/删除 ----
+// 模板列表来自后端 /api/note-templates；选中项作为普通偏好持久化，
+// 存储的 id 失效时回退到内置默认模板。
+let noteTemplates = [];
+let templateEditorMode = null;
+let templateEditorId = null;
+// 模板列表的加载状态：loading / ready / error。笔记提交只在 ready 时放行，
+// 避免加载失败时静默按默认模板提交，覆盖用户保存过的自定义选择。
+let noteTemplatesStatus = 'loading';
+
+async function loadNoteTemplates(preferredId = null) {
+    noteTemplatesStatus = 'loading';
+    try {
+        const response = await fetch(`${API_BASE}/note-templates`, { cache: 'no-store' });
+        const data = await readResponse(response, '读取笔记模板失败');
+        noteTemplates = Array.isArray(data.templates) ? data.templates : [];
+        noteTemplatesStatus = 'ready';
+    } catch (error) {
+        console.warn('[VideoToNo] 读取笔记模板失败：', error);
+        noteTemplates = [];
+        noteTemplatesStatus = 'error';
+    }
+    renderNoteTemplateOptions(preferredId);
+}
+
+function renderNoteTemplateOptions(preferredId = null) {
+    const select = byId('noteTemplate');
+    if (!select) return;
+    select.replaceChildren();
+    const desc = byId('noteTemplateDesc');
+    if (noteTemplatesStatus === 'error') {
+        if (desc) desc.textContent = '模板列表加载失败，点击「开始生成」会自动重试';
+        updateNoteTemplateDetails();
+        return;
+    }
+    noteTemplates.forEach((template) => {
+        select.add(new Option(template.name, template.id));
+    });
+    if (!select.options.length) {
+        updateNoteTemplateDetails();
+        return;
+    }
+    const ids = noteTemplates.map((template) => template.id);
+    const stored = prefs.global.note_template_id;
+    // 保存/删除后的 preferredId 优先；其次是存储的选中项（失效则回退默认模板）
+    const wanted = preferredId || (ids.includes(stored) ? stored : DEFAULT_NOTE_TEMPLATE_ID);
+    select.value = ids.includes(wanted) ? wanted : ids[0];
+    prefs.global.note_template_id = select.value;
+    persistPrefs();
+    updateNoteTemplateDetails();
+}
+
+function selectedNoteTemplate() {
+    const select = byId('noteTemplate');
+    if (!select) return null;
+    return noteTemplates.find((template) => template.id === select.value) || null;
+}
+
+function updateNoteTemplateDetails() {
+    const template = selectedNoteTemplate();
+    const desc = byId('noteTemplateDesc');
+    if (desc) desc.textContent = (template && template.description) || '';
+    // 内置模板只读：走「复制副本」拿到一份可改的自定义模板
+    const readonly = Boolean(template && template.built_in);
+    ['editTemplateBtn', 'deleteTemplateBtn'].forEach((id) => {
+        const button = byId(id);
+        if (!button) return;
+        button.disabled = readonly;
+        button.title = readonly ? '内置模板不可修改或删除' : '';
+    });
+}
+
+function openTemplateEditor(mode) {
+    const panel = byId('templateEditorPanel');
+    const nameInput = byId('templateName');
+    if (!panel || !nameInput) return;
+    const current = selectedNoteTemplate();
+    templateEditorMode = mode;
+    templateEditorId = mode === 'edit' && current ? current.id : null;
+    const title = byId('templateEditorTitle');
+    if (mode === 'edit' && current) {
+        if (title) title.textContent = '编辑模板';
+        nameInput.value = current.name || '';
+        byId('templateDescription').value = current.description || '';
+        byId('templateInstructions').value = current.instructions || '';
+        byId('templateLayout').value = current.layout || '';
+    } else if (mode === 'copy' && current) {
+        if (title) title.textContent = '复制模板';
+        nameInput.value = current.name ? `${current.name} 副本` : '';
+        byId('templateDescription').value = current.description || '';
+        byId('templateInstructions').value = current.instructions || '';
+        byId('templateLayout').value = current.layout || '';
+    } else {
+        if (title) title.textContent = '新建模板';
+        nameInput.value = '';
+        byId('templateDescription').value = '';
+        byId('templateInstructions').value = '';
+        byId('templateLayout').value = '';
+    }
+    const error = byId('templateEditorError');
+    if (error) error.textContent = '';
+    panel.hidden = false;
+    nameInput.focus();
+}
+
+function closeTemplateEditor() {
+    const panel = byId('templateEditorPanel');
+    if (panel) panel.hidden = true;
+    templateEditorMode = null;
+    templateEditorId = null;
+}
+
+function setTemplateEditorBusy(active) {
+    ['saveTemplateBtn', 'cancelTemplateBtn'].forEach((id) => {
+        const button = byId(id);
+        if (button) button.disabled = active;
+    });
+}
+
+async function saveTemplate() {
+    if (!templateEditorMode) return;
+    const payload = {
+        name: byId('templateName').value,
+        description: byId('templateDescription').value,
+        instructions: byId('templateInstructions').value,
+        layout: byId('templateLayout').value
+    };
+    const error = byId('templateEditorError');
+    if (error) error.textContent = '';
+    setTemplateEditorBusy(true);
+    try {
+        let saved;
+        if (templateEditorMode === 'edit' && templateEditorId) {
+            const response = await fetch(
+                `${API_BASE}/note-templates/${encodeURIComponent(templateEditorId)}`,
+                { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+            );
+            saved = await readResponse(response, '保存模板失败');
+        } else {
+            const response = await fetch(`${API_BASE}/note-templates`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            saved = await readResponse(response, '保存模板失败');
+        }
+        closeTemplateEditor();
+        await loadNoteTemplates(saved.id);
+        showToast(`模板「${saved.name}」已保存`, 'success');
+    } catch (saveError) {
+        // 校验失败等场景：后端 detail 是中文文案，直接展示在面板里
+        if (error) error.textContent = saveError.message || '保存模板失败';
+    } finally {
+        setTemplateEditorBusy(false);
+    }
+}
+
+async function deleteSelectedTemplate() {
+    const template = selectedNoteTemplate();
+    if (!template || template.built_in) return;
+    if (!window.confirm(`确定删除模板「${template.name}」吗？此操作不可恢复。`)) return;
+    try {
+        const response = await fetch(
+            `${API_BASE}/note-templates/${encodeURIComponent(template.id)}`,
+            { method: 'DELETE' }
+        );
+        await readResponse(response, '删除模板失败');
+        await loadNoteTemplates(DEFAULT_NOTE_TEMPLATE_ID);
+        showToast(`模板「${template.name}」已删除`, 'success');
+    } catch (error) {
+        showToast(error.message || '删除模板失败', 'error');
+    }
 }
 
 let biliHintDebounce = null;
@@ -1959,6 +2152,19 @@ async function startSummary(options = {}) {
     const resumeTaskId = options.resumeCurrent ? currentTaskId : null;
     const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'restart';
     const forceRestart = Boolean(options.forceRestart || (!resumeTaskId && selectedMode === 'restart'));
+    if (!isTranscriptMode()) {
+        // 模板列表未就绪时不能提交笔记：loading 稍候，error 顺手重试；
+        // 只有 ready 后存储 id 不存在才允许回退默认模板（见 renderNoteTemplateOptions）。
+        if (noteTemplatesStatus === 'loading') {
+            showToast('笔记模板列表还在加载中，请稍候再提交', 'info');
+            return;
+        }
+        if (noteTemplatesStatus === 'error') {
+            showToast('笔记模板列表加载失败，正在重试', 'error');
+            loadNoteTemplates();
+            return;
+        }
+    }
     const request = validateAndBuildRequestBase(resumeTaskId);
     if (!request) return;
     // 所选 Whisper 模型未完整缓存时，先确认下载（新用户首次使用）。
@@ -2149,6 +2355,8 @@ function buildSummarizeConfig(
         config.reasoning_effort = byId('reasoningEffort').value;
         const noteDestination = byId('noteDestination').value.trim();
         if (noteDestination) config.note_destination = noteDestination;
+        const noteTemplateId = byId('noteTemplate')?.value;
+        if (noteTemplateId) config.note_template_id = noteTemplateId;
         config.llm_config = llmConfig;
     }
 

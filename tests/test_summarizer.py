@@ -182,6 +182,32 @@ def test_note_prompt_requires_coverage_to_transcript_end() -> None:
     assert "必须覆盖到该时间点" not in concise
 
 
+def test_note_prompt_carries_template_organization_instructions() -> None:
+    """模板组织指令只进提示词：不替 summary_style，也不新增一次成稿调用。"""
+    with_org = LLMSummarizer._note_prompt(
+        "测试视频",
+        "[00:10] 内容",
+        {},
+        "detailed",
+        None,
+        "按发言人整理观点",
+    )
+    assert "按发言人整理观点" in with_org
+    assert "笔记组织要求" in with_org
+    without_org = LLMSummarizer._note_prompt("测试视频", "[00:10] 内容", {})
+    assert "笔记组织要求" not in without_org
+
+
+def test_section_note_prompt_carries_organization_instructions() -> None:
+    section = [TranscriptSegment(0, 60, "内容")]
+    with_org = LLMSummarizer._section_note_prompt(
+        "测试视频", 1, 2, section, "", organization="按步骤整理"
+    )
+    assert "全篇组织要求（本段同样遵守）：按步骤整理" in with_org
+    without_org = LLMSummarizer._section_note_prompt("测试视频", 1, 2, section, "")
+    assert "全篇组织要求" not in without_org
+
+
 def test_chunk_prompt_states_coverage_range() -> None:
     prompt = LLMSummarizer._chunk_prompt(
         "测试视频",
@@ -484,6 +510,32 @@ async def test_short_transcript_uses_one_call_or_two_focused_calls() -> None:
     detailed = await summarizer.generate_summary("标题", segments, style="detailed")
     assert detailed == "# 视频笔记\n\n## 点评与分析"
     assert calls == ["auto", "auto"]
+
+
+@pytest.mark.asyncio
+async def test_organization_instructions_forwarded_without_extra_calls() -> None:
+    """模板组织指令经 generate_summary 进成稿提示词；调用次数与未传时完全一致。"""
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.warnings = []
+    prompts: list[str] = []
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        prompts.append(prompt)
+        return "# 视频笔记"
+
+    summarizer._complete = complete
+    segments = [TranscriptSegment(0, 10, "一段简短转录")]
+
+    await summarizer.generate_summary(
+        "标题", segments, style="faithful", organization_instructions="按发言人整理观点"
+    )
+    assert len(prompts) == 1
+    assert "按发言人整理观点" in prompts[0]
+
+    prompts.clear()
+    await summarizer.generate_summary("标题", segments, style="faithful")
+    assert len(prompts) == 1
+    assert "笔记组织要求" not in prompts[0]
 
 
 @pytest.mark.asyncio

@@ -1446,7 +1446,7 @@ async def test_pipeline_uses_platform_subtitles_without_downloading_audio(
 
         async def generate_summary(
             self, title, segments, metadata, style="detailed", reasoning_effort="auto",
-            progress_callback=None, should_abort=None,
+            progress_callback=None, should_abort=None, organization_instructions="",
         ):
             if progress_callback:
                 await progress_callback(78, "正在生成完整笔记")
@@ -1520,7 +1520,7 @@ async def test_pipeline_reuses_transcript_without_platform_or_whisper_calls(
 
         async def generate_summary(
             self, title, segments, metadata, style="detailed", reasoning_effort="auto",
-            progress_callback=None, should_abort=None,
+            progress_callback=None, should_abort=None, organization_instructions="",
         ):
             assert title == "旧任务标题"
             assert style == "detailed"
@@ -1548,9 +1548,12 @@ async def test_pipeline_reuses_transcript_without_platform_or_whisper_calls(
     assert (old_dir / "notes.md").read_text(encoding="utf-8").startswith(
         "# 视频笔记：《旧任务标题》"
     )
-    assert (tmp_path / new_task_id / "notes.md").read_text(encoding="utf-8").startswith(
-        "# 复用成功"
-    )
+    new_note = (tmp_path / new_task_id / "notes.md").read_text(encoding="utf-8")
+    # 1.4.3 起正文前带确定性 YAML Frontmatter（标题等字段安全加引号）
+    assert new_note.startswith("---\n")
+    assert 'title: "旧任务标题"' in new_note
+    assert 'template: "通用结构化笔记"' in new_note
+    assert "复用成功" in new_note
 
 
 @pytest.mark.asyncio
@@ -1660,7 +1663,7 @@ async def test_pipeline_merges_all_bilibili_pages_from_ai_subtitles(
 
         async def generate_summary(
             self, title, segments, metadata, style="detailed", reasoning_effort="auto",
-            progress_callback=None, should_abort=None,
+            progress_callback=None, should_abort=None, organization_instructions="",
         ):
             if progress_callback:
                 await progress_callback(78, "正在生成完整笔记")
@@ -1751,7 +1754,7 @@ async def test_pipeline_transcribes_missing_bilibili_page_and_merges(
 
         async def generate_summary(
             self, title, segments, metadata, style="detailed", reasoning_effort="auto",
-            progress_callback=None, should_abort=None,
+            progress_callback=None, should_abort=None, organization_instructions="",
         ):
             captured_segments.extend(segments)
             if progress_callback:

@@ -59,6 +59,41 @@
                     <option value="concise">精简摘要</option>
                 </select>
             </label>
+            <div class="field" id="noteTemplateField">
+                <span>笔记模板</span>
+                <select id="noteTemplate"></select>
+                <small id="noteTemplateDesc"></small>
+                <div class="template-actions">
+                    <button id="copyTemplateBtn" class="button ghost compact-button" type="button">复制副本</button>
+                    <button id="newTemplateBtn" class="button ghost compact-button" type="button">新建</button>
+                    <button id="editTemplateBtn" class="button ghost compact-button" type="button">编辑</button>
+                    <button id="deleteTemplateBtn" class="button ghost compact-button" type="button">删除</button>
+                </div>
+                <div id="templateEditorPanel" class="template-editor" hidden>
+                    <strong id="templateEditorTitle" class="template-editor-title">编辑模板</strong>
+                    <label class="field">
+                        <span>名称</span>
+                        <input type="text" id="templateName" autocomplete="off">
+                    </label>
+                    <label class="field">
+                        <span>说明</span>
+                        <input type="text" id="templateDescription" autocomplete="off">
+                    </label>
+                    <label class="field">
+                        <span>LLM 整理指令</span>
+                        <textarea id="templateInstructions" rows="4"></textarea>
+                    </label>
+                    <label class="field">
+                        <span>Markdown 布局</span>
+                        <textarea id="templateLayout" rows="6"></textarea>
+                    </label>
+                    <div class="template-editor-actions">
+                        <button id="saveTemplateBtn" class="button secondary" type="button">保存模板</button>
+                        <button id="cancelTemplateBtn" class="button ghost" type="button">取消</button>
+                    </div>
+                    <span id="templateEditorError" class="template-editor-error" role="alert"></span>
+                </div>
+            </div>
             <label class="field" id="reasoningEffortField">
                 <span>推理强度</span>
                 <select id="reasoningEffort">
@@ -410,6 +445,6 @@
 </div>
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-<script src="script.js?v=20261004-1"></script>
+<script src="script.js?v=20261004-3"></script>
 </body>
 </html>

@@ -47,3 +47,27 @@ Alternatives considered: Move the entire task directory into the Vault; redefine
 Impact: The frontend stores the optional path as a non-sensitive local preference. The backend validates it before media processing, uses exclusive collision-safe creation, copies only resolved in-task attachments, and reports custom-export failures instead of silently falling back.
 
 Review condition: Revisit if personal templates, cleanup policy, or a future Obsidian integration requires a different artifact layout or persistent destination model.
+
+## 2026-10-04: Use lightweight platform support levels
+
+Decision: Treat YouTube, Bilibili, Douyin, and local media as focused support; treat other `yt-dlp`-compatible URLs as generic compatibility; research platforms that need dedicated behavior separately.
+
+Reason: The upstream project documents platform scope and limits, and its automated suite uses controlled regression tests rather than a live per-platform certification matrix. Requiring a live end-to-end check for every platform and release would make lawful platform expansion disproportionately expensive.
+
+Alternatives considered: Require every supported platform to pass every subtitle, ASR, screenshot, authentication, and export combination; advertise every `yt-dlp` extractor as equally supported.
+
+Impact: Platform-specific changes need focused tests and clear errors. Global destination, collision, and Unicode behavior is tested once. Live checks are risk-based and remain subject to media, login, cookie, and credential approval boundaries.
+
+Review condition: Tighten a platform's gate when repeated regressions show that controlled tests are insufficient, or when a release makes a stronger compatibility promise.
+
+## 2026-10-04: Separate summary strategy from safe note templates
+
+Decision: Keep the existing `summary_style` pipeline as the generation-depth strategy and add a separate `note_template` contract. Ship four read-only built-ins, store custom templates in the backend, require one `{{content}}` placeholder from a safe allowlist, add deterministic YAML Frontmatter, and snapshot the selected template with each task.
+
+Reason: The upstream summarizer already handles short and long transcripts, coverage, reasoning effort, and retry behavior. Templates should organize content and wrap the final Markdown without duplicating that mature pipeline or executing user code.
+
+Alternatives considered: Replace summary styles with templates; run a second full-document LLM formatting call; allow executable Jinja or scripts; generate multiple linked notes per video.
+
+Impact: A video produces one Markdown file per generation. Selecting a different template reuses the transcript, calls the LLM again, preserves earlier notes through collision-safe naming, and leaves built-ins immutable. Local Markdown keeps Frontmatter; a future Feishu uploader may strip it from cloud content.
+
+Review condition: Revisit if deterministic layouts cannot express a required note format or if a future multi-note workflow is approved as a separate milestone.

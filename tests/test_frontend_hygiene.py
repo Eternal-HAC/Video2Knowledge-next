@@ -53,6 +53,22 @@ def test_note_destination_is_persisted_and_only_sent_for_note_tasks() -> None:
     assert "config.note_destination = noteDestination" in note_branch
 
 
+def test_note_template_is_persisted_and_only_sent_for_note_tasks() -> None:
+    assert 'id="noteTemplate"' in PAGE
+    assert "'note_template_id'" in SCRIPT.split("const GLOBAL_PREF_KEYS =", 1)[1].split("];", 1)[0]
+    builder = SCRIPT.split("function buildSummarizeConfig(", 1)[1].split("\n}\n", 1)[0]
+    transcript_branch, note_branch = builder.split("} else {", 1)
+    assert "note_template_id" not in transcript_branch
+    assert "note_template_id" in note_branch
+
+
+def test_note_submit_is_blocked_until_template_list_is_ready() -> None:
+    """模板列表加载中/加载失败时提交笔记会静默退回默认模板，覆盖用户保存的选择。"""
+    start = SCRIPT.split("async function startSummary(", 1)[1].split("\n}\n", 1)[0]
+    assert "noteTemplatesStatus" in start
+    assert SCRIPT.count("noteTemplatesStatus = 'ready'") == 1
+
+
 def test_note_images_are_resolved_on_every_output_path() -> None:
     """截图只在预览里改路径、导出全是坏链，就是 1.4.1 修的那个问题。"""
     assert "(?:frames|images)" in SCRIPT, "预览要同时认 frames 与历史笔记里的 images"

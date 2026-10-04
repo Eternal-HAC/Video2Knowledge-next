@@ -371,6 +371,7 @@ class LLMSummarizer:
         reasoning_effort: str = "auto",
         progress_callback: ProgressCallback | None = None,
         should_abort: Callable[[], bool] | None = None,
+        organization_instructions: str = "",
     ) -> str:
         if not segments:
             raise ValueError("Cannot summarize an empty transcript")
@@ -392,6 +393,7 @@ class LLMSummarizer:
                 reasoning_effort,
                 progress_callback,
                 should_abort,
+                organization_instructions,
             )
         else:
             draft = await self._write_condensed_notes(
@@ -403,6 +405,7 @@ class LLMSummarizer:
                 reasoning_effort,
                 progress_callback,
                 should_abort,
+                organization_instructions,
             )
         await self._report_progress(progress_callback, 91, "完整笔记初稿已生成")
         if style == "detailed":
@@ -455,6 +458,7 @@ class LLMSummarizer:
         reasoning_effort: str,
         progress_callback: ProgressCallback | None,
         should_abort: Callable[[], bool] | None,
+        organization_instructions: str = "",
     ) -> str:
         """原有管线：逐段压缩成片段笔记 → 分层归并 → 一次成稿。
 
@@ -510,7 +514,9 @@ class LLMSummarizer:
         draft_stage = "正在生成完整笔记"
         await self._report_progress(progress_callback, draft_progress, draft_stage)
         draft = await self._complete(
-            self._note_prompt(title, source, metadata, style, coverage_end),
+            self._note_prompt(
+                title, source, metadata, style, coverage_end, organization_instructions
+            ),
             max_tokens=max_tokens,
             effort=notes_effort,
             progress_callback=progress_callback,
@@ -555,6 +561,7 @@ class LLMSummarizer:
         reasoning_effort: str,
         progress_callback: ProgressCallback | None,
         should_abort: Callable[[], bool] | None,
+        organization_instructions: str = "",
     ) -> str:
         """长转录管线：切块 → 并发把每块直接写成终稿 → 机械拼接 → 目录与概览。
 
@@ -606,6 +613,7 @@ class LLMSummarizer:
                     report,
                     should_abort,
                     brief,
+                    organization_instructions,
                 )
             done += 1
             await report(
@@ -644,6 +652,7 @@ class LLMSummarizer:
         report: Callable[[int, str], Awaitable[None]],
         should_abort: Callable[[], bool] | None,
         brief: str = "",
+        organization_instructions: str = "",
     ) -> str:
         """把一段转录直接写成终稿笔记，并保证它推进到自己那段的时间末尾。
 
@@ -679,6 +688,7 @@ class LLMSummarizer:
                         context_tail,
                         brief=brief,
                         retried=attempt > 0,
+                        organization=organization_instructions,
                     ),
                     max_tokens=max_tokens,
                     effort=effort,
@@ -909,6 +919,7 @@ class LLMSummarizer:
         context_tail: str,
         brief: str = "",
         retried: bool = False,
+        organization: str = "",
     ) -> str:
         start = format_timestamp(section[0].start)
         end = format_timestamp(section[-1].end)
@@ -923,6 +934,11 @@ class LLMSummarizer:
             else ""
         )
         brief_block = f"\n{brief}\n" if brief else ""
+        organization_hint = (
+            f"\n- 全篇组织要求（本段同样遵守）：{organization}"
+            if organization
+            else ""
+        )
         return f"""视频标题：{title}
 这是全片第 {index}/{total} 段，覆盖时间轴 {start} – {end}。直接把这一段写成最终成稿的笔记正文：不要写提纲、不要预告后文、不要总结全片。
 {brief_block}
@@ -934,7 +950,7 @@ class LLMSummarizer:
 - 时间点只能取自材料，写成 [MM:SS] 或 [起点-终点]，超过一小时请带上小时
 - 用 ## 组织小节、### 组织子话题；不要输出 # 开头的文档标题，也不要输出视频元信息
 - 数学公式一律写成 Markdown 公式：行内用 $...$，独立公式块用 $$...$$，不要用 \\(...\\) 或 \\[...\\] 包裹
-- 忠实于讲者本意，允许结合上下文修正明显的口误与转写错误；不补充外部知识，不做评价
+- 忠实于讲者本意，允许结合上下文修正明显的口误与转写错误；不补充外部知识，不做评价{organization_hint}
 {context}
 本段转录：
 {segments_to_prompt(section)}"""
@@ -1664,6 +1680,7 @@ class LLMSummarizer:
         metadata: dict[str, Any],
         style: str = "detailed",
         coverage_end: str | None = None,
+        organization: str = "",
     ) -> str:
         owner = metadata.get("owner") or "未知"
         published_at = metadata.get("published_at") or "未知"
@@ -1701,6 +1718,11 @@ class LLMSummarizer:
         )
         brief = LLMSummarizer._context_brief(metadata)
         brief_block = f"\n{brief}\n" if brief else ""
+        organization_block = (
+            f"\n笔记组织要求（本节内容的结构与侧重，成稿必须遵守）：\n{organization}\n"
+            if organization
+            else ""
+        )
         return f"""{task}
 
 视频标题：{title}
@@ -1710,7 +1732,7 @@ class LLMSummarizer:
 播放：{view_count}
 点赞：{like_count}
 文字来源：{source_label}
-{brief_block}
+{brief_block}{organization_block}
 以准确理解语境和作者立场为先。{metadata_hint}时间点只能取自材料。{coverage_hint}{timestamp_hint}可在上下文支持时直接修正明显的口误、
 笔误或转写错误；只有歧义会影响结论且无法可靠判断时，才在正文采用最可能的解释，并在文末用
 Markdown 脚注集中说明。不要在正文反复插入“原文如此”或“疑为转写错误”。

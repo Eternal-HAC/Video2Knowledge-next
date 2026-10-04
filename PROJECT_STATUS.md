@@ -4,9 +4,9 @@ Updated: 2026-10-04
 
 ## Current stage
 
-`successor customization in progress`
+`note template milestone complete locally`
 
-The successor Fork and product baseline are established. The current phase verifies which product requirements are already satisfied by VideoToNo and customizes only demonstrated gaps.
+The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
 The first successor customization is complete in local commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. The feature commit has not been pushed, so local `main` remains ahead of `origin/main`.
 
@@ -31,16 +31,26 @@ Current code and tests show that the upstream-derived implementation already pro
 - collision-safe filenames for the current `workspace/notes` archive;
 - Unicode-safe note filenames.
 
-The first successor customization now provides:
+The successor customizations now provide:
 
 - dedicated output to a selected normal directory or Obsidian Vault, covered by automated tests.
+- four immutable built-in note templates and backend-managed custom templates;
+- safe single-pass Markdown layouts with immutable task snapshots and deterministic YAML Frontmatter;
+- template-aware short and long summarization without a second full-document LLM pass;
+- frontend template loading, creation, editing, cloning, deletion, and note-mode visibility behavior.
 
 The following items remain open or partial:
 
-- personal Markdown templates: gap;
 - default cleanup of downloaded, uploaded, and intermediate media: partial;
-- YAML Frontmatter behavior: UNKNOWN;
-- successor-specific end-to-end acceptance of all six required chains: pending.
+- Obsidian detection and Feishu upload: later milestone.
+
+## Platform support levels
+
+- Focused support: YouTube, Bilibili, Douyin, and local media.
+- Generic compatibility: other URLs handled by the installed `yt-dlp` version, without platform-specific guarantees.
+- Pending adaptation: platforms that need separate lawful research and a dedicated adapter.
+
+Automated platform tests prove controlled behavior and regressions; they do not guarantee that a live platform is currently reachable. Live media checks are risk-based and approval-gated rather than a mandatory per-release matrix.
 
 ## Isolated evaluation evidence
 
@@ -52,11 +62,34 @@ Earlier isolated evaluation covered these real flows:
 - public Bilibili input;
 - DeepSeek-generated Markdown.
 
-This is evaluation evidence for the adopted upstream baseline. It does not count as final acceptance of the successor, its destination behavior, personal templates, cleanup policy, or credential boundary.
+This is evaluation evidence for the adopted upstream baseline. It does not replace focused regression tests or a risk-based live check when a platform-specific change is made.
+
+## Completed template milestone
+
+- Four read-only built-ins: General Structured Notes by default, Cornell Review Notes, Tutorial / How-to Notes, and Interview / Viewpoint Analysis.
+- Backend-stored custom templates created by cloning or adding a template.
+- Safe placeholder layouts with one required `{{content}}`; no executable template language.
+- `summary_style` remains separate from the selected template.
+- Template changes reuse existing transcripts and create new collision-safe Markdown without overwriting old notes.
+- Deterministic YAML Frontmatter with unavailable fields omitted.
+- Template ID, version, and immutable snapshot recorded with each task.
+- No Feishu integration, new-platform adapter, or media cleanup in this milestone.
+
+Acceptance evidence:
+
+- full automated suite: `379 passed, 1 skipped`;
+- JavaScript syntax check and `git diff --check`: passed;
+- local browser smoke check: built-ins loaded; custom create and edit worked; clone form preserved all fields; transcript-only mode hid template controls and note mode restored them; a stale stored template ID fell back to the default after successful template loading;
+- the temporary smoke-test template file was removed after verification;
+- the independent architect review's four required fixes were applied. The separate code-reviewer lane did not return a verdict because its execution quota was interrupted, so there is no claim of two-lane formal review approval.
+
+## Next milestone
+
+Media and intermediate-file retention. The first task is read-only lifecycle inspection followed by focused tests. Implementation begins only after those tests demonstrate a gap against the approved success/failure retention policy.
 
 ## Current constraints
 
-- The only successor functionality change so far is configurable final-note export.
+- Successor functionality changes so far are configurable final-note export and the safe note-template system.
 - Custom destinations receive only the final Markdown and attachments referenced by that note. Task manifests, transcripts, downloaded media, model cache, and credentials remain in the workspace.
 - Relative paths, ordinary files, and unavailable destinations are rejected before media processing with stable validation errors.
 - Default and custom destinations use exclusive file creation. Controlled race and hard-link tests verify that concurrent foreign content is neither overwritten nor deleted.
