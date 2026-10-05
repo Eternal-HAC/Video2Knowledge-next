@@ -71,3 +71,15 @@ Alternatives considered: Replace summary styles with templates; run a second ful
 Impact: A video produces one Markdown file per generation. Selecting a different template reuses the transcript, calls the LLM again, preserves earlier notes through collision-safe naming, and leaves built-ins immutable. Local Markdown keeps Frontmatter; a future Feishu uploader may strip it from cloud content.
 
 Review condition: Revisit if deterministic layouts cannot express a required note format or if a future multi-note workflow is approved as a separate milestone.
+
+## 2026-10-05: Obsidian detection is a convenience; Feishu publication is opt-in, user-identity only, and never blocks the local note
+
+Decision: Keep `note_destination` as the single destination contract and make Obsidian Vault detection a read-only UI convenience that fills it. Publish completed notes to Feishu only when the user opts in, only through the local lark-cli `--as user` identity (never bot, never automatic login), as native Markdown plus an optional referenced-frames ZIP, after local artifacts are durably written. A failed publication keeps the task `completed`, records sanitized metadata, and offers a publication-only retry endpoint.
+
+Reason: Local Markdown artifacts remain authoritative. Cloud upload is a side effect that must not re-run download/ASR/LLM work, must not persist raw tokens or identity data, and must not turn a transient cloud failure into a lost note.
+
+Alternatives considered: a second backend destination system alongside `note_destination`; Feishu Wiki/docx import or native image blocks now; overwriting or syncing existing remote files; bot-identity upload as a fallback; failing the note task when the upload fails.
+
+Impact: The backend receives the same `note_destination` as before plus two note-only Feishu request fields; the manifest snapshots only the normalized folder token; errors use stable codes; retry reuses `notes.md` and current frames. Native cloud image blocks, Wiki/docx import, overwrite/sync, permission management, and automatic login stay deferred.
+
+Review condition: Revisit if users need multi-account or team-space publishing, native image blocks, or sync/overwrite semantics, each as a separately authorized milestone.

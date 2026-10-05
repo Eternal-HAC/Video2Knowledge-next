@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeStep(applyMcpAccess, '初始化 MCP 接入信息');
     loadAppVersion();
     loadNoteTemplates();
+    loadNoteDestinations();
     loadRecentTasks(true);
     window.__videoToNoReady = true;
 });
@@ -268,6 +269,7 @@ function bindEvents() {
     bindListener('cancelTaskBtn', 'click', cancelCurrentTask);
     bindListener('downloadMdBtn', 'click', downloadSummary);
     bindListener('copyNoteBtn', 'click', copyFullNote);
+    bindListener('feishuRetryBtn', 'click', retryFeishuUpload);
     bindListener('formatSelect', 'change', toggleImageLayout);
     bindListener('refreshRecentTasksBtn', 'click', () => loadRecentTasks());
     const recentTaskList = byId('recentTaskList');
@@ -535,6 +537,7 @@ async function openRecentTask(taskId) {
         if (Array.isArray(task.logs)) updateLogs(task.logs);
 
         if (task.status === 'completed') {
+            currentFeishuPublication = task.feishu_publication || null;
             await completeTask(task.result, task.elapsed_seconds);
         } else if (['queued', 'processing', 'cancelling'].includes(task.status)) {
             setTaskActive(true);
@@ -584,6 +587,9 @@ const GLOBAL_PREF_KEYS = [
     'output_mode',
     'note_destination',
     'note_template_id'
+    ,
+    'feishu_upload_enabled',
+    'feishu_folder'
 ];
 
 function defaultProvider() {
@@ -609,6 +615,9 @@ function defaultPrefs() {
             output_mode: 'note',
             note_destination: '',
             note_template_id: DEFAULT_NOTE_TEMPLATE_ID
+            ,
+            feishu_upload_enabled: false,
+            feishu_folder: ''
         },
         ui: { theme: 'system', mcp_hint_seen: false }
     };
@@ -888,6 +897,8 @@ function applyPreferencesToForm() {
     byId('reasoningEffort').value = ['auto', 'off', 'high', 'max'].includes(prefs.global.reasoning_effort)
         ? prefs.global.reasoning_effort : 'auto';
     byId('noteDestination').value = prefs.global.note_destination || '';
+    byId('feishuUploadEnabled').checked = prefs.global.feishu_upload_enabled === true;
+    byId('feishuFolder').value = prefs.global.feishu_folder || '';
     const processingModeInput = document.querySelector(
         `input[name="processingMode"][value="${prefs.global.processing_mode}"]`
     );
@@ -938,6 +949,8 @@ function persistGlobals() {
     values.note_destination = byId('noteDestination').value.trim();
     const templateSelect = byId('noteTemplate');
     if (templateSelect) values.note_template_id = templateSelect.value;
+    values.feishu_upload_enabled = byId('feishuUploadEnabled').checked;
+    values.feishu_folder = byId('feishuFolder').value.trim();
     persistPrefs();
 }
 
@@ -967,6 +980,13 @@ function bindPreferenceAutoSave() {
     bindListener('screenshotInterval', 'input', () => schedulePersist(persistGlobals));
     bindListener('noteDestination', 'change', persistGlobals);
     bindListener('noteDestination', 'input', () => schedulePersist(persistGlobals));
+    bindListener('feishuUploadEnabled', 'change', persistGlobals);
+    bindListener('feishuFolder', 'change', persistGlobals);
+    bindListener('feishuFolder', 'input', () => schedulePersist(persistGlobals));
+    bindListener('obsidianVaultSelect', 'change', applyVaultDestination);
+    bindListener('obsidianSubfolder', 'change', applyVaultDestination);
+    bindListener('obsidianSubfolder', 'input', applyVaultDestination);
+    bindListener('obsidianRefreshBtn', 'click', () => loadNoteDestinations());
     bindListener('noteTemplate', 'change', () => {
         updateNoteTemplateDetails();
         persistGlobals();
@@ -1385,7 +1405,7 @@ function applyOutputMode() {
     const transcript = isTranscriptMode();
     // 笔记专用设置整组藏掉（不是灰掉）：这条路上没有大模型调用，也没有第 5 步截图
     ['summaryStyleField', 'reasoningEffortField', 'includeScreenshotsField', 'screenshotIntervalField',
-        'noteTemplateField']
+        'noteTemplateField', 'feishuUploadField']
         .forEach((id) => {
             const element = byId(id);
             if (element) element.hidden = transcript;
@@ -2320,6 +2340,144 @@ function validationError(message) {
     return null;
 }
 
+// ---- 笔记目的地检测（Obsidian Vault 只读 + 飞书 lark-cli 就绪）与飞书发布重试 ----
+// 检测结果只读展示：不登录、不写云端。Vault 选中只是对 noteDestination 的便捷填充，
+// 提交给后端的仍然只有一个 note_destination；飞书字段只在笔记路线下发。
+let obsidianVaults = [];
+// 当前任务的飞书发布结果（来自任务状态 payload，不在 result 里），驱动结果区提示与重试按钮。
+let currentFeishuPublication = null;
+
+async function loadNoteDestinations() {
+    const obsidianStatus = byId('obsidianStatus');
+    const feishuStatus = byId('feishuStatus');
+    if (obsidianStatus) obsidianStatus.textContent = '正在检测本机 Obsidian Vault…';
+    if (feishuStatus) feishuStatus.textContent = '正在检测飞书 lark-cli…';
+    try {
+        const response = await fetch(`${API_BASE}/integrations/note-destinations`, { cache: 'no-store' });
+        const data = await readResponse(response, '读取笔记目的地检测失败');
+        renderObsidianVaults(data.obsidian || {});
+        renderFeishuReadiness(data.feishu || {});
+    } catch (error) {
+        console.warn('[VideoToNo] 笔记目的地检测失败：', error);
+        renderObsidianVaults({ status: 'missing', vaults: [] });
+        if (obsidianStatus) obsidianStatus.textContent = '检测失败，可手动填写上方路径';
+        if (feishuStatus) feishuStatus.textContent = '检测失败，提交时后端会再次校验';
+    }
+}
+
+function renderObsidianVaults(result) {
+    const select = byId('obsidianVaultSelect');
+    const statusEl = byId('obsidianStatus');
+    if (!select) return;
+    const previous = select.value;
+    obsidianVaults = Array.isArray(result.vaults) ? result.vaults : [];
+    select.replaceChildren();
+    select.add(new Option('不使用 Vault（手动填写上方路径）', ''));
+    obsidianVaults.forEach((vault) => {
+        const option = new Option(vault.label || vault.path, vault.path);
+        if (vault.open) option.textContent += '（当前打开）';
+        select.add(option);
+    });
+    if (obsidianVaults.some((vault) => vault.path === previous)) select.value = previous;
+    const messages = {
+        ok: `检测到 ${obsidianVaults.length} 个 Vault，选中后自动填充上方路径`,
+        missing: '未检测到 Obsidian 配置，可手动填写上方路径',
+        corrupt: 'Obsidian 配置文件无法解析，可手动填写上方路径',
+        unsupported: 'Vault 自动检测仅支持 Windows，可手动填写上方路径'
+    };
+    if (statusEl) statusEl.textContent = messages[result.status] || messages.missing;
+}
+
+function applyVaultDestination() {
+    // 选中 Vault 时用「Vault 路径 + 子目录」覆盖手动路径；取消选择时不碰用户已填内容
+    const select = byId('obsidianVaultSelect');
+    if (!select || !select.value) return;
+    const subfolder = (byId('obsidianSubfolder').value.trim() || 'Video2Knowledge')
+        .replace(/^[\/\\]+|[\/\\]+$/g, '');
+    const base = select.value.replace(/[\/\\]+$/, '');
+    byId('noteDestination').value = subfolder ? `${base}\\${subfolder}` : base;
+    persistGlobals();
+}
+
+function renderFeishuReadiness(readiness) {
+    const statusEl = byId('feishuStatus');
+    if (!statusEl) return;
+    if (!readiness.installed) {
+        statusEl.textContent = '未检测到 lark-cli：飞书上传不可用（本地笔记不受影响）';
+    } else if (!readiness.capable) {
+        statusEl.textContent = 'lark-cli 缺少 markdown/drive 命令：飞书上传不可用';
+    } else if (readiness.auth === 'ready' && readiness.scopes_ready) {
+        statusEl.textContent = '飞书就绪：user 身份已登录且具备上传权限';
+    } else if (readiness.auth === 'ready') {
+        statusEl.textContent = '飞书 user 已登录但缺少上传权限，请用 lark-cli 补充授权';
+    } else if (readiness.auth === 'expired') {
+        statusEl.textContent = '飞书登录已过期，请用 lark-cli 重新授权（不会自动登录）';
+    } else if (readiness.auth === 'missing') {
+        statusEl.textContent = '飞书 user 身份未登录，请先用 lark-cli 完成登录';
+    } else {
+        statusEl.textContent = '飞书登录状态异常，请检查 lark-cli 后点「刷新检测」';
+    }
+}
+
+function renderFeishuPublication() {
+    const notice = byId('feishuNotice');
+    if (!notice) return;
+    const publication = currentFeishuPublication;
+    if (!publication || typeof publication !== 'object') {
+        notice.hidden = true;
+        return;
+    }
+    const text = byId('feishuNoticeText');
+    const retryBtn = byId('feishuRetryBtn');
+    if (publication.status === 'uploaded') {
+        const parts = [(publication.markdown && publication.markdown.name) || 'Markdown'];
+        if (publication.zip && publication.zip.name) parts.push(`截图包 ${publication.zip.name}`);
+        text.textContent = `已上传飞书：${parts.join(' 与 ')}`;
+        retryBtn.hidden = true;
+        notice.hidden = false;
+    } else if (publication.status === 'failed') {
+        const message = (publication.error && publication.error.message) || '未知错误';
+        text.textContent = `飞书上传失败（本地笔记不受影响）：${message}`;
+        retryBtn.hidden = false;
+        notice.hidden = false;
+    } else {
+        notice.hidden = true;
+    }
+}
+
+async function retryFeishuUpload() {
+    if (!currentTaskId) return showToast('没有可重试的任务', 'error');
+    const timedOut = currentFeishuPublication && currentFeishuPublication.error
+        && currentFeishuPublication.error.code === 'timeout';
+    const question = timedOut
+        ? '上次上传超时，远端可能已创建该文件，重试会产生重复文件。仍要继续吗？'
+        : '重试会在飞书目标文件夹重新创建文件（已有文件不会被覆盖，可能产生重复）。仍要继续吗？';
+    if (!window.confirm(question)) return;
+    const button = byId('feishuRetryBtn');
+    button.disabled = true;
+    try {
+        const response = await fetch(
+            `${API_BASE}/task/${encodeURIComponent(currentTaskId)}/feishu-upload`,
+            { method: 'POST' }
+        );
+        const publication = await readResponse(response, '飞书重试上传失败');
+        currentFeishuPublication = publication;
+        renderFeishuPublication();
+        if (publication.status === 'uploaded') {
+            addLog('飞书重试上传完成', 'success');
+            showToast('已上传到飞书', 'success');
+        } else {
+            const message = (publication.error && publication.error.message) || '未知错误';
+            addLog(`飞书重试上传失败：${message}`, 'warning');
+            showToast(`飞书上传失败：${message}`, 'error');
+        }
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
 function buildSummarizeConfig(
     videoUrl, uploadTaskId, resumeTaskId = null, forceRestart = false, transcriptOnly = false
 ) {
@@ -2358,6 +2516,12 @@ function buildSummarizeConfig(
         if (noteDestination) config.note_destination = noteDestination;
         const noteTemplateId = byId('noteTemplate')?.value;
         if (noteTemplateId) config.note_template_id = noteTemplateId;
+        if (byId('feishuUploadEnabled').checked) {
+            // 勾选即代表用户要上传：目标为空时让后端返回 422，而不是静默跳过
+            config.feishu_upload_enabled = true;
+            const feishuFolder = byId('feishuFolder').value.trim();
+            if (feishuFolder) config.feishu_folder = feishuFolder;
+        }
         config.llm_config = llmConfig;
     }
 
@@ -2413,6 +2577,7 @@ async function pollTask(taskId) {
         if (Array.isArray(task.logs) && task.logs.length) updateLogs(task.logs);
 
         if (task.status === 'completed') {
+            currentFeishuPublication = task.feishu_publication || null;
             await completeTask(task.result, task.elapsed_seconds);
             return;
         }
@@ -2498,6 +2663,7 @@ function resetTaskView() {
     currentTaskId = null;
     currentMarkdown = '';
     currentHtml = '';
+    currentFeishuPublication = null;
     setTranscriptTaskView(false);
     byId('progressArea').hidden = false;
     byId('resultArea').hidden = true;
@@ -2507,6 +2673,7 @@ function resetTaskView() {
     byId('regenerateBtn').disabled = true;
     byId('outputNotice').hidden = true;
     byId('outputPath').textContent = '';
+    byId('feishuNotice').hidden = true;
     renderTaskAdvisory(null);
     byId('networkState').textContent = '准备提交';
     byId('networkState').classList.remove('network-warning');
@@ -2535,6 +2702,7 @@ async function completeTask(result, elapsedSeconds = null) {
     byId('regenerateBtn').disabled = false;
     setTaskState('completed', isTranscriptTask ? '转录完成' : '已完成');
     byId('networkState').textContent = '任务完成';
+    renderFeishuPublication();
     addLog(isTranscriptTask ? '带时间轴字幕稿已生成' : '视频笔记已生成', 'success');
     setSubmitButton(false, isTranscriptTask ? '再次转写' : '再次生成');
     showToast(isTranscriptTask ? '字幕稿已生成' : '视频笔记已生成', 'success');

@@ -13,6 +13,7 @@ YouTube / Bilibili / Douyin / local media
 → optionally organize with DeepSeek or another LLM
 → apply a personal Markdown template
 → write to a selected directory or Obsidian Vault
+→ optionally upload to a chosen Feishu Drive folder
 ```
 
 ## MVP inputs and outputs
@@ -25,7 +26,8 @@ Inputs:
 - a local audio or video file;
 - optional provider configuration for note generation;
 - an optional personal Markdown template;
-- a selected normal directory or Obsidian Vault destination.
+- a selected normal directory or Obsidian Vault destination;
+- an optional Feishu Drive folder target for opt-in upload.
 
 Outputs:
 
@@ -76,15 +78,15 @@ The note-template milestone is complete locally with the following contract:
 1. Fork baseline, attribution, and configurable Markdown destination: complete locally.
 2. Note template system: complete locally.
 3. Media retention policy: complete locally. Optional age-based cleanup of failed-task media remains a later option.
-4. Obsidian detection and Vault experience, followed by opt-in Feishu CLI Markdown upload. A screenshot note also uploads a Markdown-plus-attachments ZIP until native cloud image blocks are implemented.
+4. Obsidian detection and Vault experience, followed by opt-in Feishu CLI Markdown upload: complete locally. A screenshot note also uploads a Markdown-plus-attachments ZIP until native cloud image blocks are implemented.
 5. On-demand real checks and repairs for YouTube, Bilibili, and Douyin.
 6. Separate research and adaptation for Xiaoe-tech and other requested platforms.
 
 ## Non-goals for the current phase
 
 - Xiaoe-tech support;
-- Feishu upload and Obsidian application detection;
-- automatic media cleanup;
+- Feishu native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, and automatic login;
+- age-based cleanup of failed/interrupted task media (success-only cleanup already shipped);
 - automated cookie management;
 - bypassing platform login, verification, or access controls;
 - a complete Obsidian plugin;

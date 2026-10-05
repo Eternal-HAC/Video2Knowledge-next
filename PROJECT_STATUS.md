@@ -1,10 +1,10 @@
 # Project Status
 
-Updated: 2026-10-04
+Updated: 2026-10-05
 
 ## Current stage
 
-`media retention milestone complete locally`
+`Obsidian + Feishu destination milestone complete locally`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -38,11 +38,12 @@ The successor customizations now provide:
 - safe single-pass Markdown layouts with immutable task snapshots and deterministic YAML Frontmatter;
 - template-aware short and long summarization without a second full-document LLM pass;
 - frontend template loading, creation, editing, cloning, deletion, and note-mode visibility behavior.
+- read-only Obsidian Vault detection and one-click Vault destination filling in the web UI;
+- opt-in Feishu publication of completed notes through the local lark-cli user identity (native Markdown plus an optional screenshot ZIP), with a publication-only retry that never reruns download, ASR, or the LLM.
 
 The following items remain open or partial:
 
 - age-based cleanup of retained media from failed or interrupted tasks: later option;
-- Obsidian detection and Feishu upload: next milestone.
 
 ## Platform support levels
 
@@ -96,9 +97,24 @@ Acceptance evidence:
 - `git diff --check`: clean;
 - the first failing-test run proved the gap before implementation (4 failed on the uncleaned success paths).
 
+## Completed Obsidian and Feishu destination milestone
+
+- Obsidian detection is read-only: it reads `%APPDATA%\obsidian\obsidian.json` (existing Vaults only, deduplicated, no app launch, no config writes) and the web UI offers refresh, a Vault select, and an editable subfolder that fills the existing `noteDestination` field. The backend still receives only `note_destination`; manual paths keep working unchanged.
+- Feishu upload is opt-in and user-identity only: the web UI detects lark-cli readiness (installed, markdown/drive capability, `auth status` user login, minimal `drive:file:upload` + `drive:drive.metadata:readonly` scopes) without logging in or writing to the cloud, and submission is rejected pre-queue with stable errors when the CLI, auth, scope, or folder target is not ready.
+- Publication runs after `notes.md` and the local/custom archive succeed: native Markdown via `lark-cli markdown +create --as user`, then a referenced-frames ZIP via `drive +upload`, serially, in a staged temporary directory that is always removed. A failed or timed-out upload keeps the task `completed`, records sanitized status/error metadata in the task manifest, and logs a warning.
+- `POST /api/task/{task_id}/feishu-upload` retries publication only: it re-reads `notes.md`, rebuilds the ZIP from current frames, rechecks readiness, and never reruns download, ASR, or the LLM. The web UI shows 重试上传飞书 only for failed publications and warns about possible duplicate remote files before retrying.
+- No raw CLI output, tokens, user identity fields, or scope details are persisted; errors map to stable codes (`auth_expired`, `invalid_folder`, `permission_denied`, `rate_limit`, `timeout`, `upload_failed`). Successful-note media cleanup runs regardless of the Feishu outcome.
+- Real-machine evidence (read-only, generalized): Vault detection found the machine's existing Vault(s) without exposing paths in project records, and the lark-cli status check reported a ready user identity without persisting identity or scope details. No real cloud upload was performed; a real Feishu smoke test needs separate user authorization and an explicitly supplied Drive folder.
+
+Acceptance evidence:
+
+- focused tests: `tests/test_note_integrations.py` (29), `tests/test_api.py` Feishu/destination integration tests (9), and new `tests/test_frontend_hygiene.py` structure tests (3); the first runs proved the gaps before implementation (3 backend integration failures, 3 frontend structure failures);
+- full automated suite: `429 passed, 1 skipped`;
+- `node --check frontend/script.js` and `git diff --check`: clean.
+
 ## Next milestone
 
-Obsidian detection and Vault experience, followed by opt-in Feishu CLI Markdown upload. The first task is read-only inspection of the current export experience followed by focused tests. Implementation begins only after those tests demonstrate a gap, and age-based cleanup or new-platform work stays out of scope.
+Risk-based real platform checks and repairs for YouTube, Bilibili, and Douyin. Each live check stays approval-gated (media download, cookies, credentials). Deferred Feishu/Obsidian work (native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, automatic login) and age-based media cleanup remain out of scope unless the user reprioritizes.
 
 ## Current constraints
 

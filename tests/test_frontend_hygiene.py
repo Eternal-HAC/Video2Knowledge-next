@@ -62,6 +62,37 @@ def test_note_template_is_persisted_and_only_sent_for_note_tasks() -> None:
     assert "note_template_id" in note_branch
 
 
+def test_feishu_preferences_are_stored_and_only_sent_for_note_tasks() -> None:
+    assert 'id="feishuUploadEnabled"' in PAGE
+    assert 'id="feishuFolder"' in PAGE
+    keys = SCRIPT.split("const GLOBAL_PREF_KEYS =", 1)[1].split("];", 1)[0]
+    assert "'feishu_upload_enabled'" in keys
+    assert "'feishu_folder'" in keys
+    assert "values.feishu_upload_enabled = byId('feishuUploadEnabled').checked" in SCRIPT
+    builder = SCRIPT.split("function buildSummarizeConfig(", 1)[1].split("\n}\n", 1)[0]
+    transcript_branch, note_branch = builder.split("} else {", 1)
+    assert "feishu_upload_enabled" not in transcript_branch
+    assert "feishu_upload_enabled" in note_branch
+
+
+def test_feishu_retry_button_confirms_before_publication_only_retry() -> None:
+    """重试只走发布端点，且必须先确认可能产生重复远端文件。"""
+    assert 'id="feishuRetryBtn"' in PAGE
+    assert "/feishu-upload" in SCRIPT
+    retry = SCRIPT.split("async function retryFeishuUpload(", 1)[1].split("\n}\n", 1)[0]
+    assert "window.confirm" in retry
+    assert "POST" in retry
+
+
+def test_obsidian_vault_selection_fills_existing_destination_field() -> None:
+    """Vault 选择只是对 noteDestination 的便捷填充，不引入第二套目的地字段。"""
+    assert 'id="obsidianVaultSelect"' in PAGE
+    assert 'id="obsidianSubfolder"' in PAGE
+    assert 'id="obsidianRefreshBtn"' in PAGE
+    assert "note-destinations" in SCRIPT
+    assert "byId('noteDestination').value =" in SCRIPT
+
+
 def test_note_submit_is_blocked_until_template_list_is_ready() -> None:
     """模板列表加载中/加载失败时提交笔记会静默退回默认模板，覆盖用户保存的选择。"""
     start = SCRIPT.split("async function startSummary(", 1)[1].split("\n}\n", 1)[0]

@@ -179,6 +179,32 @@
                 <input type="text" id="noteDestination" placeholder="绝对路径；留空使用 workspace/notes" autocomplete="off">
                 <small>只导出最终 Markdown 与正文引用的附件，任务中间文件仍留在工作区。</small>
             </label>
+            <div class="field">
+                <span>从 Obsidian Vault 选择（可选）</span>
+                <div class="obsidian-row">
+                    <select id="obsidianVaultSelect">
+                        <option value="">不使用 Vault（手动填写上方路径）</option>
+                    </select>
+                    <button id="obsidianRefreshBtn" class="button ghost compact-button" type="button">刷新检测</button>
+                </div>
+                <label class="field">
+                    <span>Vault 内子目录</span>
+                    <input type="text" id="obsidianSubfolder" value="Video2Knowledge" autocomplete="off">
+                </label>
+                <small id="obsidianStatus">正在检测本机 Obsidian Vault…</small>
+            </div>
+            <div class="field" id="feishuUploadField">
+                <label class="check-field">
+                    <input type="checkbox" id="feishuUploadEnabled">
+                    <span>笔记完成后上传到飞书云盘（可选）</span>
+                </label>
+                <label class="field">
+                    <span>飞书目标文件夹（文件夹 token 或 /drive/folder/ 链接）</span>
+                    <input type="text" id="feishuFolder" placeholder="勾选上传后必填" autocomplete="off">
+                </label>
+                <small id="feishuStatus">正在检测飞书 lark-cli…</small>
+                <small>上传走本机 lark-cli 的 user 身份：原生 Markdown，附截图时再加一个 ZIP。失败不影响本地笔记，可在结果区重试。</small>
+            </div>
         </section>
 
         <details id="credentialsSection" class="config-section collapsible-section">
@@ -439,12 +465,16 @@
                 <code id="outputPath"></code>
                 <span id="archivedNotice" hidden> · 已归档到 <code id="archivedPath"></code></span>
             </div>
+            <div id="feishuNotice" class="output-notice" hidden>
+                <span id="feishuNoticeText"></span>
+                <button id="feishuRetryBtn" class="button ghost compact-button" type="button" hidden>重试上传飞书</button>
+            </div>
             <article id="markdownContent" class="markdown-body"></article>
         </section>
     </main>
 </div>
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-<script src="script.js?v=20261004-4"></script>
+<script src="script.js?v=20261005-1"></script>
 </body>
 </html>

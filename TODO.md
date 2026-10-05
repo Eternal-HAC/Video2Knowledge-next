@@ -26,11 +26,11 @@ This file holds only the active gap-verification queue. For every item: close it
 
 ## Later roadmap
 
-1. Obsidian detection and Vault experience; opt-in Feishu CLI Markdown upload plus a screenshot attachment ZIP.
-2. Optional age-based cleanup of retained media from failed or interrupted tasks.
-3. On-demand real checks for YouTube, Bilibili, and Douyin.
-4. Separate research and adaptation for Xiaoe-tech and other requested platforms.
+1. Optional age-based cleanup of retained media from failed or interrupted tasks.
+2. On-demand real checks for YouTube, Bilibili, and Douyin.
+3. Separate research and adaptation for Xiaoe-tech and other requested platforms.
+4. Deferred Feishu/Obsidian work: native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, automatic login.
 
 ## Next single execution task
 
-Inspect the current Obsidian-facing export experience and define the smallest evidence-backed contract for Vault detection and opt-in Feishu CLI Markdown upload. Do not begin implementation until a focused test demonstrates the gap, and do not start age-based cleanup or new-platform work in this milestone.
+Run risk-based real platform checks for YouTube, Bilibili, and Douyin and repair what the evidence shows. Each live check (media download, cookies, credentials) needs explicit user approval first; keep age-based cleanup and new-platform work out of scope unless the user reprioritizes.

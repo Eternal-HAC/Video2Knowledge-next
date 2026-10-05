@@ -44,7 +44,7 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 from pydantic import BaseModel, Field, SecretStr
 
-from . import note_templates, paraformer_asr, secret_box
+from . import note_integrations, note_templates, paraformer_asr, secret_box
 from .config_store import BiliCredentialsUnavailable, LLM_KEYS_FILE, ConfigStore
 from .llm_summarizer import (
     LONG_TRANSCRIPT_CHARACTERS,
@@ -392,6 +392,9 @@ class SummarizeRequest(BaseModel):
     summary_style: Literal["detailed", "faithful", "concise"] = "detailed"
     # None/空 = 通用结构化内置模板；提交时解析并整体快照进 task.json（见 note_templates）
     note_template_id: str | None = None
+    # 飞书发布：默认关闭；启用即显式同意把最终笔记上传到指定 Drive 文件夹
+    feishu_upload_enabled: bool = False
+    feishu_folder: str | None = None
     reasoning_effort: Literal["auto", "off", "high", "max"] = "auto"
     prefer_subtitles: bool = True
     include_screenshots: bool = False
@@ -551,6 +554,33 @@ def cleanup_successful_task_media(task_id: str) -> tuple[list[str], list[str]]:
 def get_template_store() -> note_templates.TemplateStore:
     """自定义模板存工作区内（已被 .gitignore 忽略），每次调用按当前 WORKSPACE_DIR 解析。"""
     return note_templates.TemplateStore(WORKSPACE_DIR / "note_templates")
+
+
+def _merge_task_manifest(task_id: str, key: str, value: Any) -> None:
+    """把单个键原子合并进 task.json（与 persist_task_runtime 同样的写盘方式）。"""
+    path = task_directory(task_id) / "task.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"task_id": task_id}
+    except (OSError, ValueError, TypeError):
+        payload = {"task_id": task_id}
+    payload[key] = value
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(path)
+
+
+def resolve_feishu_target(task_id: str, request: SummarizeRequest) -> str | None:
+    """取提交时快照的飞书目标 token；直接调用（无 manifest）时按请求现场归一。"""
+    manifest = read_task_manifest(task_id)
+    target = manifest.get("feishu_upload")
+    if isinstance(target, dict) and isinstance(target.get("folder_token"), str):
+        return target["folder_token"]
+    if request.feishu_upload_enabled and (request.feishu_folder or "").strip():
+        try:
+            return note_integrations.normalize_feishu_folder(request.feishu_folder or "")
+        except note_integrations.FeishuInputError:
+            return None
+    return None
 
 
 def resolve_task_template_snapshot(
@@ -791,6 +821,7 @@ def write_task_manifest(
     reused_task_id: str | None,
     origin: str,
     template_snapshot: dict[str, Any] | None = None,
+    feishu_target: dict[str, Any] | None = None,
 ) -> None:
     uploaded_filename = tasks.get(task_id, {}).get("uploaded_filename")
     payload = {
@@ -820,6 +851,9 @@ def write_task_manifest(
             "version": template_snapshot.get("version"),
         }
         payload["note_template_snapshot"] = template_snapshot
+    if feishu_target is not None:
+        # 只快照归一后的目标 token；认证状态绝不落盘
+        payload["feishu_upload"] = feishu_target
     (task_directory(task_id) / "task.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -942,6 +976,28 @@ async def submit_video_task(
             raise HTTPException(status_code=404, detail="笔记模板不存在，请刷新模板列表后重试")
         template_snapshot = template.snapshot()
 
+    feishu_target: dict[str, Any] | None = None
+    if request.output == "note" and request.feishu_upload_enabled:
+        # 在排队前阻断：目标非法、CLI 不可用、user 登录不就绪或缺少最小 scope
+        try:
+            folder_token = note_integrations.normalize_feishu_folder(
+                request.feishu_folder or ""
+            )
+        except note_integrations.FeishuInputError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        readiness = note_integrations.check_feishu_readiness()
+        if not (readiness["installed"] and readiness["capable"]):
+            raise HTTPException(
+                status_code=400,
+                detail="未检测到可用的 lark-cli（或缺少 markdown/drive 命令），无法上传飞书",
+            )
+        if readiness["auth"] != "ready" or not readiness["scopes_ready"]:
+            raise HTTPException(
+                status_code=400,
+                detail="飞书 user 登录不可用或缺少上传权限，请先用 lark-cli 完成授权后重试",
+            )
+        feishu_target = {"folder_token": folder_token}
+
     task_id = request.upload_task_id or str(uuid.uuid4())
     if uploaded_task is not None:
         tasks[task_id] = new_task(task_id=task_id)
@@ -971,7 +1027,9 @@ async def submit_video_task(
         if old_filename:
             tasks[task_id]["uploaded_filename"] = old_filename
         tasks[task_id]["logs"].append(f"将从任务 {reused_task_id} 复用已有产物")
-    write_task_manifest(task_id, request, reused_task_id, origin, template_snapshot)
+    write_task_manifest(
+        task_id, request, reused_task_id, origin, template_snapshot, feishu_target
+    )
     persist_task_runtime(task_id)
 
     job = asyncio.create_task(run_queued_video_task(task_id, request))
@@ -1501,6 +1559,18 @@ async def delete_note_template(template_id: str) -> dict[str, bool]:
     return {"deleted": True}
 
 
+@app.get("/api/integrations/note-destinations")
+async def note_destinations() -> dict[str, Any]:
+    """Obsidian Vault 与飞书 lark-cli 的只读检测结果（全部脱敏）。
+
+    只读：不登录、不写云端、不启动应用；Vault 配置变化可通过前端刷新重新读取。
+    """
+    return {
+        "obsidian": note_integrations.detect_obsidian(),
+        "feishu": note_integrations.check_feishu_readiness(),
+    }
+
+
 @app.get("/api/health")
 async def health_check() -> dict[str, Any]:
     return {
@@ -1730,6 +1800,62 @@ def build_note_bundle(note_text: str, task_dir: Path, note_filename: str) -> byt
                 f"{FRAMES_DIR_NAME}/{name}", source.read_bytes()
             )
     return buffer.getvalue()
+
+
+@app.post("/api/task/{task_id}/feishu-upload")
+async def retry_feishu_upload(task_id: str) -> dict[str, Any]:
+    """只重试飞书发布：复用现有 notes.md / frames，不跑下载、ASR 或 LLM。
+
+    不覆盖远端已有文件：每次重试都可能再创建一份，超时等结果不确定的
+    场景由前端在重试前明确提示。
+    """
+    task = tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task["status"] != "completed":
+        raise HTTPException(status_code=409, detail="只有已完成的笔记任务才能重试飞书上传")
+    manifest = read_task_manifest(task_id)
+    if str(manifest.get("output") or "note") != "note":
+        raise HTTPException(status_code=409, detail="纯转录任务没有飞书上传目标")
+    target = manifest.get("feishu_upload")
+    token = target.get("folder_token") if isinstance(target, dict) else None
+    if not isinstance(token, str) or not token:
+        raise HTTPException(status_code=409, detail="该任务没有飞书上传目标")
+    notes_path = task_directory(task_id) / "notes.md"
+    if not notes_path.is_file():
+        raise HTTPException(status_code=409, detail="本地笔记不存在，无法重试飞书上传")
+    readiness = note_integrations.check_feishu_readiness()
+    if not (readiness["installed"] and readiness["capable"]):
+        raise HTTPException(
+            status_code=400,
+            detail="未检测到可用的 lark-cli（或缺少 markdown/drive 命令），无法上传飞书",
+        )
+    if readiness["auth"] != "ready" or not readiness["scopes_ready"]:
+        raise HTTPException(
+            status_code=400,
+            detail="飞书 user 登录不可用或缺少上传权限，请先用 lark-cli 完成授权后重试",
+        )
+    try:
+        note_text = notes_path.read_text(encoding="utf-8")
+        title = str((task.get("result") or {}).get("title") or manifest.get("title") or "video-notes")
+        publication = note_integrations.publish_note(
+            note_text=note_text,
+            task_dir=task_directory(task_id),
+            title=title,
+            folder_token=token,
+            bundle_builder=build_note_bundle,
+        )
+    except Exception:
+        # 重试同样 best-effort：返回稳定 failed 结果而不是 500
+        publication = note_integrations.sanitized_failure()
+    task["feishu_publication"] = publication
+    if publication["status"] == "uploaded":
+        task["logs"].append("飞书重试上传完成")
+    else:
+        task["logs"].append(f"飞书重试上传失败：{publication['error']['message']}")
+    _merge_task_manifest(task_id, "feishu_publication", publication)
+    persist_task_runtime(task_id)
+    return publication
 
 
 @app.post("/api/task/{task_id}/cancel")
@@ -2315,6 +2441,41 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
         # 成功通知必须在完成态落盘之后：否则持久化失败时用户会先收成功、
         # 再收外层失败分支的失败通知，两条互相矛盾。
         notify_task("任务完成", f"视频笔记已生成：{title}")
+        # 飞书发布（opt-in）：本地笔记与归档已成功，上传失败不改判任务。
+        feishu_token = resolve_feishu_target(task_id, request)
+        if feishu_token is not None:
+            # 直接走管线（测试 harness 等绕过提交入口）时 manifest 可能缺少
+            # feishu_upload 快照，这里补写，保证重试端点能读到上传目标。
+            try:
+                _merge_task_manifest(
+                    task_id, "feishu_upload", {"folder_token": feishu_token}
+                )
+            except OSError:
+                task["logs"].append("飞书上传目标未能写入 task.json（仅影响日志完整性）")
+            try:
+                publication = note_integrations.publish_note(
+                    note_text=(task_dir / "notes.md").read_text(encoding="utf-8"),
+                    task_dir=task_dir,
+                    title=title,
+                    folder_token=feishu_token,
+                    bundle_builder=build_note_bundle,
+                )
+            except Exception:
+                # 发布是 best-effort：任何漏网异常都降级为脱敏失败，
+                # 已完成并落盘的本地笔记绝不能被改判 failed
+                publication = note_integrations.sanitized_failure()
+            task["feishu_publication"] = publication
+            if publication["status"] == "uploaded":
+                task["logs"].append("飞书上传完成")
+            else:
+                task["logs"].append(
+                    f"飞书上传失败（不影响本地笔记，可在任务页重试）："
+                    f"{publication['error']['message']}"
+                )
+            try:
+                _merge_task_manifest(task_id, "feishu_publication", publication)
+            except OSError:
+                task["logs"].append("飞书上传结果未能写入 task.json（仅影响日志完整性）")
         # 完成态已经成功落盘，此后才允许清理本任务的源媒体与中间文件：
         # 若清理先于持久化，完成态写盘失败会把任务改判 failed，
         # 而重试媒体已经被删，违反「失败任务保留重试材料」。
@@ -2326,7 +2487,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             )
         for cleanup_warning in cleanup_warnings:
             task["logs"].append(f"媒体清理警告：{cleanup_warning}")
-        if removed_media or cleanup_warnings:
+        if removed_media or cleanup_warnings or feishu_token is not None:
             # best-effort 二次持久化清理结果：即使失败也不能让异常逃到外层
             # 失败分支——完成态已经落盘，任务不允许被改回 failed。
             try:
@@ -2829,6 +2990,12 @@ def restore_tasks_from_workspace() -> None:
             # 旧版 manifest 没有 origin：按 agent 处理，维持这类任务此前不进历史的表现
             _origin=str(manifest.get("origin") or "agent"),
         )
+        feishu_target = manifest.get("feishu_upload")
+        if isinstance(feishu_target, dict):
+            task["feishu_upload"] = feishu_target
+        feishu_publication = manifest.get("feishu_publication")
+        if isinstance(feishu_publication, dict):
+            task["feishu_publication"] = feishu_publication
         if interrupted:
             task.update(
                 step_name="服务已重启",
