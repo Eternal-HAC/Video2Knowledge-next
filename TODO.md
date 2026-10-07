@@ -27,10 +27,10 @@ This file holds only the active gap-verification queue. For every item: close it
 ## Later roadmap
 
 1. Optional age-based cleanup of retained media from failed or interrupted tasks.
-2. On-demand real checks for YouTube, Bilibili, and Douyin.
+2. ~~On-demand real checks for YouTube, Bilibili, and Douyin.~~ Completed as a one-off real validation milestone (see PROJECT_STATUS.md): YouTube platform subtitles, Bilibili audio download plus local ASR, and Douyin login through local ASR all passed. Automated tests remain the durable evidence; live results are point-in-time and do not guarantee ongoing platform availability.
 3. Separate research and adaptation for Xiaoe-tech and other requested platforms.
 4. Deferred Feishu/Obsidian work: native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, automatic login.
 
 ## Next single execution task
 
-Run risk-based real platform checks for YouTube, Bilibili, and Douyin and repair what the evidence shows. Each live check (media download, cookies, credentials) needs explicit user approval first; keep age-based cleanup and new-platform work out of scope unless the user reprioritizes.
+Research Xiaoe-tech first: confirm lawful input and authorization boundaries, current capabilities of the adopted upstream project and yt-dlp, mature GitHub projects, a minimal adaptation approach, and verifiable acceptance criteria. Research and planning only; do not implement anything or access real paid content. Any implementation requires separate authorization.

@@ -1,10 +1,10 @@
 # Project Status
 
-Updated: 2026-10-05
+Updated: 2026-10-07
 
 ## Current stage
 
-`Obsidian + Feishu destination milestone complete locally`
+`Real platform validation milestone complete locally`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -112,9 +112,20 @@ Acceptance evidence:
 - full automated suite: `429 passed, 1 skipped`;
 - `node --check frontend/script.js` and `git diff --check`: clean.
 
+## Completed real platform validation milestone
+
+One-off, approval-gated live checks (distinct from the automated suite; no permanent platform availability is implied):
+
+- YouTube: public platform subtitles retrieved successfully on a sample video (anonymous, no login).
+- Bilibili: the sample video from the project README has no anonymous subtitles; with explicit user approval its audio was downloaded (`m4a`, 3,776,270 bytes) and transcribed locally with the cached Whisper `base` model on CPU (85 segments, 957 non-empty characters).
+- Douyin: the user-supplied `modal_id` link was validated end to end via an Edge temporary-profile login (memory-only cookies), metadata parsing, an `mp4` download (72,283,717 bytes), and local cached Whisper `base` CPU ASR (573.654s media, language `zh` at 1.000 confidence, 464 segments, 3,775 non-empty characters).
+- All temporary media, task directories, temporary browser profiles, and associated browser processes were removed after each check; no titles, cookies, transcript text, or machine-private paths are recorded here.
+- The upstream `977c735` CDP stability fix (proxy-free localhost CDP calls, explicit WebSocket proxy opt-out, Winsock failure containment) was ported in `fix: stabilize douyin browser login`; the successful Edge login is consistent with this fix, without claiming it as the sole cause.
+- Automated suite evidence at milestone close: `467 passed, 1 skipped`.
+
 ## Next milestone
 
-Risk-based real platform checks and repairs for YouTube, Bilibili, and Douyin. Each live check stays approval-gated (media download, cookies, credentials). Deferred Feishu/Obsidian work (native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, automatic login) and age-based media cleanup remain out of scope unless the user reprioritizes.
+Read-only, legality-first research and an adaptation plan for Xiaoe-tech and other user-specified platforms, preferring mature GitHub projects over new implementations. This stage is research and planning only: no implementation, and no bypassing of login, payment, or access controls. Deferred Feishu/Obsidian work (native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, automatic login) and age-based media cleanup remain out of scope unless the user reprioritizes.
 
 ## Current constraints
 
