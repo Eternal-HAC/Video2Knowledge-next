@@ -495,4 +495,77 @@ def test_fetch_cookies_uses_no_proxy_opener_and_ws_proxy_disabled(
 
     assert cookies == {"sessionid": "x"}, "只应保留 douyin 域内的允许字段"
     assert opener_calls and "127.0.0.1:9343" in opener_calls[0]
-    assert ws_kwargs and ws_kwargs[0].get("proxy") is None, "WebSocket 必须显式 proxy=None"
+    assert ws_kwargs, "websockets.connect 必须被调用"
+    assert "proxy" in ws_kwargs[0], "websockets.connect 必须显式传入 proxy 关键字参数"
+    assert ws_kwargs[0]["proxy"] is None, "WebSocket 代理必须显式禁用（proxy=None）"
+
+
+def test_cancel_session_uses_no_proxy_opener_and_ws_proxy_disabled(
+    manager_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """取消路径同样必须走无代理 opener + proxy=None，且清理语义不退化。"""
+    manager, created, killed, _ = manager_env
+    asyncio.run(manager.start())
+    assert created, "fixture 必须产生一个假浏览器进程"
+    profile_dir = manager.session.profile_dir
+
+    opener_calls: list[str] = []
+
+    class FakeResponse:
+        def read(self) -> bytes:
+            return json.dumps({"webSocketDebuggerUrl": "ws://127.0.0.1:9343/devtools"}).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    class FakeOpener:
+        def open(self, url: str, timeout: float = 0):
+            opener_calls.append(url)
+            return FakeResponse()
+
+    ws_kwargs: list[dict] = []
+
+    class FakeWS:
+        async def send(self, _data: str) -> None:
+            return None
+
+    class FakeConnect:
+        def __init__(self, _url: str, **kwargs):
+            ws_kwargs.append(kwargs)
+
+        async def __aenter__(self):
+            return FakeWS()
+
+        async def __aexit__(self, *_exc):
+            return False
+
+    monkeypatch.setattr(douyin_login, "_CDP_OPENER", FakeOpener())
+    monkeypatch.setattr(douyin_login.websockets, "connect", FakeConnect)
+
+    result = asyncio.run(manager.cancel())
+
+    assert result["ok"]
+    assert opener_calls and "127.0.0.1:9343" in opener_calls[0], "取消路径的 /json/version 必须走 _CDP_OPENER"
+    assert ws_kwargs, "取消路径必须通过 WebSocket 发送 Browser.close"
+    assert "proxy" in ws_kwargs[0], "websockets.connect 必须显式传入 proxy 关键字参数"
+    assert ws_kwargs[0]["proxy"] is None, "WebSocket 代理必须显式禁用（proxy=None）"
+    assert created[0].terminated, "取消必须关闭浏览器进程"
+    assert not profile_dir.exists(), "取消必须删除临时 Profile"
+    assert manager.session is None, "无 cookie 的取消完成后会话引用必须清空"
+
+
+def test_websockets_dependency_requires_proxy_support() -> None:
+    """依赖契约：requirements 不得再次允许不支持 proxy 参数的 websockets 13/14。"""
+    requirements = (
+        Path(__file__).resolve().parent.parent / "backend" / "requirements.txt"
+    ).read_text(encoding="utf-8")
+    line = next(
+        (ln.strip() for ln in requirements.splitlines() if ln.strip().startswith("websockets")),
+        None,
+    )
+    assert line is not None, "requirements.txt 必须声明 websockets 依赖"
+    assert ">=15" in line, "websockets 下限必须为 15（13/14 不支持显式 proxy 参数）"
+    assert "<16" in line, "websockets 上限 <16 必须保留，防止未验证的主版本流入"

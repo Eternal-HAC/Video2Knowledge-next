@@ -295,7 +295,7 @@ class DouyinLoginManager:
         except Exception:
             return {}
         try:
-            # websockets 14+ 默认跟随系统/环境代理；本机 CDP 的 ws 连接绝不能被代理劫走
+            # websockets 15+ 默认跟随系统/环境代理；本机 CDP 的 ws 连接绝不能被代理劫走
             async with websockets.connect(version["webSocketDebuggerUrl"], proxy=None) as ws:
                 await ws.send(json.dumps({"id": 1, "method": "Storage.getCookies"}))
                 while True:
