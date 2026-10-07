@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -405,3 +407,92 @@ def test_background_cancel_never_touches_new_session(manager_env, monkeypatch: p
         assert all(marker != str(new_dir) for marker in killed)
 
     asyncio.run(scenario())
+
+
+def test_no_proxy_opener_ignores_system_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """系统代理被投毒时，CDP opener 仍不得携带任何非空代理配置。
+
+    空 ProxyHandler({}) 的作用是挤掉 build_opener 默认装配的系统代理
+    ProxyHandler；在 Python 3.13 上它因不注册协议方法而不会留在
+    opener.handlers 里，因此正确断言是「不存在非空 proxies 的 ProxyHandler」。
+    """
+    monkeypatch.setattr(
+        urllib.request, "getproxies", lambda: {"http": "http://10.0.0.1:9", "https": "http://10.0.0.1:9"}
+    )
+    opener = douyin_login._no_proxy_opener()
+    proxy_handlers = [h for h in opener.handlers if isinstance(h, urllib.request.ProxyHandler)]
+    assert all(h.proxies == {} for h in proxy_handlers), "opener 不得携带任何系统代理配置"
+
+
+def test_free_cdp_port_returns_none_when_winsock_broken(monkeypatch: pytest.MonkeyPatch) -> None:
+    """socket 创建本身抛 OSError（Winsock 拖垮）时返回 None，不得向上抛裸 500。"""
+
+    def broken_socket(*_args, **_kwargs):
+        raise OSError("Winsock unavailable")
+
+    monkeypatch.setattr(douyin_login.socket, "socket", broken_socket)
+    assert douyin_login.free_cdp_port() is None
+
+
+def test_fetch_cookies_uses_no_proxy_opener_and_ws_proxy_disabled(
+    manager_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """行为级确认：/json/version 走模块级无代理 opener，WebSocket 显式 proxy=None。"""
+    manager, created, _, _ = manager_env
+    asyncio.run(manager.start())
+    assert created, "fixture 必须产生一个假浏览器进程"
+
+    opener_calls: list[str] = []
+
+    class FakeResponse:
+        def read(self) -> bytes:
+            return json.dumps({"webSocketDebuggerUrl": "ws://127.0.0.1:9343/devtools"}).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    class FakeOpener:
+        def open(self, url: str, timeout: float = 0):
+            opener_calls.append(url)
+            return FakeResponse()
+
+    ws_kwargs: list[dict] = []
+
+    class FakeWS:
+        async def send(self, _data: str) -> None:
+            return None
+
+        async def recv(self) -> str:
+            return json.dumps(
+                {
+                    "id": 1,
+                    "result": {
+                        "cookies": [
+                            {"domain": ".douyin.com", "name": "sessionid", "value": "x"},
+                            {"domain": ".example.com", "name": "ignored", "value": "y"},
+                        ]
+                    },
+                }
+            )
+
+    class FakeConnect:
+        def __init__(self, _url: str, **kwargs):
+            ws_kwargs.append(kwargs)
+
+        async def __aenter__(self):
+            return FakeWS()
+
+        async def __aexit__(self, *_exc):
+            return False
+
+    monkeypatch.setattr(douyin_login, "_CDP_OPENER", FakeOpener())
+    monkeypatch.setattr(douyin_login.websockets, "connect", FakeConnect)
+
+    cookies = asyncio.run(manager._fetch_cookies())
+
+    assert cookies == {"sessionid": "x"}, "只应保留 douyin 域内的允许字段"
+    assert opener_calls and "127.0.0.1:9343" in opener_calls[0]
+    assert ws_kwargs and ws_kwargs[0].get("proxy") is None, "WebSocket 必须显式 proxy=None"
