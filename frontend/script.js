@@ -141,6 +141,9 @@ let elapsedSyncedAt = 0;
 let prefs = defaultPrefs();
 let persistTimer = null;
 let persistJob = null;
+let mediaRetentionConnected = false;
+let mediaRetentionStartupAttempted = false;
+let mediaRetentionBusy = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     window.__videoToNoReady = false;
@@ -178,6 +181,9 @@ async function loadAppVersion() {
         }
         applyUploadLimit(data.max_upload_mb);
         applyMcpAccess(data.dependencies?.mcp_sse);
+        mediaRetentionConnected = true;
+        updateMediaRetentionControls();
+        maybeCleanupRetainedMedia();
     } catch {
         // 保留 HTML 中的构建版本，服务短暂未就绪不影响页面使用。
         applyUploadLimit(null);
@@ -589,7 +595,8 @@ const GLOBAL_PREF_KEYS = [
     'note_template_id'
     ,
     'feishu_upload_enabled',
-    'feishu_folder'
+    'feishu_folder',
+    'media_retention_days'
 ];
 
 function defaultProvider() {
@@ -617,7 +624,8 @@ function defaultPrefs() {
             note_template_id: DEFAULT_NOTE_TEMPLATE_ID
             ,
             feishu_upload_enabled: false,
-            feishu_folder: ''
+            feishu_folder: '',
+            media_retention_days: 'forever'
         },
         ui: { theme: 'system', mcp_hint_seen: false }
     };
@@ -805,6 +813,9 @@ function initPreferences() {
         console.warn('[VideoToNo] 读取历史偏好失败，改用默认设置：', error);
     }
     prefs = stored || defaultPrefs();
+    if (!['forever', '1', '7', '30'].includes(prefs.global.media_retention_days)) {
+        prefs.global.media_retention_days = 'forever';
+    }
     if (!PROVIDER_CONFIG[prefs.provider]) prefs.provider = defaultProvider();
     applyPreferencesToForm();
     persistPrefs();
@@ -899,6 +910,8 @@ function applyPreferencesToForm() {
     byId('noteDestination').value = prefs.global.note_destination || '';
     byId('feishuUploadEnabled').checked = prefs.global.feishu_upload_enabled === true;
     byId('feishuFolder').value = prefs.global.feishu_folder || '';
+    byId('mediaRetentionDays').value = prefs.global.media_retention_days;
+    updateMediaRetentionControls();
     const processingModeInput = document.querySelector(
         `input[name="processingMode"][value="${prefs.global.processing_mode}"]`
     );
@@ -951,7 +964,61 @@ function persistGlobals() {
     if (templateSelect) values.note_template_id = templateSelect.value;
     values.feishu_upload_enabled = byId('feishuUploadEnabled').checked;
     values.feishu_folder = byId('feishuFolder').value.trim();
+    values.media_retention_days = byId('mediaRetentionDays').value;
     persistPrefs();
+}
+
+function updateMediaRetentionControls() {
+    const days = prefs.global.media_retention_days;
+    const finite = ['1', '7', '30'].includes(days);
+    byId('mediaRetentionDays').disabled = mediaRetentionBusy;
+    byId('mediaRetentionCleanupBtn').disabled = !finite || !mediaRetentionConnected || mediaRetentionBusy;
+    byId('mediaRetentionStatus').textContent = !finite
+        ? '永久保留，不执行按天清理。'
+        : mediaRetentionConnected
+            ? '仅清理结束超过 ' + days + ' 天的失败或取消任务媒体；重试可能需要重新取得媒体。'
+            : '尚未连接本地后端，暂不清理。';
+}
+
+function maybeCleanupRetainedMedia() {
+    if (!mediaRetentionConnected || mediaRetentionStartupAttempted) return;
+    mediaRetentionStartupAttempted = true;
+    if (!['1', '7', '30'].includes(prefs.global.media_retention_days)) return;
+    void requestMediaRetentionCleanup(Number(prefs.global.media_retention_days));
+}
+
+async function cleanupRetainedMedia() {
+    const days = Number(prefs.global.media_retention_days);
+    if (!mediaRetentionConnected || mediaRetentionBusy || ![1, 7, 30].includes(days)) return;
+    if (!window.confirm('清理结束超过 ' + days + ' 天的失败/取消任务媒体？笔记、转录和截图保留，重试可能需要重新上传或下载。')) return;
+    return requestMediaRetentionCleanup(days);
+}
+
+async function requestMediaRetentionCleanup(days) {
+    if (mediaRetentionBusy || ![1, 7, 30].includes(days)) return;
+    mediaRetentionBusy = true;
+    updateMediaRetentionControls();
+    const status = byId('mediaRetentionStatus');
+    status.textContent = '正在清理过期任务媒体…';
+    try {
+        const response = await fetchWithTimeout(API_BASE + '/media-retention/cleanup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ days })
+        }, 30000);
+        const summary = await readResponse(response, '清理失败');
+        const warningCount = Array.isArray(summary.warnings) ? summary.warnings.length : 0;
+        status.textContent = '已扫描 ' + summary.scanned + ' 个目录，' + summary.eligible
+            + ' 个任务符合条件，删除 ' + summary.removed_count + ' 个媒体文件。'
+            + (warningCount ? ' ' + warningCount + ' 项未能安全清理，已保留。' : '');
+    } catch (_error) {
+        status.textContent = '清理失败或未确认完成，可稍后重试；生成笔记仍可继续。';
+    } finally {
+        mediaRetentionBusy = false;
+        byId('mediaRetentionDays').disabled = false;
+        byId('mediaRetentionCleanupBtn').disabled = !mediaRetentionConnected
+            || !['1', '7', '30'].includes(prefs.global.media_retention_days);
+    }
 }
 
 function persistProfileForm() {
@@ -983,6 +1050,11 @@ function bindPreferenceAutoSave() {
     bindListener('feishuUploadEnabled', 'change', persistGlobals);
     bindListener('feishuFolder', 'change', persistGlobals);
     bindListener('feishuFolder', 'input', () => schedulePersist(persistGlobals));
+    bindListener('mediaRetentionDays', 'change', () => {
+        persistGlobals();
+        updateMediaRetentionControls();
+    });
+    bindListener('mediaRetentionCleanupBtn', 'click', cleanupRetainedMedia);
     bindListener('obsidianVaultSelect', 'change', applyVaultDestination);
     bindListener('obsidianSubfolder', 'change', applyVaultDestination);
     bindListener('obsidianSubfolder', 'input', applyVaultDestination);
@@ -1367,6 +1439,7 @@ function toggleSourceType() {
     const isLocal = byId('sourceType').value === 'local';
     byId('urlField').hidden = isLocal;
     byId('fileField').hidden = !isLocal;
+    byId('localImportHint').hidden = !isLocal;
     updateFileInfo();
     updateBiliHint();
     if (isLocal) {

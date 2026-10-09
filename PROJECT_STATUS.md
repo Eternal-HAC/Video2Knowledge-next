@@ -1,10 +1,10 @@
 # Project Status
 
-Updated: 2026-10-07
+Updated: 2026-10-09
 
 ## Current stage
 
-`Real platform validation milestone complete locally`
+`Local import guidance and opt-in media retention implemented; independent acceptance pending`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -43,7 +43,8 @@ The successor customizations now provide:
 
 The following items remain open or partial:
 
-- age-based cleanup of retained media from failed or interrupted tasks: later option;
+- native Feishu cloud image blocks and other deferred destination integrations;
+- new platform URL adapters or shop-authorized merchant integrations, only after separate authorization;
 
 ## Platform support levels
 
@@ -125,11 +126,22 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-Read-only, legality-first research and an adaptation plan for Xiaoe-tech and other user-specified platforms, preferring mature GitHub projects over new implementations. This stage is research and planning only: no implementation, and no bypassing of login, payment, or access controls. Deferred Feishu/Obsidian work (native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, automatic login) and age-based media cleanup remain out of scope unless the user reprioritizes.
+After independent acceptance of this local milestone and separate authorization, perform a read-only feasibility and acceptance-plan review for native Feishu cloud image blocks. Start with existing lark-cli capabilities. No implementation, login or cloud writes are implied. Wiki/docx import, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred.
+
+## Implemented local import and optional age cleanup milestone
+
+- Xiaoe-tech research is closed with a local-import decision: where official permitted download/export supplies a file, use the existing upload, subtitle/ASR, template, Markdown/Obsidian and optional Feishu chain. The local-file source now displays this guidance. No Xiaoe-tech URL downloader or access-control bypass is implemented; merchant OpenAPI is a separate future direction with shop authorization and no current download promise.
+- Failed/cancelled media is retained forever by default. Browser-local choices 1/7/30 days enable a single best-effort startup sweep after successful backend connection and a confirmed manual cleanup button. Results and errors are visible in Chinese; cleanup failure does not block generation.
+- The existing task layout is WORKSPACE_DIR/<task_id>, not a new tasks subdirectory. Only direct task directories with matching manifests, failed/cancelled status and timezone-aware runtime.finished_at strictly older than the cutoff qualify. Missing/unreliable times remain untouched.
+- Active statuses, unfinished jobs and their reuse-source directories are excluded. Only the shared input/audio/positive-page audio_pN/preview name contract and sidecars qualify; notes, transcripts, manifests, frames, unknown files and completed/uploaded/processing tasks remain intact.
+- Non-following stat checks reject symlinks/Junctions, hard links and unreliable identities. Opened identity and manifest are rechecked; Windows locks directory/media handles and deletes the verified handle to prevent replacement. Single-file errors become sanitized warnings. Success-note immediate cleanup keeps its existing behavior.
+- Validation: targeted retention/API/frontend suite `152 passed, 2 skipped`; full automated suite `500 passed, 2 skipped`; `node --check frontend/script.js` and `git diff --check` passed. Both skips are symbolic-link creation restrictions on this host. Browser behavior was exercised through local DOM/storage/fetch stubs; no real platforms, providers or cloud publication were accessed.
+- Portability limit: age-based deletion is supported by verified Windows file/directory handles. Other hosts conservatively keep media and return warnings because a pathname unlink cannot atomically verify file identity; this avoids weakening the replacement-race contract. Other task processing and existing immediate success cleanup are unaffected.
+- WATCH: the age-based sweep still runs synchronously inside the event loop, and its performance on a large task library is unverified. Moving it off the event loop later requires task-lifecycle coordination at the same time so the sweep cannot race in-progress tasks. This milestone keeps full-handle validation, the reuse-closure plus uploaded-media-owner protection, the cross-platform test contract, and redacted warnings. It does not switch to `to_thread` and does not add a scheduler or new lock framework.
 
 ## Current constraints
 
-- Successor functionality changes so far are configurable final-note export and the safe note-template system.
+- Successor additions include configurable final-note export, safe templates, destination convenience/publication, permitted local-import guidance and opt-in failed/cancelled media retention.
 - Custom destinations receive only the final Markdown and attachments referenced by that note. Task manifests, transcripts, downloaded media, model cache, and credentials remain in the workspace.
 - Relative paths, ordinary files, and unavailable destinations are rejected before media processing with stable validation errors.
 - Default and custom destinations use exclusive file creation. Controlled race and hard-link tests verify that concurrent foreign content is neither overwritten nor deleted.

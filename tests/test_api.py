@@ -22,6 +22,7 @@ from backend.video_processor import (
     SubtitleResult,
     VideoProcessor,
 )
+from retention_support import IS_WINDOWS, assert_media_removed, assert_removed_count
 
 
 @pytest.mark.asyncio
@@ -3010,6 +3011,161 @@ def test_media_cleanup_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyP
     second_removed, second_warnings = main.cleanup_successful_task_media("ret-idem")
     assert second_removed == []
     assert second_warnings == []
+
+
+def test_media_retention_endpoint_rejects_invalid_days(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    client = TestClient(main.app)
+    for bad in (0, -1, 2, 8, 999, "7", True, None):
+        response = client.post("/api/media-retention/cleanup", json={"days": bad})
+        assert response.status_code == 422, f"days={bad!r} 必须 422"
+
+
+def test_media_retention_endpoint_cleans_and_reports_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    from datetime import datetime, timedelta, timezone
+
+    old = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    failed = tmp_path / "ret-api-failed"
+    failed.mkdir()
+    (failed / "task.json").write_text(
+        json.dumps({"task_id": "ret-api-failed", "runtime": {"status": "failed", "finished_at": old}}),
+        encoding="utf-8",
+    )
+    (failed / "audio.m4a").write_text("x", encoding="utf-8")
+    (failed / "notes.md").write_text("x", encoding="utf-8")
+    active = tmp_path / "ret-api-active"
+    active.mkdir()
+    (active / "task.json").write_text(
+        json.dumps({"task_id": "ret-api-active", "runtime": {"status": "failed", "finished_at": old}}),
+        encoding="utf-8",
+    )
+    (active / "audio.m4a").write_text("x", encoding="utf-8")
+    main.tasks["ret-api-active"] = main.new_task(status="processing", task_id="ret-api-active")
+    try:
+        client = TestClient(main.app)
+        response = client.post("/api/media-retention/cleanup", json={"days": 7})
+        assert response.status_code == 200
+        summary = response.json()
+        assert summary["scanned"] == 2
+        assert summary["eligible"] == 1
+        assert_removed_count(summary, windows=1)
+        if IS_WINDOWS:
+            assert summary["removed"] == ["ret-api-failed/audio.m4a"]
+        assert_media_removed(failed / "audio.m4a")
+        assert (failed / "notes.md").exists()
+        assert (active / "audio.m4a").exists(), "活动任务不得被清理"
+        for key in summary["warnings"]:
+            assert str(tmp_path) not in key, "warning 不得泄露机器路径"
+    finally:
+        main.tasks.pop("ret-api-active", None)
+
+
+def test_retention_skips_reuse_sources_and_live_jobs(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    task_ids = ["ret-source", "ret-job"]
+    for task_id in task_ids:
+        directory = tmp_path / task_id
+        directory.mkdir()
+        (directory / "task.json").write_text(json.dumps({
+            "task_id": task_id,
+            "runtime": {"status": "failed", "finished_at": "2020-01-01T00:00:00+00:00"},
+        }), encoding="utf-8")
+        (directory / "audio.m4a").write_bytes(b"keep")
+    monkeypatch.setattr(main, "tasks", {
+        "ret-new": {"status": "processing", "resume_task_id": "ret-source"},
+        "ret-job": {"status": "failed"},
+    })
+    monkeypatch.setattr(main, "running_jobs", {
+        "ret-job": SimpleNamespace(done=lambda: False),
+    })
+    response = TestClient(main.app).post("/api/media-retention/cleanup", json={"days": 1})
+    assert response.status_code == 200
+    assert response.json()["removed_count"] == 0
+    for task_id in task_ids:
+        assert (tmp_path / task_id / "audio.m4a").exists()
+
+
+def _old_failed_task(root: Path, task_id: str) -> Path:
+    directory = root / task_id
+    directory.mkdir()
+    (directory / "task.json").write_text(json.dumps({
+        "task_id": task_id,
+        "runtime": {"status": "failed", "finished_at": "2020-01-01T00:00:00+00:00"},
+    }), encoding="utf-8")
+    (directory / "audio.m4a").write_bytes(b"keep")
+    return directory
+
+
+def test_retention_protects_transitive_reuse_chain(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    for task_id in ("ret-a", "ret-b", "ret-c"):
+        _old_failed_task(tmp_path, task_id)
+    monkeypatch.setattr(main, "tasks", {
+        "ret-a": {"status": "processing", "resume_task_id": "ret-b"},
+        "ret-b": {"status": "failed", "resume_task_id": "ret-c"},
+        "ret-c": {"status": "failed"},
+    })
+    monkeypatch.setattr(main, "running_jobs", {})
+    response = TestClient(main.app).post("/api/media-retention/cleanup", json={"days": 1})
+    assert response.status_code == 200
+    assert response.json()["removed_count"] == 0
+    for task_id in ("ret-a", "ret-b", "ret-c"):
+        assert (tmp_path / task_id / "audio.m4a").exists(), f"{task_id} 属于复用链必须受保护"
+
+
+def test_retention_closure_survives_cyclic_chain(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    for task_id in ("ret-x", "ret-y"):
+        _old_failed_task(tmp_path, task_id)
+    monkeypatch.setattr(main, "tasks", {
+        "ret-root": {"status": "processing", "resume_task_id": "ret-x"},
+        "ret-x": {"status": "failed", "resume_task_id": "ret-y"},
+        "ret-y": {"status": "failed", "resume_task_id": "ret-x"},
+    })
+    monkeypatch.setattr(main, "running_jobs", {})
+    response = TestClient(main.app).post("/api/media-retention/cleanup", json={"days": 1})
+    assert response.status_code == 200
+    assert response.json()["removed_count"] == 0
+    for task_id in ("ret-x", "ret-y"):
+        assert (tmp_path / task_id / "audio.m4a").exists(), "环形复用链必须终止且全部受保护"
+
+
+def test_retention_protects_uploaded_media_owner(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    owner = _old_failed_task(tmp_path, "ret-owner")
+    media = owner / "input.mp4"
+    media.write_bytes(b"keep")
+    monkeypatch.setattr(main, "tasks", {
+        "ret-consumer": {"status": "processing", "uploaded_file_path": str(media)},
+    })
+    monkeypatch.setattr(main, "running_jobs", {})
+    response = TestClient(main.app).post("/api/media-retention/cleanup", json={"days": 1})
+    assert response.status_code == 200
+    assert response.json()["removed_count"] == 0
+    assert media.exists(), "活动任务引用的上传媒体属主目录必须受保护"
+
+
+def test_retention_ignores_uploaded_path_outside_workspace(tmp_path, monkeypatch) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+    doomed = _old_failed_task(workspace, "ret-doomed")
+    outside = tmp_path / "outside" / "ret-outsider"
+    outside.mkdir(parents=True)
+    (outside / "input.mp4").write_bytes(b"x")
+    monkeypatch.setattr(main, "tasks", {
+        "ret-consumer": {"status": "processing", "uploaded_file_path": str(outside / "input.mp4")},
+    })
+    monkeypatch.setattr(main, "running_jobs", {})
+    response = TestClient(main.app).post("/api/media-retention/cleanup", json={"days": 1})
+    assert response.status_code == 200
+    assert_removed_count(response.json(), windows=1)
+    assert_media_removed(doomed / "audio.m4a")
 
 
 def test_media_cleanup_rejects_directories_symlinks_and_escape(

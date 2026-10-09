@@ -46,6 +46,12 @@ from pydantic import BaseModel, Field, SecretStr
 
 from . import note_integrations, note_templates, paraformer_asr, secret_box
 from .config_store import BiliCredentialsUnavailable, LLM_KEYS_FILE, ConfigStore
+from .media_retention import (
+    cleanup_expired_task_media,
+    is_owned_media_name,
+    is_safe_task_id,
+    validate_retention_days,
+)
 from .llm_summarizer import (
     LONG_TRANSCRIPT_CHARACTERS,
     LLMSummarizer,
@@ -501,19 +507,24 @@ def task_directory(task_id: str) -> Path:
     return candidate
 
 
-# 成功笔记任务允许清理的自有媒体词干：上传输入、在线下载音频、分 P 音频、
-# 截图预览视频。其余一律不匹配（未知文件、frames/、笔记与转录都保留）。
-_OWNED_MEDIA_RE = re.compile(r"^(input|audio|preview|audio_p[0-9]+)\..+$")
+def uploaded_media_owner_id(uploaded_file_path: Any) -> str | None:
+    """上传媒体实际落盘所属的任务目录名（位于 WORKSPACE_DIR 直接子目录内的安全 task_id）。
 
-
-def _is_owned_media_name(name: str) -> bool:
-    match = _OWNED_MEDIA_RE.match(name)
-    if not match:
-        return False
-    stem = match.group(1)
-    if stem.startswith("audio_p"):
-        return int(stem[len("audio_p"):]) >= 1  # 分 P 从 1 开始
-    return True
+    上传端点把文件写成 WORKSPACE_DIR/<upload_task_id>/input.<ext>；复用该媒体的
+    任务并不拥有这份文件，清理时必须保护真正的属主目录，而不是调用方自己的 id。
+    只有落在 WORKSPACE_DIR 直接子目录且目录名是安全 task_id 时才返回，否则 None。
+    """
+    if not isinstance(uploaded_file_path, str) or not uploaded_file_path:
+        return None
+    try:
+        resolved = Path(uploaded_file_path).resolve()
+        workspace = WORKSPACE_DIR.resolve()
+    except (OSError, ValueError, RuntimeError):
+        return None
+    parent = resolved.parent
+    if parent.parent != workspace:
+        return None
+    return parent.name if is_safe_task_id(parent.name) else None
 
 
 def cleanup_successful_task_media(task_id: str) -> tuple[list[str], list[str]]:
@@ -535,7 +546,7 @@ def cleanup_successful_task_media(task_id: str) -> tuple[list[str], list[str]]:
         return removed, ["无法列出任务目录，媒体未清理"]
     for child in sorted(children, key=lambda path: path.name):
         name = child.name
-        if not _is_owned_media_name(name):
+        if not is_owned_media_name(name):
             continue
         try:
             if child.is_symlink() or not child.is_file():
@@ -1900,6 +1911,51 @@ async def delete_task(task_id: str) -> dict[str, bool]:
     await video_processor.cleanup(task_id)
     tasks.pop(task_id, None)
     return {"deleted": True}
+
+
+class MediaRetentionCleanupRequest(BaseModel):
+    # strict=True：字符串 "7" 不得被宽模式悄悄当成 7 接受
+    days: int = Field(strict=True)
+
+
+@app.post("/api/media-retention/cleanup")
+async def cleanup_media_retention(request: MediaRetentionCleanupRequest) -> dict[str, Any]:
+    """失败/取消任务媒体的可选按天清理：只接受白名单天数，默认永久保留不触发。"""
+    try:
+        days = validate_retention_days(request.days)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    active_task_ids = {
+        task_id
+        for task_id, task in tasks.items()
+        if task.get("status") in {"pending", "queued", "processing", "cancelling"}
+    }
+    active_task_ids.update(
+        task_id for task_id, job in running_jobs.items() if not job.done()
+    )
+    # A new retry may still read media from a terminal old task directory, and that
+    # old task may itself reuse an even older one. Protect the whole resume_task_id
+    # closure with a visited set so self/cyclic chains cannot loop.
+    pending = list(active_task_ids)
+    visited: set[str] = set()
+    while pending:
+        current = pending.pop()
+        if not isinstance(current, str) or current in visited:
+            continue
+        visited.add(current)
+        active_task_ids.add(current)
+        source_id = tasks.get(current, {}).get("resume_task_id")
+        if isinstance(source_id, str) and source_id not in visited:
+            pending.append(source_id)
+    # An active task can still read uploaded media that physically lives in the
+    # workspace directory of the upload task; protect that real owner directory too.
+    for task_id in tuple(active_task_ids):
+        owner_id = uploaded_media_owner_id(tasks.get(task_id, {}).get("uploaded_file_path"))
+        if owner_id is not None:
+            active_task_ids.add(owner_id)
+    return cleanup_expired_task_media(
+        WORKSPACE_DIR, days=days, active_task_ids=active_task_ids
+    )
 
 
 def _format_page_nums(pages) -> str:

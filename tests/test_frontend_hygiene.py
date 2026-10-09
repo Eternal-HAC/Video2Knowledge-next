@@ -7,7 +7,11 @@
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
 SCRIPT = (FRONTEND / "script.js").read_text(encoding="utf-8")
@@ -126,6 +130,118 @@ def test_note_images_are_resolved_on_every_output_path() -> None:
 def test_every_bound_element_id_exists_in_the_page() -> None:
     missing = sorted(set(BOUND_ID.findall(SCRIPT)) - set(DECLARED_ID.findall(PAGE)))
     assert not missing, f"script.js 绑定了页面里不存在的元素：{missing}"
+
+
+def test_local_import_hint_guides_platform_exports() -> None:
+    """选择“本地文件”时提示：小鹅通等平台先用平台允许的方式导出再上传。"""
+    match = re.search(r'<p id="localImportHint"[^>]*>(.*?)</p>', PAGE, re.S)
+    assert match, "页面必须有 localImportHint 提示元素"
+    text = match.group(1)
+    assert "小鹅通" in text
+    assert "导出" in text or "下载" in text
+    assert "绕过" in text, "必须明示不支持绕过付费/登录/内容保护"
+    toggle = SCRIPT.split("function toggleSourceType()", 1)[1].split("\n}\n", 1)[0]
+    assert "localImportHint" in toggle, "提示的显隐必须跟随来源切换"
+
+
+def test_media_retention_preferences_and_request() -> None:
+    assert 'id="mediaRetentionDays"' in PAGE
+    assert 'id="mediaRetentionCleanupBtn"' in PAGE
+    assert 'id="mediaRetentionStatus"' in PAGE
+    keys = SCRIPT.split("const GLOBAL_PREF_KEYS =", 1)[1].split("];", 1)[0]
+    assert "'media_retention_days'" in keys
+    assert "media_retention_days: 'forever'" in SCRIPT
+    assert "values.media_retention_days" in SCRIPT
+    health = SCRIPT.split("async function loadAppVersion()", 1)[1].split("\n}\n", 1)[0]
+    assert "maybeCleanupRetainedMedia()" in health
+    cleanup = SCRIPT.split("async function requestMediaRetentionCleanup(days)", 1)[1].split("\n}\n", 1)[0]
+    assert "/media-retention/cleanup" in cleanup
+    assert "JSON.stringify({ days })" in cleanup
+    assert "catch" in cleanup
+    manual = SCRIPT.split("async function cleanupRetainedMedia()", 1)[1].split("\n}\n", 1)[0]
+    assert "window.confirm" in manual
+
+
+def test_retention_browser_behavior_without_network() -> None:
+    """Execute the actual JS in DOM/storage/fetch stubs, without network."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node is unavailable")
+    harness = r"""
+const vm = require('node:vm');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const nodes = {};
+const storage = {};
+const calls = [];
+const context = vm.createContext({
+    console, setTimeout, clearTimeout, AbortController,
+    window: { confirm: () => true, addEventListener() {}, setTimeout, clearTimeout },
+    document: {
+        addEventListener() {},
+        querySelector: () => null,
+        getElementById(id) {
+            return nodes[id] ||= { value: '', textContent: '', disabled: false, checked: false };
+        }
+    },
+    localStorage: {
+        getItem: key => storage[key] || null,
+        setItem: (key, value) => { storage[key] = value; },
+        removeItem: key => { delete storage[key]; }
+    },
+    calls, assert
+});
+vm.runInContext(fs.readFileSync(0, 'utf8'), context);
+(async () => {
+    await vm.runInContext(`(async () => {
+        updateMediaRetentionControls();
+        assert.equal(byId('mediaRetentionCleanupBtn').disabled, true);
+        fetchWithTimeout = async (url, options) => {
+            calls.push({ url, options });
+            return { ok: true, json: async () => ({
+                scanned: 4, eligible: 2, removed_count: 3, warnings: []
+            }) };
+        };
+        maybeCleanupRetainedMedia();
+        mediaRetentionConnected = true;
+        maybeCleanupRetainedMedia();
+        assert.equal(calls.length, 0);
+        prefs.global.media_retention_days = '7';
+        persistPrefs();
+        prefs = mergePrefs(readStoredPrefs());
+        assert.equal(prefs.global.media_retention_days, '7');
+        mediaRetentionStartupAttempted = false;
+        maybeCleanupRetainedMedia();
+        maybeCleanupRetainedMedia();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].url, '/api/media-retention/cleanup');
+        assert.equal(calls[0].options.method, 'POST');
+        assert.equal(calls[0].options.body, '{"days":7}');
+        assert.match(byId('mediaRetentionStatus').textContent, /删除 3/);
+        window.confirm = () => false;
+        await cleanupRetainedMedia();
+        assert.equal(calls.length, 1);
+        window.confirm = () => true;
+        await Promise.all([cleanupRetainedMedia(), cleanupRetainedMedia()]);
+        assert.equal(calls.length, 2);
+        fetchWithTimeout = async () => { throw new Error('private-path-secret'); };
+        await requestMediaRetentionCleanup(7);
+        assert.equal(mediaRetentionBusy, false);
+        assert.match(byId('mediaRetentionStatus').textContent, /生成笔记仍可继续/);
+        assert.equal(byId('mediaRetentionStatus').textContent.includes('secret'), false);
+        prefs.global.media_retention_days = 'forever';
+        updateMediaRetentionControls();
+        await cleanupRetainedMedia();
+        assert.equal(calls.length, 2);
+    })()`, context);
+})().catch(error => { console.error(error); process.exitCode = 1; });
+"""
+    result = subprocess.run(
+        [node, "-e", harness], input=SCRIPT, text=True, encoding="utf-8",
+        capture_output=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def _builtin_providers() -> dict[str, dict[str, str]]:

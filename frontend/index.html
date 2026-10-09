@@ -207,6 +207,22 @@
             </div>
         </section>
 
+        <section class="config-section" aria-labelledby="mediaRetentionTitle">
+            <h2 id="mediaRetentionTitle">失败任务媒体保留</h2>
+            <label class="field">
+                <span>失败或取消后的媒体文件</span>
+                <select id="mediaRetentionDays">
+                    <option value="forever" selected>永久保留（默认）</option>
+                    <option value="1">1 天</option>
+                    <option value="7">7 天</option>
+                    <option value="30">30 天</option>
+                </select>
+                <small>有限天数从任务结束时算起。清理后重试可能需要重新上传或下载；笔记、转录和截图保留。设置保存在此浏览器中，连接后端后会清理一次。</small>
+            </label>
+            <button id="mediaRetentionCleanupBtn" class="button ghost compact-button" type="button" disabled>立即清理</button>
+            <p id="mediaRetentionStatus" class="section-note" role="status" aria-live="polite">永久保留，不执行按天清理。</p>
+        </section>
+
         <details id="credentialsSection" class="config-section collapsible-section">
             <summary>B 站访问凭据（可选）</summary>
             <p class="section-note">仅在公开访问受限时填写。凭据只保留到页面关闭。</p>
@@ -331,6 +347,7 @@
                     <span class="btn-text">开始生成</span>
                 </button>
             </div>
+            <p id="localImportHint" class="output-mode-hint" hidden>小鹅通等课程平台：请先用平台官方允许的下载/导出方式取得媒体文件，再在这里上传。本工具不支持绕过付费、登录或内容保护机制。</p>
             <div id="biliPagesPanel" class="bili-pages-panel" hidden>
                 <div class="bili-pages-head">
                     <div class="bili-pages-titles">
@@ -475,6 +492,6 @@
 </div>
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-<script src="script.js?v=20261005-1"></script>
+<script src="script.js?v=20261009-1"></script>
 </body>
 </html>

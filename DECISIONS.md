@@ -83,3 +83,27 @@ Alternatives considered: a second backend destination system alongside `note_des
 Impact: The backend receives the same `note_destination` as before plus two note-only Feishu request fields; the manifest snapshots only the normalized folder token; errors use stable codes; retry reuses `notes.md` and current frames. Native cloud image blocks, Wiki/docx import, overwrite/sync, permission management, and automatic login stay deferred.
 
 Review condition: Revisit if users need multi-account or team-space publishing, native image blocks, or sync/overwrite semantics, each as a separately authorized milestone.
+
+## 2026-10-09: Xiaoe-tech uses permitted local exports
+
+Decision: Close the Xiaoe-tech research scope with guidance to upload local media obtained through official permitted download/export. Reuse the existing subtitle/ASR, templates, Markdown/Obsidian and optional Feishu flow. No URL downloader, credential capture, sniffing or DRM/decryption capability is introduced.
+
+Reason: Existing local media handling already supports the approved input. Merchant OpenAPI is a separate future shop-authorized integration direction, with no current promise of media downloading.
+
+Review condition: A concrete authorized shop integration or lawful public input may justify a separate, tested adapter; permission to view paid content alone does not authorize extracting protected media.
+
+## 2026-10-09: Failed/cancelled media retention is opt-in and conservative
+
+Decision: Default to permanent retention; store only a browser-local forever/1/7/30 choice. A finite choice permits one sweep after successful backend connection per page session and explicit manual cleanup. No timer, daemon or persisted credentials are added.
+
+Age is based solely on timezone-aware persisted runtime.finished_at, strictly older than the cutoff. Missing, malformed or timezone-free values are skipped; file mtime and inferred creation dates are insufficient. Reuse WORKSPACE_DIR/<task_id>, matching existing task_directory and restore logic, rather than relocating manifests into a new tasks directory.
+
+Eligibility requires matching task.json identity and failed/cancelled persisted status. Active tasks, unfinished jobs and their reuse sources are excluded. Share the success-cleanup owned-media name predicate, preserve all other artifacts, and never rewrite status.
+
+Deletion rejects links and uncertain identity, compares opened and non-following path identity, and rechecks the manifest. Windows uses non-delete-sharing handles for task directories and media, then deletes through the verified handle. A locked/replaced file produces a sanitized warning while the sweep continues.
+
+On other hosts, keep candidate media with warnings until an atomic identity-delete primitive is implemented and verified. A portable stat-then-unlink fallback cannot satisfy the replacement-race boundary, so it is deliberately not used.
+
+Impact: A user choosing finite retention may need to reacquire media for future retries. Notes, transcripts, frames, successful-note cleanup, transcript-only completion, Feishu retries and custom destinations keep their contracts. Legacy tasks without reliable terminal time are intentionally retained.
+
+Review condition: Revisit only with evidence that the conservative skips, filesystem-specific guarantees or one-shot sweep cost prevent useful cleanup; broader scheduling or task migration needs separate authorization.
