@@ -95,14 +95,14 @@ The note-template milestone is complete locally with the following contract:
 1. Fork baseline, attribution, and configurable Markdown destination: complete locally.
 2. Note template system: complete locally.
 3. Media retention policy: complete locally, including optional 1/7/30-day failed/cancelled media cleanup.
-4. Obsidian detection and Vault experience, followed by opt-in Feishu CLI Markdown upload: complete locally. A screenshot note also uploads a Markdown-plus-attachments ZIP until native cloud image blocks are implemented.
+4. Obsidian detection and Vault experience, followed by opt-in Feishu publication: complete locally. Feishu publication now creates an online docx with native in-body image blocks for referenced screenshots; no cloud Markdown file or ZIP is created.
 5. One-off real validation for YouTube, Bilibili, and Douyin: complete; this does not guarantee permanent availability.
 6. Xiaoe-tech research and local import guidance: complete. Other platform or merchant integrations require separate authorization.
 
 ## Non-goals for the current phase
 
 - Xiaoe-tech URL downloading or merchant OpenAPI integration;
-- Feishu native cloud image blocks, Wiki/docx import, overwrite or sync, permission management, and automatic login;
+- Feishu Wiki/docx import, overwrite or sync, permission management, and automatic login;
 - automated cookie management;
 - bypassing platform login, verification, or access controls;
 - a complete Obsidian plugin;

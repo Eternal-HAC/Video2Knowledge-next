@@ -44,7 +44,7 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 from pydantic import BaseModel, Field, SecretStr
 
-from . import note_integrations, note_templates, paraformer_asr, secret_box
+from . import media_retention, note_integrations, note_templates, paraformer_asr, secret_box
 from .config_store import BiliCredentialsUnavailable, LLM_KEYS_FILE, ConfigStore
 from .media_retention import (
     cleanup_expired_task_media,
@@ -1000,12 +1000,12 @@ async def submit_video_task(
         if not (readiness["installed"] and readiness["capable"]):
             raise HTTPException(
                 status_code=400,
-                detail="未检测到可用的 lark-cli（或缺少 markdown/drive 命令），无法上传飞书",
+                detail="未检测到可用的 lark-cli（缺少 docs 命令），无法创建飞书在线文档",
             )
         if readiness["auth"] != "ready" or not readiness["scopes_ready"]:
             raise HTTPException(
                 status_code=400,
-                detail="飞书 user 登录不可用或缺少上传权限，请先用 lark-cli 完成授权后重试",
+                detail="飞书 user 登录不可用或缺少在线文档发布权限，请先用 lark-cli 完成授权后重试",
             )
         feishu_target = {"folder_token": folder_token}
 
@@ -1813,6 +1813,91 @@ def build_note_bundle(note_text: str, task_dir: Path, note_filename: str) -> byt
     return buffer.getvalue()
 
 
+FEISHU_IMAGE_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp"})
+FEISHU_MAX_IMAGE_BYTES = 20 * 1024 * 1024
+
+# 飞书暂存改写专用：与 NOTE_IMAGE_REF_RE 同边界，额外捕获 alt 作为 caption。
+_FEISHU_IMAGE_REF_RE = re.compile(r"!\[([^\]]*)\]\(\./(?:frames|images)/([^)]+)\)")
+
+
+def strip_note_frontmatter(note_text: str) -> str:
+    """仅当首行是 --- 且存在成对闭合 --- 时删除 YAML Frontmatter，否则原样返回。"""
+    lines = note_text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != "---":
+        return note_text
+    for index in range(1, len(lines)):
+        if lines[index].strip() == "---":
+            return "".join(lines[index + 1:])
+    return note_text
+
+
+def _copy_verified_image(source: Path, destination: Path) -> None:
+    """以 verified 身份打开源图片再复制：拒绝链接/硬链接/身份不一致/不可靠身份。
+
+    先做 non-following stat 得到预期身份，再打开句柄用 fstat 与路径身份复核，最后
+    用已验证句柄 copyfileobj 到排他创建的暂存目标。任何不确定或替换都 fail closed。
+    """
+    try:
+        expected = media_retention._snapshot(source)
+    except OSError as exc:
+        raise note_integrations.FeishuMediaError("unsupported_image") from exc
+    if expected.st_size > FEISHU_MAX_IMAGE_BYTES:
+        raise note_integrations.FeishuMediaError("image_too_large")
+    try:
+        with media_retention._locked_path(source, expected) as fd:
+            if os.fstat(fd).st_size > FEISHU_MAX_IMAGE_BYTES:
+                raise note_integrations.FeishuMediaError("image_too_large")
+            with os.fdopen(os.dup(fd), "rb") as reader, destination.open("xb") as writer:
+                shutil.copyfileobj(reader, writer)
+    except note_integrations.FeishuMediaError:
+        raise
+    except OSError as exc:
+        raise note_integrations.FeishuMediaError("unsupported_image") from exc
+
+
+def build_feishu_docx_staging(
+    note_text: str, task_dir: Path, staging_dir: Path, content_name: str
+) -> None:
+    """把笔记写进飞书暂存目录：剥离 Frontmatter，并按首次出现顺序内联本地图片。
+
+    引用发现、边界解析、缺失检查、编号复制与替换都只基于剥离后的正文 cloud_body；
+    Frontmatter 里的引用不进入云文档，也不触发复制或失败。只复用
+    referenced_note_attachments 的边界结果，任一被测正文引用图片缺失、越界、格式
+    或大小不合规都抛 FeishuMediaError，绝不放行给 CLI。不修改任务原始产物。
+    """
+    cloud_body = strip_note_frontmatter(note_text)
+    attachments = referenced_note_attachments(cloud_body, task_dir)
+    safe_names = {name for name, _source in attachments}
+    referenced_names = {
+        Path(unquote(match.group(2))).name
+        for match in _FEISHU_IMAGE_REF_RE.finditer(cloud_body)
+    }
+    if referenced_names - safe_names:
+        raise note_integrations.FeishuMediaError("unsupported_image")
+
+    name_map: dict[str, str] = {}
+    for index, (name, source) in enumerate(attachments, start=1):
+        suffix = source.suffix.lower()
+        if suffix not in FEISHU_IMAGE_SUFFIXES:
+            raise note_integrations.FeishuMediaError("unsupported_image")
+        staged_name = f"image-{index:03d}{suffix}"
+        frames = staging_dir / FRAMES_DIR_NAME
+        frames.mkdir(parents=True, exist_ok=True)
+        _copy_verified_image(source, frames / staged_name)
+        name_map[name] = staged_name
+
+    def replace(match):
+        name = Path(unquote(match.group(2))).name
+        staged = name_map.get(name)
+        if staged is None:
+            return match.group(0)
+        return f"![{match.group(1)}](<@./{FRAMES_DIR_NAME}/{staged}>)"
+
+    (staging_dir / content_name).write_text(
+        _FEISHU_IMAGE_REF_RE.sub(replace, cloud_body), encoding="utf-8"
+    )
+
+
 @app.post("/api/task/{task_id}/feishu-upload")
 async def retry_feishu_upload(task_id: str) -> dict[str, Any]:
     """只重试飞书发布：复用现有 notes.md / frames，不跑下载、ASR 或 LLM。
@@ -1839,12 +1924,12 @@ async def retry_feishu_upload(task_id: str) -> dict[str, Any]:
     if not (readiness["installed"] and readiness["capable"]):
         raise HTTPException(
             status_code=400,
-            detail="未检测到可用的 lark-cli（或缺少 markdown/drive 命令），无法上传飞书",
+            detail="未检测到可用的 lark-cli（缺少 docs 命令），无法创建飞书在线文档",
         )
     if readiness["auth"] != "ready" or not readiness["scopes_ready"]:
         raise HTTPException(
             status_code=400,
-            detail="飞书 user 登录不可用或缺少上传权限，请先用 lark-cli 完成授权后重试",
+            detail="飞书 user 登录不可用或缺少在线文档发布权限，请先用 lark-cli 完成授权后重试",
         )
     try:
         note_text = notes_path.read_text(encoding="utf-8")
@@ -1854,7 +1939,7 @@ async def retry_feishu_upload(task_id: str) -> dict[str, Any]:
             task_dir=task_directory(task_id),
             title=title,
             folder_token=token,
-            bundle_builder=build_note_bundle,
+            staging_builder=build_feishu_docx_staging,
         )
     except Exception:
         # 重试同样 best-effort：返回稳定 failed 结果而不是 500
@@ -2514,7 +2599,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                     task_dir=task_dir,
                     title=title,
                     folder_token=feishu_token,
-                    bundle_builder=build_note_bundle,
+                    staging_builder=build_feishu_docx_staging,
                 )
             except Exception:
                 # 发布是 best-effort：任何漏网异常都降级为脱敏失败，

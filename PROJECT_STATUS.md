@@ -39,11 +39,11 @@ The successor customizations now provide:
 - template-aware short and long summarization without a second full-document LLM pass;
 - frontend template loading, creation, editing, cloning, deletion, and note-mode visibility behavior.
 - read-only Obsidian Vault detection and one-click Vault destination filling in the web UI;
-- opt-in Feishu publication of completed notes through the local lark-cli user identity (native Markdown plus an optional screenshot ZIP), with a publication-only retry that never reruns download, ASR, or the LLM.
+- opt-in Feishu publication of completed notes through the local lark-cli user identity as an online docx with native in-body image blocks for referenced screenshots, with a publication-only retry that never reruns download, ASR, or the LLM.
 
 The following items remain open or partial:
 
-- native Feishu cloud image blocks and other deferred destination integrations;
+- Wiki/docx import, overwrite/sync, permission management and other deferred cloud-document integrations;
 - new platform URL adapters or shop-authorized merchant integrations, only after separate authorization;
 
 ## Platform support levels
@@ -98,7 +98,9 @@ Acceptance evidence:
 - `git diff --check`: clean;
 - the first failing-test run proved the gap before implementation (4 failed on the uncleaned success paths).
 
-## Completed Obsidian and Feishu destination milestone
+## Completed Obsidian and Feishu destination milestone (historical baseline; superseded by the online-docx milestone below)
+
+Historical baseline, superseded by the "Completed native Feishu online docx milestone" below. The Feishu details in this section describe the former cloud native-Markdown + screenshot-ZIP behavior and are no longer the current publication path; the Obsidian part remains current.
 
 - Obsidian detection is read-only: it reads `%APPDATA%\obsidian\obsidian.json` (existing Vaults only, deduplicated, no app launch, no config writes) and the web UI offers refresh, a Vault select, and an editable subfolder that fills the existing `noteDestination` field. The backend still receives only `note_destination`; manual paths keep working unchanged.
 - Feishu upload is opt-in and user-identity only: the web UI detects lark-cli readiness (installed, markdown/drive capability, `auth status` user login, minimal `drive:file:upload` + `drive:drive.metadata:readonly` scopes) without logging in or writing to the cloud, and submission is rejected pre-queue with stable errors when the CLI, auth, scope, or folder target is not ready.
@@ -126,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-After independent acceptance of this local milestone and separate authorization, perform a read-only feasibility and acceptance-plan review for native Feishu cloud image blocks. Start with existing lark-cli capabilities. No implementation, login or cloud writes are implied. Wiki/docx import, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred.
+The native Feishu cloud image discovery review and the online-docx implementation are complete locally. After independent acceptance and separate authorization, run one real Feishu smoke test that creates an online docx in a user-supplied test Drive folder using the native image path. No login, scope change or cloud write is implied by acceptance. Wiki/docx import, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -138,6 +140,18 @@ After independent acceptance of this local milestone and separate authorization,
 - Validation: targeted retention/API/frontend suite `152 passed, 2 skipped`; full automated suite `500 passed, 2 skipped`; `node --check frontend/script.js` and `git diff --check` passed. Both skips are symbolic-link creation restrictions on this host. Browser behavior was exercised through local DOM/storage/fetch stubs; no real platforms, providers or cloud publication were accessed.
 - Portability limit: age-based deletion is supported by verified Windows file/directory handles. Other hosts conservatively keep media and return warnings because a pathname unlink cannot atomically verify file identity; this avoids weakening the replacement-race contract. Other task processing and existing immediate success cleanup are unaffected.
 - WATCH: the age-based sweep still runs synchronously inside the event loop, and its performance on a large task library is unverified. Moving it off the event loop later requires task-lifecycle coordination at the same time so the sweep cannot race in-progress tasks. This milestone keeps full-handle validation, the reuse-closure plus uploaded-media-owner protection, the cross-platform test contract, and redacted warnings. It does not switch to `to_thread` and does not add a scheduler or new lock framework.
+
+## Completed native Feishu online docx milestone
+
+- Feishu publication now creates one online docx via `lark-cli docs +create --as user --doc-format markdown`, embedding referenced screenshots as native in-body image blocks (`![alt](<@./frames/image-NNN.ext>)`). No cloud Markdown file and no screenshot ZIP are created. `docs +media-insert`, DocxXML, Drive import and the former `markdown +create` / `drive +upload` commands are not used.
+- Local `notes.md` stays authoritative; the local download ZIP path (`build_note_bundle`) and its endpoints are unchanged. Publication stays opt-in (`feishu_upload_enabled`), default off, `--as user` only, no automatic login and no bot fallback.
+- Only images referenced by the final Markdown, resolved inside the task's `frames` directory, present, within `.png/.jpg/.jpeg/.gif/.webp` and <= 20 MiB are staged, in first-appearance order, deduplicated, under controlled ASCII names (`image-001.ext`). Referenced images that are missing, escaping, malformed or too large fail closed (`unsupported_image` / `image_too_large`) before any CLI call.
+- Leading-only YAML Frontmatter is stripped from the staged copy; malformed or non-leading Frontmatter is preserved. Original task artifacts are never modified; the per-task `.feishu-stage-*` directory is always removed.
+- Readiness requires the `docs` top-level command and three scope groups (create, write, media upload); `docx:document` satisfies create/write, and `docs:document.media:upload` (or the listed equivalent wide scopes) satisfies media upload. `check_feishu_readiness` still returns only `installed`/`capable`/`auth`/`scopes_ready` and never leaks scope detail.
+- Publication never changes task status: a failed or timed-out cloud create keeps the task `completed`, stores a sanitized `feishu_publication` (`status`, `format=native_docx`, `document`/`error`, `attempted_at`), and the retry endpoint republishes only. Timeout messaging states that a retry may create a duplicate document. No document id, token, identity or raw CLI output is persisted or shown.
+- Source images are copied through a verified open handle: a non-following stat fixes the expected identity, the opened handle is re-checked (links, hard links, replaced or unreliable identities are rejected), and the copy is written from that handle into an exclusive-create target. Uncertain identity or a mid-copy replacement fails closed as `unsupported_image`.
+- When the create envelope is `ok=true` but carries a non-empty `data.warnings`, the document stays `uploaded` and no retry is offered; a fixed redacted `warning {code: partial_publication, message: ...}` is stored and the raw warnings are never persisted.
+- Validation: focused `tests/test_note_integrations.py` (78 passed) and `tests/test_api.py` + `tests/test_frontend_hygiene.py` (140 passed, 1 skipped), plus the full suite (550 passed, 2 skipped); `node --check frontend/script.js` and `git diff --check` passed. All CLI calls use fake runners; no login, no real cloud write, no dependency change. Automated tests do not prove the Markdown-to-docx visual fidelity of a real tenant; a real smoke test remains separately authorized.
 
 ## Current constraints
 

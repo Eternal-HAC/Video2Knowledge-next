@@ -107,3 +107,13 @@ On other hosts, keep candidate media with warnings until an atomic identity-dele
 Impact: A user choosing finite retention may need to reacquire media for future retries. Notes, transcripts, frames, successful-note cleanup, transcript-only completion, Feishu retries and custom destinations keep their contracts. Legacy tasks without reliable terminal time are intentionally retained.
 
 Review condition: Revisit only with evidence that the conservative skips, filesystem-specific guarantees or one-shot sweep cost prevent useful cleanup; broader scheduling or task migration needs separate authorization.
+
+## 2026-10-09: Feishu publication creates an online docx with native image blocks
+
+Decision: Replace the cloud "native Markdown + optional screenshot ZIP" publication with a single `lark-cli docs +create --as user --doc-format markdown` that creates one online docx and inlines referenced screenshots as native image blocks. Local `notes.md`, the local Markdown+attachments ZIP download, custom destinations and Obsidian behavior are unchanged; the ZIP is no longer uploaded to the cloud.
+
+Reason: The `docs +create` Markdown path uploads local images inline (`![alt](<@./frames/image-NNN.ext>)`) at their in-body positions with alt as caption and returns a document id/url, reusing the CLI's own Markdown-to-docx conversion. The `docs +media-insert` shortcut only appends at the end, and a self-built Markdown-to-DocxXML converter would add a large subsystem, so both were rejected.
+
+Consequences: Readiness now requires the `docs` command plus three scope groups (create, write, media upload); the recommended narrow scopes are `docx:document:create`, `docx:document:write_only`, `docs:document.media:upload`, with `docx:document` accepted as a wide create/write substitute. Only referenced, in-task, allowed-format images within 20 MiB are staged; missing, escaping or oversized images fail closed before any CLI call. Publication remains opt-in, `--as user` only, never fails the local task, and still runs exactly one CLI command.
+
+Review condition: Revisit if a real-tenant smoke test shows unacceptable Markdown-to-docx fidelity, if the CLI JSON contract changes, or if overwrite/idempotency for the remote document becomes required.

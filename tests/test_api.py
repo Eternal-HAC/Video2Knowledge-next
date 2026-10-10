@@ -3289,6 +3289,56 @@ async def test_submit_feishu_blocked_when_user_auth_not_ready(
 
 
 @pytest.mark.asyncio
+async def test_submit_feishu_blocked_when_capability_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main.config_store, "load_bili_credentials", lambda: None)
+    monkeypatch.setattr(
+        main.note_integrations,
+        "check_feishu_readiness",
+        lambda: {"installed": True, "capable": False, "auth": "ready", "scopes_ready": True},
+    )
+    request = main.SummarizeRequest(
+        video_url="https://www.bilibili.com/video/BV1xx",
+        feishu_upload_enabled=True,
+        feishu_folder="ABCdef1234567890",
+        llm_config=main.LLMConfig(model_type="deepseek", api_key="k"),
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        await main.submit_video_task(request, origin="web")
+    assert excinfo.value.status_code == 400
+    assert "docs" in excinfo.value.detail
+
+
+@pytest.mark.asyncio
+async def test_submit_feishu_blocked_when_scope_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main.config_store, "load_bili_credentials", lambda: None)
+    monkeypatch.setattr(
+        main.note_integrations,
+        "check_feishu_readiness",
+        lambda: {"installed": True, "capable": True, "auth": "ready", "scopes_ready": False},
+    )
+    request = main.SummarizeRequest(
+        video_url="https://www.bilibili.com/video/BV1xx",
+        feishu_upload_enabled=True,
+        feishu_folder="ABCdef1234567890",
+        llm_config=main.LLMConfig(model_type="deepseek", api_key="k"),
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        await main.submit_video_task(request, origin="web")
+    assert excinfo.value.status_code == 400
+    assert "授权" in excinfo.value.detail or "权限" in excinfo.value.detail
+
+
+@pytest.mark.asyncio
 async def test_submit_feishu_disabled_makes_no_cli_calls(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -3334,6 +3384,20 @@ def _ok_cli(**data) -> dict:
     }
 
 
+def _ok_doc(document_id: str = "d1", name=None, url=None) -> dict:
+    document = {"document_id": document_id}
+    if name is not None:
+        document["name"] = name
+    if url is not None:
+        document["url"] = url
+    return {
+        "exit_code": 0,
+        "stdout": json.dumps({"ok": True, "data": {"document": document}}),
+        "stderr": "",
+        "timed_out": False,
+    }
+
+
 async def _run_feishu_note_task(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -3358,21 +3422,50 @@ async def test_feishu_publication_success_is_recorded_and_sanitized(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     new_task_id, new_dir, calls = await _run_feishu_note_task(
-        tmp_path, monkeypatch, [_ok_cli(file_token="mdtok")]
+        tmp_path, monkeypatch,
+        [_ok_doc(document_id="d1", name="笔记", url="https://x.feishu.cn/docx/d1")],
     )
     task = main.tasks[new_task_id]
     assert task["status"] == "completed"
     assert len(calls) == 1
-    assert calls[0][:3] == ["markdown", "+create", "--as"]
+    assert calls[0][:3] == ["docs", "+create", "--as"]
     assert "user" in calls[0]
     assert "bot" not in calls[0]
+    assert "media-insert" not in calls[0]
     publication = task["feishu_publication"]
     assert publication["status"] == "uploaded"
-    assert publication["markdown"]["token"] == "mdtok"
+    assert publication["format"] == "native_docx"
+    assert publication["document"]["name"] == "笔记"
+    assert publication["document"]["url"] == "https://x.feishu.cn/docx/d1"
     manifest = json.loads((new_dir / "task.json").read_text(encoding="utf-8"))
     assert manifest["feishu_publication"]["status"] == "uploaded"
+    assert manifest["feishu_publication"]["format"] == "native_docx"
     assert manifest["feishu_upload"]["folder_token"] == "ABCdef1234567890"
     assert "auth" not in json.dumps(manifest.get("feishu_upload", {}))
+    assert "document_id" not in json.dumps(manifest.get("feishu_publication", {}))
+
+
+@pytest.mark.asyncio
+async def test_feishu_success_with_warning_records_partial_and_sanitizes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = "warning block token=WARNSECRET path C:/Users/secret"
+    env = {
+        "exit_code": 0,
+        "stdout": json.dumps(
+            {"ok": True, "data": {"document": {"document_id": "d1", "name": "n"}, "warnings": [raw]}}
+        ),
+        "stderr": "",
+        "timed_out": False,
+    }
+    new_task_id, new_dir, _ = await _run_feishu_note_task(tmp_path, monkeypatch, [env])
+    publication = main.tasks[new_task_id]["feishu_publication"]
+    assert publication["status"] == "uploaded"
+    assert publication["error"] is None
+    assert publication["warning"]["code"] == "partial_publication"
+    blob = (new_dir / "task.json").read_text(encoding="utf-8")
+    assert "WARNSECRET" not in blob
+    assert "C:/Users/secret" not in blob
 
 
 @pytest.mark.asyncio
@@ -3410,7 +3503,7 @@ async def test_feishu_retry_endpoint_republishes_only(
 
     calls: list = []
     monkeypatch.setattr(
-        main.note_integrations, "_run_cli", _fake_feishu_cli(calls, [_ok_cli(file_token="mdtok2")])
+        main.note_integrations, "_run_cli", _fake_feishu_cli(calls, [_ok_doc(document_id="d2", name="笔记2")])
     )
     monkeypatch.setattr(
         main.note_integrations,
@@ -3422,9 +3515,38 @@ async def test_feishu_retry_endpoint_republishes_only(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "uploaded"
-    assert body["markdown"]["token"] == "mdtok2"
+    assert body["format"] == "native_docx"
+    assert body["document"]["name"] == "笔记2"
     assert len(calls) == 1  # 只重发发布命令，不重跑下载/ASR/LLM
+    assert calls[0][:2] == ["docs", "+create"]
     assert main.tasks[new_task_id]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_feishu_retry_uses_native_staging_builder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    new_task_id, _new_dir, _ = await _run_feishu_note_task(
+        tmp_path,
+        monkeypatch,
+        [{"exit_code": 1, "stdout": "", "stderr": "boom", "timed_out": False}],
+    )
+    captured: dict = {}
+
+    def fake_publish(**kwargs):
+        captured.update(kwargs)
+        return main.note_integrations.sanitized_failure()
+
+    monkeypatch.setattr(main.note_integrations, "publish_note", fake_publish)
+    monkeypatch.setattr(
+        main.note_integrations,
+        "check_feishu_readiness",
+        lambda: {"installed": True, "capable": True, "auth": "ready", "scopes_ready": True},
+    )
+    client = TestClient(main.app)
+    assert client.post(f"/api/task/{new_task_id}/feishu-upload").status_code == 200
+    assert captured.get("staging_builder") is main.build_feishu_docx_staging
+    assert "bundle_builder" not in captured
 
 
 @pytest.mark.asyncio
@@ -3444,17 +3566,17 @@ async def test_feishu_retry_rejects_invalid_states(
 
 
 @pytest.mark.asyncio
-async def test_feishu_bundle_exception_keeps_task_completed(
+async def test_feishu_staging_exception_keeps_task_completed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """发布阶段任何异常都必须降级为脱敏 failed，绝不能把已落盘的笔记改判 failed。"""
 
     def boom(*args, **kwargs):
-        raise OSError("bundle exploded with open_id=ou_secret")
+        raise OSError("staging exploded with open_id=ou_secret")
 
-    monkeypatch.setattr(main, "build_note_bundle", boom)
+    monkeypatch.setattr(main, "build_feishu_docx_staging", boom)
     new_task_id, new_dir, _ = await _run_feishu_note_task(
-        tmp_path, monkeypatch, [_ok_cli(file_token="mdtok")]
+        tmp_path, monkeypatch, [_ok_doc(document_id="d1")]
     )
     task = main.tasks[new_task_id]
     assert task["status"] == "completed"
@@ -3464,7 +3586,7 @@ async def test_feishu_bundle_exception_keeps_task_completed(
     assert publication["error"]["code"] == "upload_failed"
     blob = (new_dir / "task.json").read_text(encoding="utf-8")
     assert "ou_secret" not in blob
-    assert "bundle exploded" not in blob
+    assert "staging exploded" not in blob
 
 
 @pytest.mark.asyncio

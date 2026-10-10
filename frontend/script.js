@@ -2478,11 +2478,11 @@ function renderFeishuReadiness(readiness) {
     if (!readiness.installed) {
         statusEl.textContent = '未检测到 lark-cli：飞书上传不可用（本地笔记不受影响）';
     } else if (!readiness.capable) {
-        statusEl.textContent = 'lark-cli 缺少 markdown/drive 命令：飞书上传不可用';
+        statusEl.textContent = 'lark-cli 缺少 docs 命令：飞书在线文档发布不可用';
     } else if (readiness.auth === 'ready' && readiness.scopes_ready) {
-        statusEl.textContent = '飞书就绪：user 身份已登录且具备上传权限';
+        statusEl.textContent = '飞书就绪：user 身份已登录且具备在线文档发布权限';
     } else if (readiness.auth === 'ready') {
-        statusEl.textContent = '飞书 user 已登录但缺少上传权限，请用 lark-cli 补充授权';
+        statusEl.textContent = '飞书 user 已登录但缺少在线文档发布权限，请用 lark-cli 补充授权';
     } else if (readiness.auth === 'expired') {
         statusEl.textContent = '飞书登录已过期，请用 lark-cli 重新授权（不会自动登录）';
     } else if (readiness.auth === 'missing') {
@@ -2503,9 +2503,28 @@ function renderFeishuPublication() {
     const text = byId('feishuNoticeText');
     const retryBtn = byId('feishuRetryBtn');
     if (publication.status === 'uploaded') {
-        const parts = [(publication.markdown && publication.markdown.name) || 'Markdown'];
-        if (publication.zip && publication.zip.name) parts.push(`截图包 ${publication.zip.name}`);
-        text.textContent = `已上传飞书：${parts.join(' 与 ')}`;
+        while (text.firstChild) text.removeChild(text.firstChild);
+        const doc = publication.document;
+        if (doc && typeof doc.name === 'string' && doc.name) {
+            text.appendChild(document.createTextNode('已创建飞书在线文档：' + doc.name));
+            if (typeof doc.url === 'string' && doc.url.startsWith('https://')) {
+                text.appendChild(document.createTextNode(' '));
+                const link = document.createElement('a');
+                link.href = doc.url;
+                link.textContent = '打开';
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                text.appendChild(link);
+            }
+        } else {
+            const parts = [(publication.markdown && publication.markdown.name) || 'Markdown'];
+            if (publication.zip && publication.zip.name) parts.push('截图包 ' + publication.zip.name);
+            text.textContent = '已上传飞书：' + parts.join(' 与 ');
+        }
+        const warning = publication.warning;
+        if (warning && typeof warning.message === 'string' && warning.message) {
+            text.appendChild(document.createTextNode('（' + warning.message + '）'));
+        }
         retryBtn.hidden = true;
         notice.hidden = false;
     } else if (publication.status === 'failed') {

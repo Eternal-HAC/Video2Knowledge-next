@@ -123,6 +123,14 @@ faster-whisper 本地转写
 
 按天删除当前在 Windows 上提供句柄级身份保护；其他系统会保守保留媒体并返回警告。
 
+「上传到飞书」默认关闭。勾选并填写 Drive 文件夹 token 或 `/drive/folder/` 链接后，笔记完成会在该文件夹创建一篇飞书在线文档，把正文引用的截图以内联原生图片块插入正文。发布只使用本机 `lark-cli` 的 user 身份，不自动登录、不回退 bot、不覆盖已有文件。首次使用前请自行完成授权（下列命令仅为示例，程序不会自动执行）：
+
+```powershell
+lark-cli auth login --scope "docx:document:create docx:document:write_only docs:document.media:upload" --no-wait --json
+```
+
+最小权限为 `docx:document:create`、`docx:document:write_only`、`docs:document.media:upload` 三项；已授予宽权限 `docx:document` 的账号同样可用。只会上传笔记正文引用、位于本任务截图目录内且格式/大小合规的图片。飞书发布失败不影响本地笔记，可在结果区重试；超时等结果不确定时会提示可能重复创建。
+
 模型档案、识别参数和主题等非敏感设置会自动记在本机浏览器里，改动即生效，不需要手动保存。API Key 默认只留在当前页面内存中，刷新即失效；点「保存到本机」后才会写入 `workspace/llm_keys.json`——Windows 上用系统自带的 DPAPI 加密（换机器或换 Windows 账户就解不开，需要重填），其他平台会明文保存并在界面标注。**已保存的 Key 与接口地址绑定**：只有目标地址与保存时一致才会复用，绝不会发给别的网关。扫码取得的 B 站 Cookie 仍只保留在本机进程内，只有显式保存时才会落盘，请勿分享工作目录里的这些文件。
 
 <details>

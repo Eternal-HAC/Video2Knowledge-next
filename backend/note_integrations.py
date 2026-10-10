@@ -1,8 +1,10 @@
-"""Obsidian Vault 检测与飞书发布（见 .omx/plans/obsidian-feishu-destination-milestone.md）。
+"""Obsidian Vault 检测与飞书在线文档发布（见 .omx/plans/feishu-native-docx-implementation.md）。
 
 边界：
 - Obsidian 只读检测：不启动应用、不改配置、不创建 Vault。
 - 飞书默认关闭；发布只走 lark-cli 的 --as user，绝不回退 bot，绝不自动登录。
+- 只创建在线 docx：一次 docs +create --doc-format markdown，正文内联本地图片；
+  禁止 media-insert、DocxXML、Drive import 以及旧的 markdown/drive 上传命令。
 - 不持久化 token/auth 原始输出、用户身份字段或完整 scopes；错误一律脱敏成
   稳定的 code + 通用文案。
 - 子进程只用 argv 列表，不拼接 shell 字符串；Windows 的 .cmd shim 走
@@ -20,11 +22,23 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 DEFAULT_VAULT_SUBFOLDER = "Video2Knowledge"
 
-# 创建原生 Markdown、读取目标文件夹元数据与普通文件上传所需的最小 scope。
-REQUIRED_SCOPES: tuple[str, ...] = ("drive:file:upload", "drive:drive.metadata:readonly")
+# 在线 docx 发布所需的授权能力组：每组至少命中一个 scope，全部满足才算就绪。
+# 前三项窄 scope 是 README 推荐授权；其它宽权限仅为兼容官方等价权限。
+REQUIRED_SCOPE_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("docx:document", "docx:document:create"),
+    ("docx:document", "docx:document:write_only"),
+    (
+        "docs:document.media:upload",
+        "docs:doc",
+        "drive:drive",
+        "bitable:app",
+        "sheets:spreadsheet",
+    ),
+)
 
 CLI_TIMEOUT_SECONDS = 30
 
@@ -34,6 +48,14 @@ _FOLDER_URL_RE = re.compile(r"^https?://[^/]+/drive/folder/([A-Za-z0-9]{8,64})/?
 
 class FeishuInputError(ValueError):
     """飞书目标输入不合法；文案稳定，可直接展示给用户。"""
+
+
+class FeishuMediaError(ValueError):
+    """被引用图片不满足格式/大小/边界约束；code 是稳定的脱敏错误码。"""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +252,12 @@ def _auth_state(data: dict[str, Any]) -> tuple[str, bool]:
         granted = {str(item) for item in raw}
     else:
         granted = set()
-    return "ready", all(scope in granted for scope in REQUIRED_SCOPES)
+    return "ready", _scopes_ready(granted)
+
+
+def _scopes_ready(granted: set[str]) -> bool:
+    """每组能力至少命中一个 scope；全部满足才算就绪。"""
+    return all(any(scope in granted for scope in group) for group in REQUIRED_SCOPE_GROUPS)
 
 
 def check_feishu_readiness() -> dict[str, Any]:
@@ -244,11 +271,7 @@ def check_feishu_readiness() -> dict[str, Any]:
         return unavailable
     help_result = _run_cli(["--help"])
     help_text = help_result["stdout"] + "\n" + help_result["stderr"]
-    capable = (
-        help_result["exit_code"] == 0
-        and "markdown" in help_text
-        and "drive" in help_text
-    )
+    capable = help_result["exit_code"] == 0 and "docs" in help_text
     auth: str = "error"
     scopes_ready = False
     status_result = _run_cli(["auth", "status", "--json", "--verify"])
@@ -269,7 +292,7 @@ def check_feishu_readiness() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 发布：原生 Markdown（+ 截图 ZIP）串行上传到指定 folder
+# 发布：一次 docs +create 创建在线 docx，正文内联本地图片
 # ---------------------------------------------------------------------------
 
 _ERROR_MESSAGES = {
@@ -277,8 +300,10 @@ _ERROR_MESSAGES = {
     "invalid_folder": "飞书目标文件夹无效或不可访问",
     "permission_denied": "没有该飞书文件夹的写入权限",
     "rate_limit": "飞书接口限流，请稍后重试",
-    "timeout": "飞书上传超时（远端结果不确定，重试可能产生重复文件）",
+    "timeout": "飞书上传超时（远端结果不确定，重试可能产生重复文档）",
     "upload_failed": "飞书上传失败，请稍后重试",
+    "unsupported_image": "笔记引用的图片格式不受支持，已跳过飞书上传",
+    "image_too_large": "笔记引用的图片超过飞书单图大小上限，已跳过飞书上传",
 }
 
 
@@ -311,22 +336,75 @@ def _stage_name(title: str, suffix: str) -> str:
     return f"{(cleaned or 'video-notes')[:80]}{suffix}"
 
 
-def _extract_file_info(envelope: dict[str, Any]) -> dict[str, Any]:
-    data = envelope.get("data") if isinstance(envelope.get("data"), dict) else {}
-    return {
-        "token": data.get("file_token") or data.get("token"),
-        "name": data.get("name"),
-    }
+_TITLE_UNSAFE_CHARS = frozenset('&|<>^%!()"')
 
 
-def sanitized_failure(code: str = "upload_failed") -> dict[str, Any]:
+def _safe_document_title(title: str) -> str:
+    """在线文档标题：保留普通 Unicode（含中文标点），只去掉控制字符与 cmd 元字符。"""
+    cleaned = "".join(
+        char for char in str(title)
+        if char.isprintable() and char not in _TITLE_UNSAFE_CHARS
+    ).strip()
+    return cleaned[:80].strip() or "video-notes"
+
+
+_PUBLICATION_WARNING_MESSAGES = {
+    "partial_publication": "飞书在线文档已创建，但部分内容可能未完整转换，请打开文档检查",
+}
+
+
+def _has_publication_warnings(envelope: dict[str, Any] | None) -> bool:
+    """信封 data.warnings 非空列表即视为部分发布警告；原始内容绝不外传。"""
+    if not isinstance(envelope, dict):
+        return False
+    data = envelope.get("data")
+    if not isinstance(data, dict):
+        return False
+    warnings = data.get("warnings")
+    return isinstance(warnings, list) and len(warnings) > 0
+
+
+def _safe_https_url(value: Any) -> str | None:
+    """只接受结构可验证的 https URL；否则返回 None，绝不落原始值。"""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    if any(char.isspace() for char in text):
+        return None
+    parts = urlsplit(text)
+    if parts.scheme != "https" or not parts.netloc or "@" in parts.netloc:
+        return None
+    return text
+
+
+def _extract_document(envelope: dict[str, Any] | None, fallback_name: str) -> dict[str, Any] | None:
+    """从 create 信封提取 {name, url}；缺 document_id 视为失败，绝不落 document_id。"""
+    if not isinstance(envelope, dict) or envelope.get("ok") is not True:
+        return None
+    data = envelope.get("data")
+    if not isinstance(data, dict):
+        return None
+    document = data.get("document")
+    if not isinstance(document, dict):
+        return None
+    document_id = document.get("document_id")
+    if not isinstance(document_id, str) or not document_id.strip():
+        return None
+    name = document.get("name")
+    if not isinstance(name, str) or not name.strip():
+        name = fallback_name
+    return {"name": name, "url": _safe_https_url(document.get("url"))}
+
+
+def sanitized_failure(code: str = "upload_failed", attempted_at: str | None = None) -> dict[str, Any]:
     """脱敏的失败 publication：只含稳定 code 与通用文案，绝不含异常、路径或原始输出。"""
     return {
         "status": "failed",
-        "markdown": None,
-        "zip": None,
+        "format": "native_docx",
+        "document": None,
+        "warning": None,
         "error": {"code": code, "message": _ERROR_MESSAGES[code]},
-        "attempted_at": datetime.now(timezone.utc).isoformat(),
+        "attempted_at": attempted_at or datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -336,70 +414,67 @@ def publish_note(
     task_dir: Path,
     title: str,
     folder_token: str,
-    bundle_builder: Callable[[str, Path, str], bytes | None] | None = None,
+    staging_builder: Callable[[str, Path, Path, str], None] | None = None,
 ) -> dict[str, Any]:
-    """把最终 Markdown 发布到飞书 folder；有截图时再串行上传一个 ZIP。
+    """把最终 Markdown 发布为飞书在线 docx：单次 docs +create，正文内联本地图片。
 
-    暂存文件放在任务目录下的一次性 .feishu-stage-* 目录，finally 清理，
-    绝不删除任务原始产物。结果只含脱敏字段。
+    staging_builder 负责在暂存目录内完成 Frontmatter 剥离、图片边界校验、受控
+    改名和正文引用重写；publish_note 只做一次 CLI 调用并解析结果。暂存目录放在
+    任务目录下的一次性 .feishu-stage-*，finally 清理，绝不删除任务原始产物。
     """
     try:
         token = normalize_feishu_folder(folder_token)  # 调用方之外再兜一道
     except FeishuInputError:
         return sanitized_failure("invalid_folder")
     attempted_at = datetime.now(timezone.utc).isoformat()
-    outcome: dict[str, Any] = {
-        "status": "failed",
-        "markdown": None,
-        "zip": None,
-        "error": None,
-        "attempted_at": attempted_at,
-    }
     task_dir = Path(task_dir)
     try:
         staging = Path(tempfile.mkdtemp(prefix=".feishu-stage-", dir=task_dir))
     except Exception:
         # 发布是 best-effort：暂存失败也要返回脱敏结果，绝不向调用方抛异常
-        return sanitized_failure()
+        return sanitized_failure("upload_failed", attempted_at)
     try:
-        md_name = _stage_name(title, ".md")
-        (staging / md_name).write_text(note_text, encoding="utf-8")
+        safe_title = _safe_document_title(title)
+        content_name = _stage_name(title, ".md")
+        if staging_builder is not None:
+            staging_builder(note_text, task_dir, staging, content_name)
+        else:
+            (staging / content_name).write_text(note_text, encoding="utf-8")
         create = _run_cli(
-            ["markdown", "+create", "--as", "user", "--folder-token", token, "--file", md_name],
+            [
+                "docs", "+create", "--as", "user",
+                "--parent-token", token,
+                "--doc-format", "markdown",
+                "--title", safe_title,
+                "--content", f"@{content_name}",
+            ],
             cwd=str(staging),
             timeout=CLI_TIMEOUT_SECONDS,
         )
         envelope = _parse_envelope(create["stdout"]) if create["exit_code"] == 0 else None
-        if envelope is None or envelope.get("ok") is not True:
-            code = _classify_error(create)
-            outcome["error"] = {"code": code, "message": _ERROR_MESSAGES[code]}
-            return outcome
-        outcome["markdown"] = _extract_file_info(envelope)
-
-        bundle = bundle_builder(note_text, task_dir, md_name) if bundle_builder else None
-        if bundle:
-            zip_name = _stage_name(title, ".zip")
-            (staging / zip_name).write_bytes(bundle)
-            upload = _run_cli(
-                ["drive", "+upload", "--as", "user", "--folder-token", token, "--file", zip_name],
-                cwd=str(staging),
-                timeout=CLI_TIMEOUT_SECONDS,
-            )
-            envelope = _parse_envelope(upload["stdout"]) if upload["exit_code"] == 0 else None
-            if envelope is None or envelope.get("ok") is not True:
-                code = _classify_error(upload)
-                outcome["error"] = {"code": code, "message": _ERROR_MESSAGES[code]}
-                return outcome
-            outcome["zip"] = _extract_file_info(envelope)
-        outcome["status"] = "uploaded"
-        return outcome
-    except Exception:
-        # bundle_builder / 写盘 / CLI 编排里的任何异常都降级为脱敏失败：
-        # 本地笔记已经完成并落盘，发布异常绝不能把它改判 failed
-        outcome["error"] = {
-            "code": "upload_failed",
-            "message": _ERROR_MESSAGES["upload_failed"],
+        document = _extract_document(envelope, safe_title)
+        if document is None:
+            return sanitized_failure(_classify_error(create), attempted_at)
+        warning = None
+        if _has_publication_warnings(envelope):
+            warning = {
+                "code": "partial_publication",
+                "message": _PUBLICATION_WARNING_MESSAGES["partial_publication"],
+            }
+        return {
+            "status": "uploaded",
+            "format": "native_docx",
+            "document": document,
+            "warning": warning,
+            "error": None,
+            "attempted_at": attempted_at,
         }
-        return outcome
+    except FeishuMediaError as exc:
+        code = exc.code if exc.code in _ERROR_MESSAGES else "upload_failed"
+        return sanitized_failure(code, attempted_at)
+    except Exception:
+        # 暂存/图片准备/CLI 编排里的任何异常都降级为脱敏失败：
+        # 本地笔记已经完成并落盘，发布异常绝不能把它改判 failed
+        return sanitized_failure("upload_failed", attempted_at)
     finally:
         shutil.rmtree(staging, ignore_errors=True)

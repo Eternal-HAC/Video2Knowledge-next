@@ -88,6 +88,42 @@ def test_feishu_retry_button_confirms_before_publication_only_retry() -> None:
     assert "POST" in retry
 
 
+def test_feishu_ui_defaults_off_and_describes_online_doc_with_native_images() -> None:
+    tag = re.search(r'<input type="checkbox" id="feishuUploadEnabled"[^>]*>', PAGE)
+    assert tag, "必须存在飞书 opt-in 勾选框"
+    assert "checked" not in tag.group(0), "飞书发布必须默认关闭"
+    assert "在线文档" in PAGE
+    assert "原生图片" in PAGE
+
+
+def test_feishu_publication_renders_document_and_legacy_results() -> None:
+    fn = SCRIPT.split("function renderFeishuPublication(", 1)[1].split("\n}\n", 1)[0]
+    assert "publication.document" in fn
+    assert "已创建飞书在线文档" in fn
+    # 历史已完成任务的 markdown/zip 成功结果仍须可展示，不得因字段缺失报错
+    assert "publication.markdown" in fn
+    assert "publication.zip" in fn
+
+
+def test_feishu_publication_link_is_safe_and_never_innerHTML() -> None:
+    fn = SCRIPT.split("function renderFeishuPublication(", 1)[1].split("\n}\n", 1)[0]
+    assert "innerHTML" not in fn, "不得用 innerHTML 渲染 CLI 数据或 URL"
+    assert "createElement('a')" in fn
+    assert "https://" in fn
+
+
+def test_feishu_publication_surfaces_partial_warning_without_retry() -> None:
+    fn = SCRIPT.split("function renderFeishuPublication(", 1)[1].split("\n}\n", 1)[0]
+    assert "publication.warning" in fn
+    assert "warning.message" in fn
+    assert "retryBtn.hidden = true" in fn
+
+
+def test_feishu_readiness_hint_uses_docs_command() -> None:
+    fn = SCRIPT.split("function renderFeishuReadiness(", 1)[1].split("\n}\n", 1)[0]
+    assert "docs" in fn
+
+
 def test_obsidian_vault_selection_fills_existing_destination_field() -> None:
     """Vault 选择只是对 noteDestination 的便捷填充，不引入第二套目的地字段。"""
     assert 'id="obsidianVaultSelect"' in PAGE
