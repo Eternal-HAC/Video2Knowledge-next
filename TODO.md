@@ -29,8 +29,8 @@ This file holds only the active gap-verification queue. For every item: close it
 1. [x] Optional age-based cleanup of failed/cancelled-task media: implemented locally.
 2. ~~On-demand real checks for YouTube, Bilibili, and Douyin.~~ Completed as a one-off real validation milestone (see PROJECT_STATUS.md): YouTube platform subtitles, Bilibili audio download plus local ASR, and Douyin login through local ASR all passed. Automated tests remain the durable evidence; live results are point-in-time and do not guarantee ongoing platform availability.
 3. [x] Xiaoe-tech research: official permitted download/export followed by existing local import; no URL downloader. Other requested platforms and shop-authorized merchant OpenAPI remain separate future work.
-4. [x] Feishu native cloud image blocks: implemented locally as an online docx with inline image blocks. Deferred: Wiki/docx import, overwrite or sync, permission management, automatic login.
+4. [x] Feishu native cloud image blocks: implemented as an online docx with inline image blocks and verified once against a real user-authorized test folder. Deferred: Wiki/docx import, overwrite or sync, permission management, automatic login.
 
 ## Next single execution task
 
-After separate authorization, run one real Feishu smoke test that creates an online docx in a user-supplied test Drive folder using the native image path. Implementation is complete and covered by fake-runner tests; a real cloud write, login, or scope change each require their own explicit authorization, and automated evidence does not replace that smoke test.
+No active implementation task remains in the accepted Feishu online-docx milestone. Select and authorize the next roadmap slice before starting new feature work; Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred.

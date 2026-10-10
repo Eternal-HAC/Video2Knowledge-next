@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu cloud image discovery review and the online-docx implementation are complete locally. After independent acceptance and separate authorization, run one real Feishu smoke test that creates an online docx in a user-supplied test Drive folder using the native image path. No login, scope change or cloud write is implied by acceptance. Wiki/docx import, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred.
+The native Feishu online-docx milestone is complete, including one separately authorized real-user smoke test in a user-supplied Drive folder. No next implementation milestone has been selected. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -151,7 +151,8 @@ The native Feishu cloud image discovery review and the online-docx implementatio
 - Publication never changes task status: a failed or timed-out cloud create keeps the task `completed`, stores a sanitized `feishu_publication` (`status`, `format=native_docx`, `document`/`error`, `attempted_at`), and the retry endpoint republishes only. Timeout messaging states that a retry may create a duplicate document. No document id, token, identity or raw CLI output is persisted or shown.
 - Source images are copied through a verified open handle: a non-following stat fixes the expected identity, the opened handle is re-checked (links, hard links, replaced or unreliable identities are rejected), and the copy is written from that handle into an exclusive-create target. Uncertain identity or a mid-copy replacement fails closed as `unsupported_image`.
 - When the create envelope is `ok=true` but carries a non-empty `data.warnings`, the document stays `uploaded` and no retry is offered; a fixed redacted `warning {code: partial_publication, message: ...}` is stored and the raw warnings are never persisted.
-- Validation: focused `tests/test_note_integrations.py` (78 passed) and `tests/test_api.py` + `tests/test_frontend_hygiene.py` (140 passed, 1 skipped), plus the full suite (550 passed, 2 skipped); `node --check frontend/script.js` and `git diff --check` passed. All CLI calls use fake runners; no login, no real cloud write, no dependency change. Automated tests do not prove the Markdown-to-docx visual fidelity of a real tenant; a real smoke test remains separately authorized.
+- Automated validation: focused `tests/test_note_integrations.py` (78 passed) and `tests/test_api.py` + `tests/test_frontend_hygiene.py` (140 passed, 1 skipped), plus the full suite (550 passed, 2 skipped); `node --check frontend/script.js` and `git diff --check` passed. These tests use fake runners and made no cloud writes or dependency changes.
+- Real-user smoke validation (2026-10-10, separately authorized): one online docx was created in the user-supplied test Drive folder through the project `publish_note` and `build_feishu_docx_staging` path. A read-back confirmed the test heading and list, a native `<img>` block at the referenced body position, removal of leading Frontmatter and its private image reference, and no create warning or fetch tip. The repository records no folder token, document token/URL, identity, or raw CLI output. This is point-in-time evidence for the tested tenant and CLI version, not a guarantee of permanent service behavior or full fidelity for every Markdown construct.
 
 ## Current constraints
 
