@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, and model context-window diagnosis slices are complete locally; none implies a permanent platform or player guarantee. The next planned slice is Gate 3: reference upstream `7642479` + `8e02db3` to strengthen long-note resilience; the concrete implementation contract will be supplied separately. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, and long-note resilience slices are complete locally; none implies a permanent platform, player, or provider guarantee. The next approved slice is Gate 4: adapt upstream `6abdce7` + `fb97e8a` + `aa29ca2` to isolate packaged ASR in a UTF-8 worker subprocess, including successor-specific cancellation and exact-child cleanup. Real ASR and portable-build smoke remain separate authorization gates. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -177,6 +177,16 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - "Too many tokens per minute" remains a rate-limit error; a dedicated regression pins it and asserts the message does not mention the context window.
 - Validation (fresh): the two `friendly_llm_error` regressions passed; `tests/test_api.py` 134 passed, 1 skipped; full suite 571 passed, 2 skipped. The context regression failed before the production change.
 - Next: Gate 3, reference upstream `7642479` + `8e02db3` to strengthen long-note resilience; the concrete implementation contract will be given separately by the coordinator.
+
+## Completed long-note resilience gate
+
+- Ported the capabilities of upstream `7642479` + `8e02db3` without cherry-picking; explicitly excluded `23b057f` (no speed/quality selector or request-protocol change).
+- Note-generation organizing calls (chunk compression, hierarchical merge, tail patch) now use a dynamic output budget from material characters: content = int(characters / 1.6 * 0.45) plus a 1500-token thinking reserve, clamped to 1600..5000.
+- The condensed path merges short ASR lines before chunking, so timestamp overhead no longer forces extra lossy compression calls; transcript artifacts stay sentence-level. A chunk compression failure falls back to `segments_to_prompt(chunk)` with a warning; a merge failure returns the complete current-level notes for that round; a tail-patch failure or timeout keeps the draft. Cancellation is re-raised before any generic exception handler.
+- Thinking reserve is evidence-based: `_THINKING_SEEN_CHANNELS` records a channel only after a stream actually emits reasoning; subsequent `auto` requests for that (model_type, base_url, model) add 2000 tokens unless the channel is DeepSeek-compatible. `requested` uses the caller budget and `omit` sends no limit.
+- Advice now depends on `_controls_thinking`: DeepSeek compatibility and glm/qwen/openai keep actionable guidance; custom/ollama-like channels say the program has no thinking switch and suggest concise mode, shorter input, or a larger-output model instead of changing the level.
+- Validation (fresh): `tests/test_summarizer.py` 84 passed; `tests/test_api.py` 134 passed, 1 skipped; full suite 588 passed, 2 skipped. The new regressions failed before the production changes.
+- Remaining risks: the first request on a channel has no reasoning evidence and may still be short; the evidence cache is process-local and empty after restart; generic failures degrade but cancellation never does; no real provider was called.
 
 ## Current constraints
 

@@ -33,7 +33,8 @@ This file holds only the active gap-verification queue. For every item: close it
 5. [x] Subtitle-file import and SRT export: ported from upstream `662f56b`. `.srt` / `.vtt` imports become an already-timed transcript without download or ASR; any transcript exports standard SubRip from backend segments.
 6. [x] Windows static-asset MIME pinning: ported from upstream `55166ad`. `.js` / `.mjs` / `.css` / `.html` types are fixed in code (including 304 revalidation), independent of the OS registry; cache and security headers are unchanged.
 7. [x] Model context-window diagnosis: ported from upstream `68117a6`. Context-window markers are recognized before generic status codes, with actionable local-model guidance; `Too many tokens per minute` remains a rate-limit error.
+8. [x] Long-note resilience: adopted the capabilities of upstream `7642479` + `8e02db3` (dynamic note budgets, short-line merging before chunking, chunk/merge/tail-patch degradation, evidence-based thinking reserve, accurate advice for uncontrollable thinking). Explicitly excluded `23b057f`; no speed/quality UI or request-protocol change was introduced.
 
 ## Next single execution task
 
-Gate 3: reference upstream `7642479` + `8e02db3` to strengthen long-note resilience. The concrete implementation contract will be supplied separately by the coordinator before implementation starts.
+Gate 4: adapt upstream `6abdce7` + `fb97e8a` + `aa29ca2` so packaged ASR runs in a UTF-8 worker subprocess, with successor-specific cancellation/reaping, strict result validation, early launcher dispatch, and fake-worker regression coverage. Source checkouts must keep the current in-process route; real ASR and portable-build smoke remain separately authorized work.

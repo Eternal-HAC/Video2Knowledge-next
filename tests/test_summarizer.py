@@ -20,6 +20,16 @@ from backend.llm_summarizer import (
 from backend.transcript import TranscriptSegment, segments_to_prompt
 
 
+@pytest.fixture(autouse=True)
+def _isolate_llm_channel_caches(monkeypatch: pytest.MonkeyPatch) -> None:
+    """通道级缓存跨任务存活；测试里必须每条用例都是全新的，避免执行顺序影响结果。"""
+    import backend.llm_summarizer as module
+
+    monkeypatch.setattr(module, "_REJECTED_REASONING_PARAMS", {})
+    # 实现前该集合尚不存在；raising=False 让缺口以具体断言失败而不是 collection error
+    monkeypatch.setattr(module, "_THINKING_SEEN_CHANNELS", set(), raising=False)
+
+
 def _stream_response(
     content: str | None, finish_reason: str = "stop", reasoning: str | None = None
 ):
@@ -1770,3 +1780,350 @@ async def test_dropped_stream_with_partial_content_is_not_retried() -> None:
     with pytest.raises(RuntimeError, match="peer closed"):
         await summarizer._complete("测试", 800, "high")
     assert summarizer.warnings == []
+
+
+def _request_summarizer(
+    model_type: str = "custom",
+    model: str = "m",
+    base_url: str = "http://127.0.0.1:11434/v1",
+) -> LLMSummarizer:
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.model_type = model_type
+    summarizer.model = model
+    summarizer.base_url = base_url
+    summarizer.warnings = []
+    summarizer._rejected_params = set()
+    return summarizer
+
+
+def test_note_budget_estimate_and_clamps() -> None:
+    from backend import llm_summarizer as module
+
+    assert module.NOTE_BUDGET_KEEP_RATIO == 0.45
+    assert module.NOTE_BUDGET_THINKING_RESERVE_TOKENS == 1_500
+    assert module.NOTE_BUDGET_MAX_TOKENS_MIN == 1_600
+    assert module.NOTE_BUDGET_MAX_TOKENS_MAX == 5_000
+    budget = LLMSummarizer._note_budget_max_tokens
+    assert budget(0) == 1_600
+    assert budget(1) == 1_600
+    # 6000 字：int(6000 / 1.6 * 0.45) = 1687，再加 1500 思考预留
+    assert budget(6_000) == 1_687 + 1_500
+    assert budget(200_000) == 5_000
+    assert budget(1_000) < budget(6_000) < budget(200_000)
+
+
+@pytest.mark.asyncio
+async def test_condensed_path_merges_short_asr_lines_before_chunking() -> None:
+    """300 条 8 字碎行按时间戳开销本来会切成多块；先合并再切块只应发一次成稿请求。"""
+    import backend.llm_summarizer as module
+    from backend.transcript import chunk_segments, merge_segment_lines
+
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.warnings = []
+    prompts: list[str] = []
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        prompts.append(prompt)
+        return "# 精简摘要"
+
+    summarizer._complete = complete
+    segments = [TranscriptSegment(i, i + 1, "字" * 8) for i in range(300)]
+    unmerged = chunk_segments(segments, max_characters=module.SUMMARY_CHUNK_CHARACTERS)
+    merged = chunk_segments(
+        merge_segment_lines(segments, module.SECTION_LINE_MERGE_CHARACTERS),
+        max_characters=module.SUMMARY_CHUNK_CHARACTERS,
+    )
+    assert len(unmerged) > 1
+    assert len(merged) == 1
+
+    assert await summarizer.generate_summary("标题", segments, style="concise") == "# 精简摘要"
+    assert len(prompts) == 1
+
+
+@pytest.mark.asyncio
+async def test_chunk_compression_failure_falls_back_to_raw_text() -> None:
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.warnings = []
+    prompts: list[str] = []
+    alpha = "ALPHA" * 800
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        prompts.append(prompt)
+        if "第 1/2 个连续片段" in prompt:
+            raise RuntimeError("channel rejected")
+        if "个连续片段" in prompt:
+            return "第二个片段材料"
+        return "# 笔记"
+
+    summarizer._complete = complete
+    segments = [
+        TranscriptSegment(0, 10, alpha),
+        TranscriptSegment(10, 20, "BETA" * 800),
+        TranscriptSegment(20, 30, "GAMMA" * 800),
+    ]
+    result = await summarizer.generate_summary("标题", segments, style="faithful")
+
+    assert result == "# 笔记"
+    assert any("第 1/2 个转录片段未能整理" in w for w in summarizer.warnings)
+    assert any("RuntimeError" in w for w in summarizer.warnings)
+    assert any(alpha[:20] in prompt for prompt in prompts)
+
+
+@pytest.mark.asyncio
+async def test_chunk_compression_cancellation_propagates() -> None:
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.warnings = []
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        raise asyncio.CancelledError("任务已取消")
+
+    summarizer._complete = complete
+    segments = [
+        TranscriptSegment(0, 10, "A" * 4_000),
+        TranscriptSegment(10, 20, "B" * 4_000),
+        TranscriptSegment(20, 30, "C" * 4_000),
+    ]
+    with pytest.raises(asyncio.CancelledError):
+        await summarizer.generate_summary("标题", segments, style="faithful")
+    assert not any("未能整理" in w for w in summarizer.warnings)
+
+
+@pytest.mark.asyncio
+async def test_merge_failure_returns_full_current_level_notes() -> None:
+    summarizer = _request_summarizer()
+    notes = ["A" * 6_000, "B" * 6_000, "C" * 6_000]
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        raise RuntimeError("merge rejected")
+
+    summarizer._complete = complete
+    result = await summarizer._reduce_chunks("标题", notes, "auto", "faithful", None)
+
+    assert result == notes
+    assert any(
+        "第 1 层内容归并失败" in w and "RuntimeError" in w for w in summarizer.warnings
+    )
+
+
+@pytest.mark.asyncio
+async def test_merge_cancellation_propagates() -> None:
+    summarizer = _request_summarizer()
+    notes = ["A" * 6_000, "B" * 6_000, "C" * 6_000]
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        raise asyncio.CancelledError("任务已取消")
+
+    summarizer._complete = complete
+    with pytest.raises(asyncio.CancelledError):
+        await summarizer._reduce_chunks("标题", notes, "auto", "faithful", None)
+    assert summarizer.warnings == []
+
+
+@pytest.mark.asyncio
+async def test_tail_patch_generic_failure_keeps_draft() -> None:
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.warnings = []
+
+    async def complete(prompt, **kwargs):
+        raise RuntimeError("model returned nothing")
+
+    summarizer._complete = complete
+    segments = [
+        TranscriptSegment(0, 300, "前半部分"),
+        TranscriptSegment(300, 591, "结尾的题目讲解"),
+    ]
+    draft = "# 视频笔记\n\n[00:01-04:00] 前半部分要点"
+
+    result = await summarizer._ensure_tail_coverage(
+        "标题", draft, segments, "faithful", "max", None
+    )
+
+    assert result == draft
+    assert any("补写结尾失败" in w and "RuntimeError" in w for w in summarizer.warnings)
+
+
+def test_thinking_reserve_only_after_reasoning_evidence() -> None:
+    import backend.llm_summarizer as module
+
+    assert module.THINKING_RESERVE_TOKENS == 2_000
+    summarizer = _request_summarizer()
+    assert summarizer._build_request("p", 800, "auto")["max_tokens"] == 800
+
+    module._THINKING_SEEN_CHANNELS.add(summarizer._param_cache_key())
+    assert summarizer._build_request("p", 800, "auto")["max_tokens"] == 2_800
+    assert (
+        summarizer._build_request("p", 800, "auto", budget="requested")["max_tokens"]
+        == 800
+    )
+    omitted = summarizer._build_request("p", 800, "auto", budget="omit")
+    assert "max_tokens" not in omitted and "max_completion_tokens" not in omitted
+
+
+def test_thinking_reserve_does_not_double_deepseek_budget() -> None:
+    import backend.llm_summarizer as module
+
+    summarizer = _request_summarizer(
+        model_type="deepseek",
+        model="deepseek-flash",
+        base_url="https://api.deepseek.com",
+    )
+    module._THINKING_SEEN_CHANNELS.add(summarizer._param_cache_key())
+    request = summarizer._build_request("p", 800, "auto")
+    assert request["max_tokens"] == module.DEEPSEEK_HIGH_TOKEN_BUDGET
+
+
+def test_thinking_reserve_scoped_to_the_seen_channel() -> None:
+    import backend.llm_summarizer as module
+
+    seen = _request_summarizer()
+    other = _request_summarizer(model="other")
+    module._THINKING_SEEN_CHANNELS.add(seen._param_cache_key())
+
+    assert seen._build_request("p", 800, "auto")["max_tokens"] == 2_800
+    assert other._build_request("p", 800, "auto")["max_tokens"] == 800
+
+
+@pytest.mark.asyncio
+async def test_complete_records_thinking_seen_even_with_empty_content() -> None:
+    import backend.llm_summarizer as module
+
+    async def create(**kwargs):
+        return _stream_response(None, "length", reasoning="思考")
+
+    summarizer = _request_summarizer()
+    summarizer.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    with pytest.raises(RuntimeError):
+        await summarizer._complete("p", 800, "off")
+    assert summarizer._param_cache_key() in module._THINKING_SEEN_CHANNELS
+
+
+@pytest.mark.asyncio
+async def test_thinking_reserve_does_not_override_budget_degradation() -> None:
+    import backend.llm_summarizer as module
+
+    class RejectTokens(Exception):
+        status_code = 400
+
+        def __init__(self, message: str):
+            super().__init__(message)
+            self.body = {
+                "error": {
+                    "message": message,
+                    "type": "invalid_request_error",
+                    "param": "max_tokens",
+                    "code": "unsupported_parameter",
+                }
+            }
+
+    attempts: list[dict] = []
+
+    async def create(**kwargs):
+        attempts.append(dict(kwargs))
+        if kwargs.get("max_tokens", 0) > 800:
+            raise RejectTokens("Error code: 400 - 'max_tokens' is not supported")
+        return _stream_response("摘要")
+
+    summarizer = _request_summarizer()
+    module._THINKING_SEEN_CHANNELS.add(summarizer._param_cache_key())
+    summarizer.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    assert await summarizer._complete("p", 800, "auto") == "摘要"
+    assert attempts[0]["max_tokens"] == 2_800
+    assert attempts[1]["max_tokens"] == 800
+
+
+def test_controls_thinking_by_channel() -> None:
+    assert _request_summarizer(
+        model_type="custom", model="deepseek-v3", base_url="https://gw.example/v1"
+    )._controls_thinking()
+    assert _request_summarizer(model_type="glm", model="glm-4.5")._controls_thinking()
+    assert _request_summarizer(model_type="qwen", model="qwen3")._controls_thinking()
+    assert _request_summarizer(model_type="openai", model="gpt-5")._controls_thinking()
+    assert not _request_summarizer(
+        model_type="custom", model="llama3", base_url="http://127.0.0.1:11434/v1"
+    )._controls_thinking()
+
+
+@pytest.mark.asyncio
+async def test_uncontrolled_channel_off_reasoning_does_not_advise_effort_switch() -> None:
+    async def create(**kwargs):
+        return _stream_response("正文", "stop", reasoning="思考链")
+
+    summarizer = _request_summarizer(
+        model_type="custom", model="llama3", base_url="http://127.0.0.1:11434/v1"
+    )
+    summarizer.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    assert await summarizer._complete("p", 800, "off") == "正文"
+    warning = " ".join(summarizer.warnings)
+    assert "没有思考开关" in warning or "没有这条通道的思考开关" in warning
+    assert "改选「高」" not in warning
+
+
+@pytest.mark.asyncio
+async def test_uncontrolled_channel_empty_content_advises_alternatives() -> None:
+    async def create(**kwargs):
+        return _stream_response(None, "length", reasoning="思考" * 100)
+
+    summarizer = _request_summarizer(
+        model_type="custom", model="llama3", base_url="http://127.0.0.1:11434/v1"
+    )
+    summarizer.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    with pytest.raises(RuntimeError) as raised:
+        await summarizer._complete("p", 800, "off")
+    text = str(raised.value)
+    assert "没有这条通道的思考开关" in text
+    assert "改选「高」" not in text
+    assert "精简摘要" in text
+
+
+@pytest.mark.asyncio
+async def test_controlled_channel_keeps_actionable_advice() -> None:
+    async def create(**kwargs):
+        return _stream_response(None, "length", reasoning="思考" * 100)
+
+    summarizer = _request_summarizer(
+        model_type="glm",
+        model="glm-4.5-flash",
+        base_url="https://open.bigmodel.cn/api/paas/v4",
+    )
+    summarizer.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    with pytest.raises(RuntimeError) as raised:
+        await summarizer._complete("p", 800, "off")
+    assert "改用「高」或「最大」档" in str(raised.value)
+
+
+@pytest.mark.asyncio
+async def test_organization_instructions_enter_condensed_final_prompt_without_extra_calls() -> None:
+    summarizer = object.__new__(LLMSummarizer)
+    summarizer.warnings = []
+    prompts: list[str] = []
+
+    async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+        prompts.append(prompt)
+        return "片段材料" if "个连续片段" in prompt else "# 笔记"
+
+    summarizer._complete = complete
+    segments = [
+        TranscriptSegment(0, 10, "A" * 4_000),
+        TranscriptSegment(10, 20, "B" * 4_000),
+        TranscriptSegment(20, 30, "C" * 4_000),
+    ]
+    await summarizer.generate_summary(
+        "标题", segments, style="faithful", organization_instructions="按发言人整理"
+    )
+    assert sum("个连续片段" in prompt for prompt in prompts) >= 2
+    assert "按发言人整理" in prompts[-1]
+
+    with_instructions = len(prompts)
+    prompts.clear()
+    await summarizer.generate_summary("标题", segments, style="faithful")
+    assert len(prompts) == with_instructions
