@@ -4,7 +4,7 @@ Updated: 2026-10-19
 
 ## Current stage
 
-`Subtitle import and SRT export accepted; selective upstream reliability sync in progress`
+`Selective upstream reliability sync independently accepted locally`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, and transcript-archive/completion-page slices are complete locally; none implies a permanent platform, player, or provider guarantee. The next planned slice is Gate 7: harden the LLM test-connection path around local key read/initialization failures; the concrete contract will be supplied by the coordinator. A real portable-build ASR smoke test requires separate authorization. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync is complete. Remaining work requires user decisions or authorization: a real portable-build ASR smoke test, a proxy/diagnostics policy (including the deliberate choice not to auto-bypass proxies), headless agent operation, new platform and Feishu extensions, and any push or release.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -216,6 +216,14 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - The completion notice now shows the archive file as the primary line (`已保存到 ...`) and keeps the task directory as secondary information; tasks without an archive keep the task/output directory as the primary line. Task-local names, custom destinations, attachments, Feishu retry and agent-origin history rules are unchanged.
 - Validation (fresh): `tests/test_api.py` + `tests/test_frontend_hygiene.py` + `tests/test_media_retention.py` 203 passed, 2 skipped; full suite 647 passed, 3 skipped. `node --check` and `git diff --check` clean.
 - Remaining limits: transcript archive is workspace-local only (no Obsidian/Feishu transcript sync); a custom destination is never used for transcripts; the completion page displays paths rather than linkifying them.
+
+## Completed LLM test-connection key-read gate
+
+- Ported only the local key-read/initializer boundary from upstream `088b665`; diagnostics endpoints, proxy bypass, DNS/external probes and frontend changes were deliberately excluded.
+- `POST /api/llm-test` now catches any non-RuntimeError exception from `resolve_llm_credentials` and returns HTTP 200 with the existing `{ok, error}` envelope and a fixed redacted message; `RuntimeError` business messages are unchanged.
+- Summarizer construction/test failures sanitize `str(exc)` with `utf8_safe`, then `redact_secrets(..., api_key)`, then `redact_paths`, so fake keys, Bearer tokens, Windows paths and lone surrogates cannot leak or break JSON. No raw configuration is logged or returned.
+- Validation (fresh): `tests/test_api.py` 156 passed, 1 skipped; full suite 653 passed, 3 skipped. `git diff --check` clean.
+- Remaining risks: path redaction is pattern-based; unusual path shapes could still appear, and the handler still returns exception type names (never `str(exc)`). No real provider or network request was made.
 
 ## Current constraints
 

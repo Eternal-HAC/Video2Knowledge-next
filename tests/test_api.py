@@ -3282,6 +3282,139 @@ def test_llm_test_resolves_key_by_endpoint_without_mixing_fields(
     assert captured[-1]["api_key"] == "sk-typed"
 
 
+class _DpapiLikeError(Exception):
+    pass
+
+
+@pytest.mark.parametrize(
+    "error_factory",
+    [
+        lambda: OSError("disk failed sk-secret-0123456789"),
+        lambda: PermissionError("denied C:\\Users\\private\\llm_keys.json"),
+        lambda: _DpapiLikeError(
+            "DPAPI failed Bearer TOPSECRET0123456789 \ud83d"
+        ),
+    ],
+)
+def test_llm_test_key_resolution_failure_returns_fixed_error(
+    monkeypatch: pytest.MonkeyPatch, error_factory
+) -> None:
+    def broken(**_kwargs):
+        raise error_factory()
+
+    monkeypatch.setattr(main, "resolve_llm_credentials", broken)
+    response = TestClient(main.app, raise_server_exceptions=False).post(
+        "/api/llm-test",
+        json={"model_type": "custom", "base_url": CORP_GATEWAY},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is False
+    assert set(body) == {"ok", "error"}
+    assert body["error"].startswith("读取本机保存的 Key 失败")
+    assert "请重新保存或清除损坏配置" in body["error"]
+    blob = json.dumps(body, ensure_ascii=False)
+    for leaked in (
+        "sk-secret",
+        "Bearer",
+        "TOPSECRET",
+        "C:\\Users",
+        "private",
+        "\ud83d",
+    ):
+        assert leaked not in blob
+    body["error"].encode("utf-8")
+
+
+def test_llm_test_runtime_error_keeps_business_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def missing(**_kwargs):
+        raise RuntimeError("未提供 API Key，请在模型配置页填写")
+
+    monkeypatch.setattr(main, "resolve_llm_credentials", missing)
+    body = TestClient(main.app, raise_server_exceptions=False).post(
+        "/api/llm-test",
+        json={"model_type": "custom", "base_url": CORP_GATEWAY},
+    ).json()
+
+    assert body == {"ok": False, "error": "未提供 API Key，请在模型配置页填写"}
+
+
+def test_llm_test_construction_failure_redacts_secret_bearer_path_and_surrogate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    secret = "sk-secret-0123456789"
+
+    def resolve(**_kwargs):
+        return secret, "本次请求提供"
+
+    class Boom:
+        def __init__(self, **_kwargs):
+            raise ValueError(
+                f"client init failed key={secret} "
+                "Bearer TOPSECRET0123456789 "
+                "path=C:\\Users\\private\\llm_keys.json lone=" + LONE_SURROGATE
+            )
+
+    monkeypatch.setattr(main, "resolve_llm_credentials", resolve)
+    monkeypatch.setattr(main, "LLMSummarizer", Boom)
+    response = TestClient(main.app, raise_server_exceptions=False).post(
+        "/api/llm-test",
+        json={
+            "model_type": "custom",
+            "base_url": CORP_GATEWAY,
+            "api_key": secret,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is False
+    assert body["error"].startswith("初始化失败")
+    blob = json.dumps(body, ensure_ascii=False)
+    for leaked in (
+        secret,
+        "TOPSECRET",
+        "C:\\Users",
+        "private",
+        LONE_SURROGATE,
+    ):
+        assert leaked not in blob
+    body["error"].encode("utf-8")
+
+
+def test_llm_test_success_envelope_is_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeSummarizer:
+        def __init__(self, **kwargs):
+            self.model = kwargs.get("model") or "fake-model"
+            self.base_url = kwargs.get("base_url") or ""
+
+        async def test_connection(self):
+            return True, "连接成功", 0.05
+
+    monkeypatch.setattr(
+        main, "resolve_llm_credentials", lambda **_kwargs: ("sk-x", "本次请求提供")
+    )
+    monkeypatch.setattr(main, "LLMSummarizer", FakeSummarizer)
+    body = TestClient(main.app).post(
+        "/api/llm-test",
+        json={"model_type": "custom", "base_url": CORP_GATEWAY},
+    ).json()
+
+    assert body == {
+        "ok": True,
+        "message": "连接成功",
+        "latency_ms": 50,
+        "model": "fake-model",
+        "base_url": CORP_GATEWAY,
+        "key_source": "本次请求提供",
+    }
+
+
 LONE_SURROGATE = chr(0xD83D)  # 半个代理对：被 max_tokens 截断的 emoji，编不成 UTF-8
 
 

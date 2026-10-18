@@ -37,7 +37,8 @@ This file holds only the active gap-verification queue. For every item: close it
 9. [x] Packaged ASR worker: frozen builds run faster-whisper/paraformer in a child (protocol v1), source checkouts stay in-process; fake-worker tests cover crash, protocol errors, cancellation and exact-child cleanup. Portable real-machine verification remains separately authorized.
 10. [x] Title/page-aware artifact names: ported from upstream `7236040`. Download/archive/SRT names include B站 page selection and a transcript suffix via `download_stem`; request `bilibili_pages` is preserved and realized metadata is stored separately.
 11. [x] Transcript-only central archive and completion-page lead: ported from upstream `6d05b08` + `fedb621`. Successful transcripts archive to `workspace/transcripts` with the Gate 5 stem; archive failure keeps the task completed; the completion notice leads with the archived file and keeps the task directory as secondary.
+12. [x] LLM test-connection key-read/initializer boundary: selected part of upstream `088b665` (no diagnostics, proxy bypass, DNS probes or frontend). Non-RuntimeError key resolution failures return fixed redacted 200 JSON; initializer errors are utf8_safe plus secret and path redacted.
 
 ## Next single execution task
 
-Gate 7: harden the LLM test-connection path around local key read and initialization failures. The concrete implementation contract will be supplied by the coordinator.
+Selective upstream reliability sync is complete. Remaining work requires user decisions or authorization: portable real-ASR smoke test, proxy/diagnostics policy (no automatic bypass), headless agent operation, new platform/Feishu extensions, and push/release. No further automatic coding gate is queued.

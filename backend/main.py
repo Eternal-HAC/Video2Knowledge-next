@@ -1492,6 +1492,16 @@ async def test_llm_connection(
         )
     except RuntimeError as error:
         return {"ok": False, "error": str(error)}
+    except Exception as error:
+        # 密钥档案读不了（磁盘故障 / DPAPI 失灵 / 文件损坏）不该裸 500。
+        # 只回固定脱敏提示与异常类型；绝不回显 str(error)、路径或配置。
+        return {
+            "ok": False,
+            "error": utf8_safe(
+                "读取本机保存的 Key 失败，请重新保存或清除损坏配置"
+                f"（{type(error).__name__}）"
+            ),
+        }
     try:
         summarizer = LLMSummarizer(
             model_type=model_type,
@@ -1509,7 +1519,13 @@ async def test_llm_connection(
             "key_source": key_source,
         }
     except Exception as exc:
-        return {"ok": False, "error": f"初始化失败：{exc}"}
+        try:
+            detail = utf8_safe(str(exc))
+            detail = redact_secrets(detail, api_key)
+            detail = redact_paths(detail)
+        except Exception:
+            detail = type(exc).__name__
+        return {"ok": False, "error": f"初始化失败：{detail}"}
 
 
 @app.delete("/api/llm-config")
@@ -3004,6 +3020,16 @@ def redact_secrets(text: str, secret: str = "") -> str:
     if secret and len(secret) >= 8:
         cleaned = cleaned.replace(secret, secret_box.mask_secret(secret))
     return cleaned
+
+
+_PATH_IN_TEXT_RE = re.compile(
+    r"(?:[A-Za-z]:[\\/][^\s\"'<>|]+|\\\\[^\s\"'<>|]+|/(?:[^\s/\"'<>|]+/)+[^\s/\"'<>|]*)"
+)
+
+
+def redact_paths(text: str) -> str:
+    """把明显的本机路径替换掉，避免错误回显目录结构。"""
+    return _PATH_IN_TEXT_RE.sub("<路径>", text)
 
 
 def scrub_technical_error(raw: str, secret: str = "") -> str:
