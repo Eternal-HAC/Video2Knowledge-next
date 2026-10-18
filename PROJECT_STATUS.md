@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, and long-note resilience slices are complete locally; none implies a permanent platform, player, or provider guarantee. The next approved slice is Gate 4: adapt upstream `6abdce7` + `fb97e8a` + `aa29ca2` to isolate packaged ASR in a UTF-8 worker subprocess, including successor-specific cancellation and exact-child cleanup. Real ASR and portable-build smoke remain separate authorization gates. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, and packaged ASR worker slices are complete locally; none implies a permanent platform, player, or provider guarantee. No next implementation slice has been selected. A real portable-build ASR smoke test requires separate authorization. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -187,6 +187,17 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - Advice now depends on `_controls_thinking`: DeepSeek compatibility and glm/qwen/openai keep actionable guidance; custom/ollama-like channels say the program has no thinking switch and suggest concise mode, shorter input, or a larger-output model instead of changing the level.
 - Validation (fresh): `tests/test_summarizer.py` 84 passed; `tests/test_api.py` 134 passed, 1 skipped; full suite 588 passed, 2 skipped. The new regressions failed before the production changes.
 - Remaining risks: the first request on a channel has no reasoning evidence and may still be short; the evidence cache is process-local and empty after restart; generic failures degrade but cancellation never does; no real provider was called.
+
+## Completed packaged ASR worker gate
+
+- Ported the packaged-worker approach from upstream `6abdce7` + `fb97e8a` + `aa29ca2` without cherry-picking. Frozen builds route `run_transcription` to a child process (protocol v1, UTF-8 NDJSON); source checkouts keep `run_transcription_local` in-process.
+- The child is launched as `sys.executable --asr-child` in frozen mode and `python -m backend.asr_process` in source mode; Windows uses CREATE_NO_WINDOW; stderr inherits the log stream or is DEVNULL, never PIPE.
+- Strict done validation covers segment times/text, language/device/model/requested_model, duration and the allowed optional fields; malformed events, invalid UTF-8, oversized events, missing terminal events and native crashes fail only the current task with `TranscriptionWorkerDied`. Cancellation via the existing cancel event sends a cancel command and, after the grace period, kills only that child; parent-side cancellation uses shielded cleanup.
+- Paths are validated on both sides (workspace, direct safe task id, regular file, no symlink/reparse, single link, owned media name); old task owner directories remain allowed for transcript reuse. A TOCTOU window between validation and opening remains.
+- Launcher dispatches only the exact `--asr-child` argv, before port probing, logging redirection, server, browser or tray startup.
+- Review follow-up: cancel commands carry protocol=1 (the worker validates it); job fields are strictly typed (use_gpu must be a bool, title str or None, model_name in ASR_MODELS); progress rejects negative values; error codes are limited to worker_error/invalid_job/protocol_error with string messages; up to 16 non-JSON stdout noise lines are ignored while malformed JSON or wrong protocol versions still fail immediately.
+- Validation (fresh): `tests/test_asr_process.py` + `tests/test_launcher.py` 46 passed, 1 skipped; `tests/test_api.py` 136 passed, 1 skipped; full suite 631 passed, 3 skipped; `compileall` and `git diff --check` clean.
+- Limits/risks: after `started` there is no overall timeout (only user cancellation); the path check has a TOCTOU window; non-default concurrent model-cache contention is unverified; automated tests use fake `python -c` workers and cannot prove noconsole behavior, DLL availability, real model loading or spec collection. A portable real-machine smoke test requires separate authorization; no build was produced and no real ASR ran.
 
 ## Current constraints
 

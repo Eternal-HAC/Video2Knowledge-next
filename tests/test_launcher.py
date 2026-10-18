@@ -80,3 +80,59 @@ def test_check_for_updates_opens_new_release_after_confirmation(monkeypatch) -> 
     launcher.check_for_updates()
 
     assert opened == ["https://github.com/example/release"]
+
+
+def test_run_asr_child_configures_dirs_then_calls_child(monkeypatch) -> None:
+    import backend.asr_process as asr_process
+
+    calls: list[str] = []
+    monkeypatch.setattr(launcher, "configure_runtime_dirs", lambda: calls.append("dirs"))
+    monkeypatch.setattr(asr_process, "child_main", lambda: calls.append("child") or 0)
+
+    assert launcher.run_asr_child() == 0
+    assert calls == ["dirs", "child"]
+
+
+def test_main_dispatches_exact_asr_child_argv(monkeypatch) -> None:
+    monkeypatch.setattr(launcher.sys, "argv", ["app", "--asr-child"])
+    calls: list[str] = []
+    monkeypatch.setattr(launcher, "run_asr_child", lambda: calls.append("child") or 7)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("worker must not probe ports")
+
+    monkeypatch.setattr(launcher, "find_available_port", boom)
+    assert launcher.main() == 7
+    assert calls == ["child"]
+
+
+def test_main_does_not_dispatch_mixed_argv(monkeypatch) -> None:
+    monkeypatch.setattr(launcher.sys, "argv", ["app", "--asr-child", "extra"])
+    monkeypatch.setattr(launcher, "configure_runtime_dirs", lambda: None)
+    monkeypatch.setenv("VIDEOTONOTES_WORKSPACE", ".")
+    calls: list[str] = []
+    monkeypatch.setattr(launcher, "run_asr_child", lambda: calls.append("child") or 0)
+
+    def no_port():
+        raise RuntimeError("no port")
+
+    monkeypatch.setattr(launcher, "find_available_port", no_port)
+    monkeypatch.setattr(launcher, "show_error", lambda *_a, **_k: None)
+
+    assert launcher.main() == 1
+    assert calls == []
+
+
+def test_main_keeps_normal_flow_without_child_flag(monkeypatch) -> None:
+    monkeypatch.setattr(launcher.sys, "argv", ["app"])
+    monkeypatch.setattr(launcher, "configure_runtime_dirs", lambda: None)
+    monkeypatch.setenv("VIDEOTONOTES_WORKSPACE", ".")
+    monkeypatch.setattr(launcher, "find_available_port", lambda: 1234)
+    monkeypatch.setattr(launcher, "server_alive", lambda *_a, **_k: True)
+    monkeypatch.setattr(launcher.webbrowser, "open", lambda _url: None)
+    monkeypatch.setenv("VIDEOTONOTES_NO_BROWSER", "1")
+    calls: list[str] = []
+    monkeypatch.setattr(launcher, "run_asr_child", lambda: calls.append("child") or 0)
+
+    assert launcher.main() == 0
+    assert calls == []

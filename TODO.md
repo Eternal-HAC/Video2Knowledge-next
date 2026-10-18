@@ -34,7 +34,8 @@ This file holds only the active gap-verification queue. For every item: close it
 6. [x] Windows static-asset MIME pinning: ported from upstream `55166ad`. `.js` / `.mjs` / `.css` / `.html` types are fixed in code (including 304 revalidation), independent of the OS registry; cache and security headers are unchanged.
 7. [x] Model context-window diagnosis: ported from upstream `68117a6`. Context-window markers are recognized before generic status codes, with actionable local-model guidance; `Too many tokens per minute` remains a rate-limit error.
 8. [x] Long-note resilience: adopted the capabilities of upstream `7642479` + `8e02db3` (dynamic note budgets, short-line merging before chunking, chunk/merge/tail-patch degradation, evidence-based thinking reserve, accurate advice for uncontrollable thinking). Explicitly excluded `23b057f`; no speed/quality UI or request-protocol change was introduced.
+9. [x] Packaged ASR worker: frozen builds run faster-whisper/paraformer in a child (protocol v1), source checkouts stay in-process; fake-worker tests cover crash, protocol errors, cancellation and exact-child cleanup. Portable real-machine verification remains separately authorized.
 
 ## Next single execution task
 
-Gate 4: adapt upstream `6abdce7` + `fb97e8a` + `aa29ca2` so packaged ASR runs in a UTF-8 worker subprocess, with successor-specific cancellation/reaping, strict result validation, early launcher dispatch, and fake-worker regression coverage. Source checkouts must keep the current in-process route; real ASR and portable-build smoke remain separately authorized work.
+No further implementation task has been assigned. A real portable-build ASR smoke test (noconsole behavior, DLL availability, real model loading and spec collection) requires separate authorization before it can be attempted.

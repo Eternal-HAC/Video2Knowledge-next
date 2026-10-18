@@ -2056,6 +2056,87 @@ async def test_local_task_title_uses_uploaded_filename(
     assert any("标题：课程 第一讲" in log for log in finished["logs"])
 
 
+def _worker_task_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, task_id: str):
+    media = tmp_path / task_id / "input.mp4"
+    media.parent.mkdir(parents=True)
+    media.write_bytes(b"bits")
+
+    class FakeProcessor:
+        @staticmethod
+        def detect_source(*args, **kwargs):
+            return main.VideoSource.LOCAL
+
+        @staticmethod
+        async def get_video_info(url_or_path, cookie=None, allow_local=False, notes=None):
+            return {"title": "worker task", "source": "local", "duration": 1}
+
+        @staticmethod
+        async def cleanup(value):
+            return None
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "video_processor", FakeProcessor())
+    task = main.new_task(status="uploaded", task_id=task_id)
+    task.update(uploaded_file_path=str(media), uploaded_filename="a.mp4")
+    main.tasks[task_id] = task
+    return task_id
+
+
+@pytest.mark.asyncio
+async def test_asr_worker_death_fails_only_the_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_id = _worker_task_fixture(tmp_path, monkeypatch, "asr-worker-died")
+
+    async def died(*args, **kwargs):
+        raise main.asr_process.TranscriptionWorkerDied(
+            "语音转写进程异常退出（0xC0000005）；本次任务已停止，程序本身仍在运行"
+        )
+
+    monkeypatch.setattr(main.asr_process, "use_child_process", lambda: True)
+    monkeypatch.setattr(main.asr_process, "run_in_child", died)
+
+    await main.process_video_task(
+        task_id,
+        main.SummarizeRequest(
+            video_url=str(tmp_path / task_id / "input.mp4"),
+            output="transcript",
+            llm_config=main.LLMConfig(),
+        ),
+    )
+
+    finished = main.tasks[task_id]
+    assert finished["status"] == "failed"
+    assert "语音转写进程" in finished["error"] or "转写" in finished["error"]
+    assert TestClient(main.app).get("/api/health").status_code == 200
+    main.tasks.pop(task_id, None)
+
+
+@pytest.mark.asyncio
+async def test_asr_worker_cancel_marks_task_cancelled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_id = _worker_task_fixture(tmp_path, monkeypatch, "asr-worker-cancel")
+
+    async def cancelled(*args, **kwargs):
+        raise asyncio.CancelledError("转写已取消")
+
+    monkeypatch.setattr(main.asr_process, "use_child_process", lambda: True)
+    monkeypatch.setattr(main.asr_process, "run_in_child", cancelled)
+
+    await main.process_video_task(
+        task_id,
+        main.SummarizeRequest(
+            video_url=str(tmp_path / task_id / "input.mp4"),
+            output="transcript",
+            llm_config=main.LLMConfig(),
+        ),
+    )
+
+    assert main.tasks[task_id]["status"] == "cancelled"
+    main.tasks.pop(task_id, None)
+
+
 @pytest.mark.asyncio
 async def test_pipeline_merges_all_bilibili_pages_from_ai_subtitles(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

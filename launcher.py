@@ -336,7 +336,18 @@ def run_tray(url: str, workspace: Path, server: Any) -> int:
 # 入口
 # --------------------------------------------------------------------------
 
+def run_asr_child() -> int:
+    """ASR worker entry: set up dirs, then run the child protocol loop."""
+    configure_runtime_dirs()
+    from backend.asr_process import child_main
+
+    return child_main()
+
+
 def main() -> int:
+    if sys.argv[1:] == ["--asr-child"]:
+        # 转写工人：只干活，不起服务、不进托盘、不重定向 stdout（主程序在用管道读它）
+        return run_asr_child()
     configure_runtime_dirs()
     workspace = Path(os.environ["VIDEOTONOTES_WORKSPACE"])
     no_browser = os.environ.get("VIDEOTONOTES_NO_BROWSER") == "1"
