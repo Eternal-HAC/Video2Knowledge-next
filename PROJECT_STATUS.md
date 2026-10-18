@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx and subtitle-import/SRT-export slices are complete locally; neither implies a permanent platform or player guarantee. The next approved slice pins frontend static-resource media types using upstream `55166ad`, followed by the separately gated reliability work recorded in `TODO.md`. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, and static-resource media-type slices are complete locally; none implies a permanent platform or player guarantee. The next approved slice ports upstream `68117a6` so model context-window exhaustion is diagnosed before generic HTTP status handling while rate-limit errors remain distinct. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -162,6 +162,13 @@ The native Feishu online-docx and subtitle-import/SRT-export slices are complete
 - Local `notes.md` stays authoritative; templates, Frontmatter, custom destinations/Obsidian, opt-in Feishu publication, media retention and the local Markdown+attachments ZIP are unchanged. `subtitle.*` is not treated as owned media.
 - Validation (fresh): `tests/test_transcript.py` + `tests/test_api.py` + `tests/test_frontend_hygiene.py` 168 passed, 1 skipped; full suite 568 passed, 2 skipped. `node --check frontend/script.js` and `git diff --check` passed.
 - Remaining limit: automated tests prove orchestration and local transforms only; real-player SRT rendering and a real platform subtitle import are not exercised. Timed text is required; plain text is rejected instead of inventing timestamps.
+
+## Completed static-asset MIME pinning gate
+
+- Ported upstream `55166ad` without cherry-picking. `NoCacheStaticFiles` now pins `.js` / `.mjs` to `text/javascript; charset=utf-8`, `.css` to `text/css; charset=utf-8`, and `.html` to `text/html; charset=utf-8` from `STATIC_MEDIA_TYPES`, independent of the Windows registry and `mimetypes`.
+- Correct types are applied to both 200 responses and 304 revalidation responses; the existing HTML `Cache-Control: no-store`, other-asset `no-cache`, `X-Content-Type-Options: nosniff` and other security headers are unchanged.
+- Validation (fresh): `tests/test_api.py` 132 passed, 1 skipped; full suite 569 passed, 2 skipped. The new regression forces `starlette.responses.guess_type` to `text/plain` and asserts the JS/CSS/HTML types plus a 304 carrying the ETag; it failed before the production change.
+- Remaining limit: this covers the extensions the bundled frontend serves; new asset kinds need an explicit entry instead of falling back to the OS table.
 
 ## Current constraints
 
