@@ -848,6 +848,8 @@ def load_reused_video_info(
         "timestamp": manifest.get("timestamp") or 0,
         "view_count": manifest.get("view_count") or 0,
         "like_count": manifest.get("like_count") or 0,
+        "bili_selected_pages": manifest.get("bili_selected_pages"),
+        "bili_total_pages": manifest.get("bili_total_pages"),
         "description": "",
     }
 
@@ -868,6 +870,11 @@ def update_task_manifest(task_id: str, info: dict[str, Any]) -> None:
         view_count=info.get("view_count"),
         like_count=info.get("like_count"),
     )
+    # 分 P 信息只在 B 站多 P 时才有，缺键的旧任务重开时不能把它写空。
+    # bilibili_pages 仍是请求里的 list[int]|None，realized 信息单独用新键。
+    for key in ("bili_selected_pages", "bili_total_pages"):
+        if info.get(key) is not None:
+            payload[key] = info[key]
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -1124,6 +1131,17 @@ def task_status_payload(task_id: str, task: dict[str, Any]) -> dict[str, Any]:
     payload["uploaded_filename"] = payload.get("uploaded_filename") or manifest.get(
         "uploaded_filename"
     )
+    result = task.get("result") if isinstance(task.get("result"), dict) else {}
+    payload["download_name"] = download_stem(
+        str(
+            result.get("title")
+            or manifest.get("title")
+            or manifest.get("uploaded_filename")
+            or ""
+        ),
+        manifest,
+        str(task.get("output") or manifest.get("output") or "note"),
+    )
     return payload
 
 
@@ -1218,7 +1236,7 @@ async def get_task_transcript(
             "task_id": task_id,
             "title": title,
             "format": "srt",
-            "filename": f"{_safe_filename(title)}.srt",
+            "filename": f"{download_stem(title, manifest, 'transcript')}.srt",
             "text": segments_to_srt(
                 [
                     TranscriptSegment(
@@ -1880,7 +1898,11 @@ async def download_summary_markdown(task_id: str) -> Response:
         raise HTTPException(status_code=404, detail="Markdown 笔记不存在")
 
     title = (task.get("result") or {}).get("title", "video-notes")
-    safe_name = _safe_filename(title) or "video-notes"
+    safe_name = download_stem(
+        str(title),
+        read_task_manifest(task_id),
+        str(task.get("output") or "note"),
+    )
     try:
         note_text = output_path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -2336,12 +2358,19 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                         info["duration"] = sum(
                             page.duration for page in subtitle_outcome.pages
                         ) or info.get("duration")
+                        info["bili_selected_pages"] = [
+                            {"page": page.page, "part": page.part}
+                            for page in subtitle_outcome.pages
+                        ]
+                    if subtitle_outcome.total_pages:
+                        info["bili_total_pages"] = subtitle_outcome.total_pages
+                    if subtitle_outcome.pages or subtitle_outcome.total_pages:
+                        update_task_manifest(task_id, info)
                     if subtitle_outcome.total_pages > 1:
                         task["logs"].append(
                             f"检测到 B 站分 P 视频：共 {subtitle_outcome.total_pages} 个分 P，"
                             f"本次处理 {_format_page_nums(subtitle_outcome.pages)}"
                         )
-                        update_task_manifest(task_id, info)
                 if subtitle_outcome is not None and subtitle_outcome.result:
                     transcript_result = {
                         "segments": subtitle_outcome.result.segments,
@@ -2701,7 +2730,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
         task_dir = WORKSPACE_DIR / task_id
         (task_dir / "notes.md").write_text(summary, encoding="utf-8")
         archived_path = archive_note(
-            title, summary, task_id, request.note_destination
+            download_stem(title, info), summary, task_id, request.note_destination
         )
         if archived_path:
             task["logs"].append(f"笔记已归档：{archived_path}")
@@ -3095,11 +3124,71 @@ def append_note_footer(
     return f"{summary.rstrip()}\n\n{footer}\n"
 
 
+SAFE_NAME_LIMIT = 80
+
+
+def _sanitize_name_text(value: str) -> str:
+    """只去掉 Windows 非法字符与控制字符，保留中文标点。"""
+    invalid = set('\\/:*?"<>|')
+    cleaned = "".join(
+        char for char in str(value) if char not in invalid and ord(char) >= 32
+    )
+    return cleaned.strip()
+
+
 def _safe_filename(value: str) -> str:
     """把标题清洗为安全的文件名：只去掉 Windows 非法字符，保留中文标点。"""
-    invalid = set('\\/:*?"<>|')
-    cleaned = "".join(char for char in value if char not in invalid and ord(char) >= 32)
-    return (cleaned.strip() or "video-notes")[:80]
+    return (_sanitize_name_text(value) or "video-notes")[:SAFE_NAME_LIMIT]
+
+
+def download_stem(title: str, meta: dict[str, Any], output: str = "note") -> str:
+    """产物文件名主干（不含扩展名），下载、压缩包、归档和网页端共用。
+
+    B 站分 P 与纯转录都要带进名字：同一视频逐 P 跑出来的笔记、以及同一视频
+    先转写后生成的两份产物，否则在下载目录里只剩一串相同或时间戳文件名。
+    分 P 标记与转录正文里用的「【P3 分P名】」保持同一写法；80 字预算优先保后缀。
+    """
+    base = _sanitize_name_text(title) or "video-notes"
+    raw_pages = meta.get("bili_selected_pages")
+    pages = [
+        page
+        for page in (raw_pages if isinstance(raw_pages, list) else [])
+        if isinstance(page, dict)
+        and isinstance(page.get("page"), int)
+        and not isinstance(page.get("page"), bool)
+    ]
+    raw_total = meta.get("bili_total_pages")
+    total = (
+        raw_total
+        if isinstance(raw_total, int) and not isinstance(raw_total, bool)
+        else 0
+    )
+    descriptor = ""
+    part = ""
+    if total > 1 and pages:
+        if len(pages) == 1:
+            descriptor = f"P{pages[0]['page']}"
+            part = _sanitize_name_text(str(pages[0].get("part") or ""))
+        elif len(pages) < total:
+            descriptor = f"P{_format_page_nums([page['page'] for page in pages])}"
+    transcript = "【转录】" if output == "transcript" else ""
+    suffix = (
+        f"【{descriptor}{(' ' + part) if part else ''}】{transcript}"
+        if descriptor
+        else transcript
+    )
+    if len(base) + len(suffix) > SAFE_NAME_LIMIT:
+        base = base[: max(1, SAFE_NAME_LIMIT - len(suffix))].rstrip() or "v"
+    if len(base) + len(suffix) > SAFE_NAME_LIMIT and part:
+        minimal = f"【{descriptor}】{transcript}"
+        room = SAFE_NAME_LIMIT - len(base) - len(minimal) - 1
+        part = part[: max(0, room)].rstrip()
+        suffix = f"【{descriptor} {part}】{transcript}" if part else minimal
+    if len(base) + len(suffix) > SAFE_NAME_LIMIT:
+        room = SAFE_NAME_LIMIT - len(base) - len("【】") - len(transcript)
+        descriptor = descriptor[: max(1, room)].rstrip()
+        suffix = f"【{descriptor}】{transcript}" if descriptor else transcript
+    return _safe_filename(f"{base}{suffix}")
 
 
 def rewrite_note_image_refs(content: str, prefix: str) -> str:

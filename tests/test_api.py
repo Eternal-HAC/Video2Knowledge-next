@@ -1062,6 +1062,170 @@ def test_archive_note_ignored_by_task_discovery(monkeypatch, tmp_path) -> None:
     assert main.find_reusable_task("https://www.bilibili.com/video/BV1xx") is None
 
 
+def test_download_stem_matches_title_and_bilibili_page_selection() -> None:
+    stem = main.download_stem
+    assert main.SAFE_NAME_LIMIT == 80
+    assert stem("课程", {}) == "课程"
+    assert stem(
+        "课程",
+        {
+            "bili_selected_pages": [
+                {"page": 1, "part": "一"},
+                {"page": 2, "part": "二"},
+            ],
+            "bili_total_pages": 2,
+        },
+    ) == "课程"
+    assert stem(
+        "课程",
+        {
+            "bili_selected_pages": [{"page": 2, "part": "第二章 梯度"}],
+            "bili_total_pages": 3,
+        },
+    ) == "课程【P2 第二章 梯度】"
+    assert stem(
+        "课程",
+        {
+            "bili_selected_pages": [
+                {"page": 1, "part": "一"},
+                {"page": 3, "part": "三"},
+            ],
+            "bili_total_pages": 4,
+        },
+    ) == "课程【P1、3】"
+    assert stem(
+        "课程",
+        {
+            "bili_selected_pages": [{"page": 2, "part": "第二章"}],
+            "bili_total_pages": 3,
+        },
+        "transcript",
+    ) == "课程【P2 第二章】【转录】"
+    assert stem("a/b:c*?", {}) == "abc"
+    assert stem("", {}) == "video-notes"
+
+
+def test_download_stem_keeps_markers_when_trimming_long_chinese_part() -> None:
+    stem = main.download_stem(
+        "很长的标题" * 20,
+        {
+            "bili_selected_pages": [{"page": 2, "part": "超长的分P名称" * 20}],
+            "bili_total_pages": 3,
+        },
+        "transcript",
+    )
+    assert len(stem) <= main.SAFE_NAME_LIMIT
+    assert "【P2 " in stem
+    assert stem.endswith("【转录】")
+
+
+def test_download_markdown_and_zip_use_page_aware_stem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    realized = {
+        "title": "课程",
+        "bili_selected_pages": [{"page": 2, "part": "第二章"}],
+        "bili_total_pages": 3,
+    }
+    bundled = tmp_path / "stem-zip"
+    (bundled / "frames").mkdir(parents=True)
+    (bundled / "frames" / "f.jpg").write_bytes(b"jpeg")
+    (bundled / "notes.md").write_text("# 笔记\n\n![图](./frames/f.jpg)", encoding="utf-8")
+    (bundled / "task.json").write_text(
+        json.dumps(realized, ensure_ascii=False), encoding="utf-8"
+    )
+    plain = tmp_path / "stem-md"
+    plain.mkdir()
+    (plain / "notes.md").write_text("# 笔记", encoding="utf-8")
+    (plain / "task.json").write_text(
+        json.dumps(realized, ensure_ascii=False), encoding="utf-8"
+    )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    for task_id in ("stem-zip", "stem-md"):
+        main.tasks[task_id] = main.new_task()
+        main.tasks[task_id].update(status="completed", result={"title": "课程"})
+
+    zipped = TestClient(main.app).get("/api/download/stem-zip")
+    assert zipped.headers["content-type"] == "application/zip"
+    disposition = unquote(zipped.headers["content-disposition"].split("UTF-8''", 1)[1])
+    assert disposition == "课程【P2 第二章】.zip"
+    with zipfile.ZipFile(io.BytesIO(zipped.content)) as archive:
+        assert "课程【P2 第二章】.md" in archive.namelist()
+
+    markdown = TestClient(main.app).get("/api/download/stem-md")
+    disposition = unquote(markdown.headers["content-disposition"].split("UTF-8''", 1)[1])
+    assert disposition == "课程【P2 第二章】.md"
+    main.tasks.pop("stem-zip", None)
+    main.tasks.pop("stem-md", None)
+
+
+def test_srt_export_always_uses_transcript_stem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_id = "srt-stem"
+    task_dir = tmp_path / task_id
+    task_dir.mkdir()
+    (task_dir / "transcript.json").write_text(
+        json.dumps(
+            {
+                "language": "zh",
+                "source": "faster_whisper",
+                "segments": [{"start": 0.0, "end": 1.0, "text": "字幕"}],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (task_dir / "task.json").write_text(
+        json.dumps(
+            {
+                "title": "课程",
+                "output": "note",
+                "bili_selected_pages": [{"page": 2, "part": "第二章"}],
+                "bili_total_pages": 3,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+
+    body = TestClient(main.app).get(
+        f"/api/task/{task_id}/transcript?output_format=srt"
+    ).json()
+
+    assert body["filename"] == "课程【P2 第二章】【转录】.srt"
+
+
+def test_archive_note_accepts_page_aware_stem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    frames = workspace / "task" / "frames"
+    frames.mkdir(parents=True)
+    destination.mkdir()
+    (frames / "same.jpg").write_bytes(b"img")
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+    stem = main.download_stem(
+        "课程",
+        {
+            "bili_selected_pages": [{"page": 2, "part": "第二章"}],
+            "bili_total_pages": 3,
+        },
+    )
+
+    archived = main.archive_note(
+        stem, "![图](./frames/same.jpg)", "task", destination
+    )
+
+    assert archived.name == "课程【P2 第二章】.md"
+    assert (
+        destination / "课程【P2 第二章】-attachments" / "same.jpg"
+    ).read_bytes() == b"img"
+
+
 def test_download_returns_markdown_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2209,6 +2373,14 @@ async def test_pipeline_merges_all_bilibili_pages_from_ai_subtitles(
     assert task["result"]["transcript_source"] == "bilibili_ai_subtitle"
     assert any("共 2 个分 P" in log for log in task["logs"])
     assert any("本次处理 1、2" in log for log in task["logs"])
+    manifest = json.loads(
+        (tmp_path / task_id / "task.json").read_text(encoding="utf-8")
+    )
+    assert manifest["bili_selected_pages"] == [
+        {"page": 1, "part": "第一部分"},
+        {"page": 2, "part": "第二部分"},
+    ]
+    assert manifest["bili_total_pages"] == 2
 
 
 @pytest.mark.asyncio
@@ -2307,6 +2479,14 @@ async def test_pipeline_transcribes_missing_bilibili_page_and_merges(
     assert captured_segments[0].text.startswith("【P1 第一部分】 P1字幕")
     assert captured_segments[1].text.startswith("【P2 第二部分】 P2语音内容")
     assert captured_segments[1].start == 60.0
+    manifest = json.loads(
+        (tmp_path / task_id / "task.json").read_text(encoding="utf-8")
+    )
+    assert manifest["bili_selected_pages"] == [
+        {"page": 1, "part": "第一部分"},
+        {"page": 2, "part": "第二部分"},
+    ]
+    assert manifest["bili_total_pages"] == 2
 
 
 @pytest.mark.asyncio
@@ -2367,10 +2547,20 @@ async def test_pipeline_passes_bilibili_pages_to_subtitle_fetch(
         bilibili_pages=[1, 2],
         llm_config=main.LLMConfig(model_type="deepseek", api_key="test-key"),
     )
+    main.write_task_manifest(task_id, request, None, "web")
 
     await main.process_video_task(task_id, request)
 
     assert captured["only_pages"] == [1, 2]
+    manifest = json.loads(
+        (tmp_path / task_id / "task.json").read_text(encoding="utf-8")
+    )
+    assert manifest["bilibili_pages"] == [1, 2]
+    assert manifest["bili_selected_pages"] == [
+        {"page": 1, "part": "第一部分"},
+        {"page": 2, "part": "第二部分"},
+    ]
+    assert manifest["bili_total_pages"] == 2
 
 
 def test_bili_pages_endpoint_returns_page_list(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -3228,7 +3418,7 @@ def test_transcript_endpoint_serves_srt_one_cue_per_segment(
         "\r\n2\r\n00:00:03,240 --> 00:01:05,500\r\n第二段\r\n"
         "\r\n3\r\n01:01:01,700 --> 01:01:05,000\r\n第三段\r\n"
     )
-    assert body["filename"] == "老视频.srt"
+    assert body["filename"] == "老视频【转录】.srt"
     assert main.parse_subtitle_payload(body["text"], "srt")[0].text == "第一段"
 
 
@@ -3297,6 +3487,75 @@ def test_restore_keeps_transcript_task_completed_and_hidden(monkeypatch, tmp_pat
     assert restored["output"] == "transcript"
     assert restored["result"]["segment_count"] == 1
     assert TestClient(main.app).get("/api/tasks").json()["tasks"] == []
+
+
+def test_update_task_manifest_keeps_request_pages_and_realized_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    task_id = "realized-task"
+    task_dir = tmp_path / task_id
+    task_dir.mkdir()
+    url = "https://www.bilibili.com/video/BV1ab"
+    (task_dir / "task.json").write_text(
+        json.dumps({"normalized_source_url": url, "bilibili_pages": [1, 3]}),
+        encoding="utf-8",
+    )
+
+    main.update_task_manifest(
+        task_id,
+        {
+            "title": "课程",
+            "bili_selected_pages": [
+                {"page": 1, "part": "一"},
+                {"page": 3, "part": "三"},
+            ],
+            "bili_total_pages": 4,
+        },
+    )
+
+    manifest = json.loads((task_dir / "task.json").read_text(encoding="utf-8"))
+    assert manifest["bilibili_pages"] == [1, 3]
+    assert manifest["bili_selected_pages"] == [
+        {"page": 1, "part": "一"},
+        {"page": 3, "part": "三"},
+    ]
+    assert manifest["bili_total_pages"] == 4
+    assert main.previous_bili_pages(url) == [1, 3]
+
+
+def test_task_status_download_name_uses_realized_meta_and_old_manifest_degrades(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    new_id = "name-new"
+    (tmp_path / new_id).mkdir()
+    (tmp_path / new_id / "task.json").write_text(
+        json.dumps(
+            {
+                "title": "课程",
+                "bili_selected_pages": [{"page": 2, "part": "第二章"}],
+                "bili_total_pages": 3,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    new_task = main.new_task(status="completed", task_id=new_id)
+    new_task["result"] = {"title": "课程"}
+    assert (
+        main.task_status_payload(new_id, new_task)["download_name"]
+        == "课程【P2 第二章】"
+    )
+
+    old_id = "name-old"
+    (tmp_path / old_id).mkdir()
+    (tmp_path / old_id / "task.json").write_text(
+        json.dumps({"title": "旧课程"}, ensure_ascii=False), encoding="utf-8"
+    )
+    old_task = main.new_task(status="completed", task_id=old_id)
+    old_task["result"] = {"title": "旧课程"}
+    assert main.task_status_payload(old_id, old_task)["download_name"] == "旧课程"
 
 
 def test_previous_bili_pages_returns_latest_explicit_selection(

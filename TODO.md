@@ -35,7 +35,8 @@ This file holds only the active gap-verification queue. For every item: close it
 7. [x] Model context-window diagnosis: ported from upstream `68117a6`. Context-window markers are recognized before generic status codes, with actionable local-model guidance; `Too many tokens per minute` remains a rate-limit error.
 8. [x] Long-note resilience: adopted the capabilities of upstream `7642479` + `8e02db3` (dynamic note budgets, short-line merging before chunking, chunk/merge/tail-patch degradation, evidence-based thinking reserve, accurate advice for uncontrollable thinking). Explicitly excluded `23b057f`; no speed/quality UI or request-protocol change was introduced.
 9. [x] Packaged ASR worker: frozen builds run faster-whisper/paraformer in a child (protocol v1), source checkouts stay in-process; fake-worker tests cover crash, protocol errors, cancellation and exact-child cleanup. Portable real-machine verification remains separately authorized.
+10. [x] Title/page-aware artifact names: ported from upstream `7236040`. Download/archive/SRT names include B站 page selection and a transcript suffix via `download_stem`; request `bilibili_pages` is preserved and realized metadata is stored separately.
 
 ## Next single execution task
 
-No further implementation task has been assigned. A real portable-build ASR smoke test (noconsole behavior, DLL availability, real model loading and spec collection) requires separate authorization before it can be attempted.
+Gate 6: consolidate transcript-only archiving and highlight the final artifact on the completion page. The concrete implementation contract will be supplied by the coordinator.

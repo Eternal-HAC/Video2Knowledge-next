@@ -133,6 +133,7 @@ const SUBTITLE_ACCEPT = '.srt,.vtt';
 const SUBTITLE_NAME_RE = /\.(srt|vtt)$/i;
 let currentMarkdown = '';
 let currentHtml = '';
+let currentDownloadName = '';
 let pollTimer = null;
 let pollErrorCount = 0;
 let isSubmitting = false;
@@ -556,7 +557,7 @@ async function openRecentTask(taskId) {
 
         if (task.status === 'completed') {
             currentFeishuPublication = task.feishu_publication || null;
-            await completeTask(task.result, task.elapsed_seconds);
+            await completeTask(task.result, task.elapsed_seconds, task.download_name);
         } else if (['queued', 'processing', 'cancelling'].includes(task.status)) {
             setTaskActive(true);
             startElapsedTimer(task.elapsed_seconds);
@@ -2723,7 +2724,7 @@ async function pollTask(taskId) {
 
         if (task.status === 'completed') {
             currentFeishuPublication = task.feishu_publication || null;
-            await completeTask(task.result, task.elapsed_seconds);
+            await completeTask(task.result, task.elapsed_seconds, task.download_name);
             return;
         }
         if (task.status === 'failed') {
@@ -2808,6 +2809,7 @@ function resetTaskView() {
     currentTaskId = null;
     currentMarkdown = '';
     currentHtml = '';
+    currentDownloadName = '';
     currentFeishuPublication = null;
     setTranscriptTaskView(false);
     byId('progressArea').hidden = false;
@@ -2837,8 +2839,9 @@ function setTranscriptTaskView(on) {
     byId('regenerateBtn').textContent = isTranscriptTask ? '基于字幕稿生成笔记' : '基于转录重新生成';
 }
 
-async function completeTask(result, elapsedSeconds = null) {
+async function completeTask(result, elapsedSeconds = null, downloadName = '') {
     stopPolling();
+    currentDownloadName = typeof downloadName === 'string' ? downloadName.trim() : '';
     stopElapsedTimer(elapsedSeconds ?? result?.processing_seconds ?? null);
     if (!await showResult(result)) return;
     setTaskActive(false);
@@ -3229,7 +3232,11 @@ async function downloadSummary() {
         txt: { content: stripMarkdown(currentMarkdown), extension: '.txt', mime: 'text/plain' }
     };
     const selected = formats[format] || { content: currentMarkdown, extension: '.md', mime: 'text/markdown' };
-    triggerBlobDownload(new Blob([selected.content], { type: selected.mime }), selected.extension);
+    triggerBlobDownload(
+        new Blob([selected.content], { type: selected.mime }),
+        selected.extension,
+        noteFileName(selected.extension)
+    );
     showToast('下载已开始', 'success');
 }
 
@@ -3295,7 +3302,7 @@ async function exportSummaryImage() {
             }
             await downloadCanvasPages(canvas);
         } else {
-            triggerBlobDownload(await canvasToBlob(canvas), '.png');
+            triggerBlobDownload(await canvasToBlob(canvas), '.png', noteFileName('.png'));
         }
         showToast('图片导出已完成', 'success');
     } catch (error) {
@@ -3347,8 +3354,8 @@ async function downloadCanvasPages(source) {
             source.width,
             sliceHeight
         );
-        const suffix = `.page-${String(index + 1).padStart(3, '0')}.png`;
-        triggerBlobDownload(await canvasToBlob(page), suffix);
+        const suffix = `-page-${String(index + 1).padStart(3, '0')}.png`;
+        triggerBlobDownload(await canvasToBlob(page), suffix, noteFileName(suffix));
     }
 }
 
@@ -3368,7 +3375,7 @@ async function downloadMarkdownFile() {
         const response = await fetch(`${API_BASE}/download/${encodeURIComponent(currentTaskId)}`);
         if (!response.ok) throw new Error(await extractErrorMessage(response, '下载失败'));
         const filename = serverFilename(response);
-        triggerBlobDownload(await response.blob(), '.md', filename);
+        triggerBlobDownload(await response.blob(), '.md', filename || noteFileName('.md'));
         showToast(
             /\.zip$/i.test(filename) ? '笔记与截图已打包下载，解压后 .md 里才显示截图' : '下载已开始',
             'success'
@@ -3394,7 +3401,7 @@ async function downloadSrtFile() {
         if (typeof data.text !== 'string') throw new Error('后端未返回字幕正文');
         const filename = typeof data.filename === 'string' && data.filename
             ? data.filename
-            : 'transcript.srt';
+            : (noteFileName('.srt') || 'transcript.srt');
         triggerBlobDownload(
             new Blob([data.text], { type: 'application/x-subrip;charset=utf-8' }),
             '.srt',
@@ -3455,6 +3462,12 @@ function setDownloading(active) {
     button.disabled = active;
     button.classList.toggle('is-loading', active);
     button.querySelector('.btn-text').textContent = active ? '准备下载' : '下载';
+}
+
+// 网页端自己拼的文件名（txt / html / json / png）。后端清洗过分 P 与非法字符，
+// 这里只负责拼上扩展名；没有下载名时返回空串，让 triggerBlobDownload 兜时间戳。
+function noteFileName(extension) {
+    return currentDownloadName ? `${currentDownloadName}${extension}` : '';
 }
 
 function triggerBlobDownload(blob, extension, filename) {

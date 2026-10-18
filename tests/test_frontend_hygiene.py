@@ -163,6 +163,34 @@ def test_note_images_are_resolved_on_every_output_path() -> None:
     assert "serverFilename(" in markdown_download, "带截图时后端发的是 zip，后缀不能写死"
 
 
+def test_browser_side_downloads_are_named_after_the_note() -> None:
+    assert "let currentDownloadName = ''" in SCRIPT
+    assert "function noteFileName(" in SCRIPT
+    for name in (
+        "downloadSummary",
+        "downloadSrtFile",
+        "exportSummaryImage",
+        "downloadCanvasPages",
+    ):
+        body = SCRIPT.split(f"function {name}(", 1)[1].split("\n}\n", 1)[0]
+        assert "noteFileName(" in body, f"{name} 里的下载没取后端下发的文件名"
+    assert SCRIPT.count("task.download_name") == 2, "历史与轮询两条路都要带上下载名"
+    complete = SCRIPT.split("async function completeTask(", 1)[1].split("\n}\n", 1)[0]
+    assert "downloadName" in complete and "currentDownloadName" in complete
+    reset = SCRIPT.split("function resetTaskView(", 1)[1].split("\n}\n", 1)[0]
+    assert "currentDownloadName = ''" in reset
+    markdown = SCRIPT.split(
+        "async function downloadMarkdownFile(", 1
+    )[1].split("\n}\n", 1)[0]
+    assert "serverFilename(" in markdown and "noteFileName('.md')" in markdown
+    srt = SCRIPT.split("async function downloadSrtFile(", 1)[1].split("\n}\n", 1)[0]
+    assert "data.filename" in srt and "noteFileName('.srt')" in srt
+    pages = SCRIPT.split(
+        "async function downloadCanvasPages(", 1
+    )[1].split("\n}\n", 1)[0]
+    assert "-page-" in pages and "noteFileName(" in pages
+
+
 def test_subtitle_source_mode_controls_accept_list_and_hides_recognition() -> None:
     assert '<option value="subtitle">字幕文件</option>' in PAGE
     assert 'id="recognitionSection"' in PAGE

@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, and packaged ASR worker slices are complete locally; none implies a permanent platform, player, or provider guarantee. No next implementation slice has been selected. A real portable-build ASR smoke test requires separate authorization. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, and title/page-aware artifact naming slices are complete locally; none implies a permanent platform, player, or provider guarantee. The next planned slice is Gate 6: consolidate transcript-only archiving and highlight the final artifact on the completion page; the concrete contract will be supplied by the coordinator. A real portable-build ASR smoke test requires separate authorization. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -198,6 +198,15 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - Review follow-up: cancel commands carry protocol=1 (the worker validates it); job fields are strictly typed (use_gpu must be a bool, title str or None, model_name in ASR_MODELS); progress rejects negative values; error codes are limited to worker_error/invalid_job/protocol_error with string messages; up to 16 non-JSON stdout noise lines are ignored while malformed JSON or wrong protocol versions still fail immediately.
 - Validation (fresh): `tests/test_asr_process.py` + `tests/test_launcher.py` 46 passed, 1 skipped; `tests/test_api.py` 136 passed, 1 skipped; full suite 631 passed, 3 skipped; `compileall` and `git diff --check` clean.
 - Limits/risks: after `started` there is no overall timeout (only user cancellation); the path check has a TOCTOU window; non-default concurrent model-cache contention is unverified; automated tests use fake `python -c` workers and cannot prove noconsole behavior, DLL availability, real model loading or spec collection. A portable real-machine smoke test requires separate authorization; no build was produced and no real ASR ran.
+
+## Completed title/page-aware artifact naming gate
+
+- Ported upstream `7236040` without cherry-picking. Added `download_stem(title, meta, output)` and `SAFE_NAME_LIMIT=80`: normal or all-page tasks use the title, a single processed page uses `标题【P2 分P名】`, a partial multi-page set uses `标题【P1、3】`, and transcript output appends `【转录】`. Titles are trimmed first, part names next; P markers and the transcript suffix are preserved; `_safe_filename` still removes Windows-invalid and control characters.
+- New manifest metadata (`bili_selected_pages`, `bili_total_pages`) is written from `BiliSubtitleOutcome.pages`/`total_pages` for both subtitle-success and missing-subtitle ASR paths and restored on reuse. The existing request-shaped `bilibili_pages` (list[int] or None) is untouched, so `previous_bili_pages` keeps working. Old manifests without realized metadata fall back to the safe title.
+- `/api/task` now exposes `download_name`; `/api/download` md/ZIP and the ZIP-inner note, note archive (default/custom/Obsidian), and SRT export all use the same stem. SRT always gets the transcript suffix; Feishu document titles, task-local `notes.md`/`transcript.md`, Frontmatter and Markdown H1 are unchanged.
+- The frontend tracks `currentDownloadName` from history and polling completion; txt/html/json/png/paginated PNG, Markdown/ZIP and SRT prefer the backend name, and reset clears it. The script cache version was bumped; the product version was not.
+- Validation (fresh): `tests/test_api.py` + `tests/test_frontend_hygiene.py` + `tests/test_transcript.py` 181 passed, 1 skipped; full suite 639 passed, 3 skipped. `node --check` and `git diff --check` clean.
+- Remaining risks: the stem is computed from persisted manifest metadata only; a task whose manifest lacks realized pages intentionally falls back to the title. Long multi-page lists are trimmed inside the marker, and the 80-character budget is a display/OS choice rather than a hard filesystem limit.
 
 ## Current constraints
 
