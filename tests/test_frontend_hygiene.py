@@ -163,6 +163,35 @@ def test_note_images_are_resolved_on_every_output_path() -> None:
     assert "serverFilename(" in markdown_download, "带截图时后端发的是 zip，后缀不能写死"
 
 
+def test_subtitle_source_mode_controls_accept_list_and_hides_recognition() -> None:
+    assert '<option value="subtitle">字幕文件</option>' in PAGE
+    assert 'id="recognitionSection"' in PAGE
+    assert 'id="filePickerLabel"' in PAGE
+    fn = SCRIPT.split("function toggleSourceType(", 1)[1].split("\n}\n", 1)[0]
+    assert "SUBTITLE_ACCEPT" in fn, "字幕模式必须切换到 .srt,.vtt"
+    assert "MEDIA_ACCEPT" in fn, "切回媒体模式必须恢复媒体 accept 列表"
+    assert "recognitionSection" in fn, "字幕模式必须隐藏识别设置"
+    assert "filePickerLabel" in fn
+
+
+def test_subtitle_client_uses_separate_size_limit() -> None:
+    assert "DEFAULT_MAX_SUBTITLE_MB" in SCRIPT
+    assert "maxSubtitleBytes" in SCRIPT
+    assert "maxSubtitleLabel" in SCRIPT
+    fn = SCRIPT.split("function validateAndBuildRequestBase(", 1)[1].split("\n}\n", 1)[0]
+    assert "maxSubtitleBytes" in fn
+    assert "请选择字幕文件" in fn
+
+
+def test_srt_export_is_rendered_by_backend_with_safe_filename() -> None:
+    assert '<option value="srt">' in PAGE, "导出菜单里没有字幕这一项"
+    assert "format === 'srt'" in SCRIPT
+    body = SCRIPT.split("function downloadSrtFile(", 1)[1].split("\n}\n", 1)[0]
+    assert "output_format=srt" in body
+    assert "currentMarkdown" not in body, "SRT 不能由前端那份整秒 markdown 现拼"
+    assert "data.filename" in body
+
+
 def test_every_bound_element_id_exists_in_the_page() -> None:
     missing = sorted(set(BOUND_ID.findall(SCRIPT)) - set(DECLARED_ID.findall(PAGE)))
     assert not missing, f"script.js 绑定了页面里不存在的元素：{missing}"

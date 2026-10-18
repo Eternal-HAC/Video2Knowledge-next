@@ -24,6 +24,7 @@ Inputs:
 - a public Bilibili URL;
 - a public Douyin single-video URL or share link;
 - a local audio or video file;
+- a local `.srt` / `.vtt` subtitle file as an already-timed transcript;
 - optional provider configuration for note generation;
 - an optional personal Markdown template;
 - a selected normal directory or Obsidian Vault destination;
@@ -33,6 +34,7 @@ Outputs:
 
 - a UTF-8 Markdown note with traceable source information;
 - a timestamped transcript that remains available when note generation fails;
+- a standards-compliant SubRip `.srt` export for any task with a timestamped transcript;
 - optional local image attachments when screenshots are requested;
 - no silently overwritten note and no unnecessary retained media by default.
 
@@ -98,6 +100,7 @@ The note-template milestone is complete locally with the following contract:
 4. Obsidian detection and Vault experience, followed by opt-in Feishu publication: complete locally. Feishu publication now creates an online docx with native in-body image blocks for referenced screenshots; no cloud Markdown file or ZIP is created.
 5. One-off real validation for YouTube, Bilibili, and Douyin: complete; this does not guarantee permanent availability.
 6. Xiaoe-tech research and local import guidance: complete. Other platform or merchant integrations require separate authorization.
+7. Subtitle-file import and SRT export: ported from upstream `662f56b`; complete locally.
 
 ## Non-goals for the current phase
 

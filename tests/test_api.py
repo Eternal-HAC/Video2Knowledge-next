@@ -503,11 +503,365 @@ def test_summarize_rejects_upload_task_already_consumed_or_unknown(
     )
 
 
+IMPORT_SRT = "\n".join(
+    [
+        "1",
+        "00:00:00,500 --> 00:00:03,240",
+        "今天我们讲梯度下降",
+        "",
+        "2",
+        "00:00:03,240 --> 00:01:05,500",
+        "先从一维的例子开始",
+        "",
+    ]
+)
+
+
+def post_subtitle(
+    client: TestClient, filename: str = "机器学习第一讲.srt", text: str = IMPORT_SRT
+):
+    return client.post(
+        "/api/upload",
+        files={"file": (filename, text.encode("utf-8"), "application/octet-stream")},
+    )
+
+
+def _fake_note_summarizer():
+    class FakeSummarizer:
+        def __init__(self, **kwargs):
+            pass
+
+        def describe_effort(self, reasoning_effort: str, style: str) -> str:
+            return reasoning_effort
+
+        async def generate_summary(self, *args, **kwargs):
+            return "# 笔记正文"
+
+    return FakeSummarizer
+
+
+def _forbid_media_processor(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def never_called(*args, **kwargs):
+        raise AssertionError("字幕导入不该再碰下载/转写这条链")
+
+    monkeypatch.setattr(
+        main,
+        "video_processor",
+        SimpleNamespace(
+            detect_source=never_called,
+            get_video_info=never_called,
+            fetch_subtitles=never_called,
+            fetch_bilibili_subtitles=never_called,
+            extract_audio=never_called,
+            extract_frames=never_called,
+            download_audio=never_called,
+            download_preview_video=never_called,
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def _capture_subtitle_request(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    payload: dict,
+) -> tuple[TestClient, str, object]:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    monkeypatch.setattr(main, "running_jobs", {})
+    captured: list = []
+
+    async def fake_run(task_id, request):
+        captured.append(request)
+
+    monkeypatch.setattr(main, "run_queued_video_task", fake_run)
+    client = TestClient(main.app)
+    upload_task_id = post_subtitle(client).json()["task_id"]
+    response = client.post(
+        "/api/summarize", json={"upload_task_id": upload_task_id, **payload}
+    )
+    assert response.status_code == 200, response.text
+    assert captured, "submit must queue a task"
+    return client, upload_task_id, captured[0]
+
+
+def test_upload_imports_srt_as_a_finished_transcript(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    upload = post_subtitle(TestClient(main.app))
+
+    assert upload.status_code == 200
+    task_id = upload.json()["task_id"]
+    task_dir = tmp_path / task_id
+    assert (task_dir / "subtitle.srt").is_file()
+    assert not list(task_dir.glob("input.*"))
+    payload = json.loads((task_dir / "transcript.json").read_text(encoding="utf-8"))
+    assert payload["source"] == "subtitle_import"
+    assert payload["segments"] == [
+        {"start": 0.5, "end": 3.24, "text": "今天我们讲梯度下降"},
+        {"start": 3.24, "end": 65.5, "text": "先从一维的例子开始"},
+    ]
+    manifest = json.loads((task_dir / "task.json").read_text(encoding="utf-8"))
+    assert manifest["subtitle_import"] is True
+    task = main.tasks[task_id]
+    assert task["status"] == "uploaded"
+    assert task["subtitle_import"] is True
+    assert any("字幕已导入" in line for line in task["logs"])
+
+
+def test_upload_imports_vtt_with_bom(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    text = "\ufeffWEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好\n"
+    response = post_subtitle(TestClient(main.app), filename="字幕.vtt", text=text)
+
+    assert response.status_code == 200, response.text
+    task_dir = tmp_path / response.json()["task_id"]
+    assert (task_dir / "subtitle.vtt").is_file()
+    payload = json.loads((task_dir / "transcript.json").read_text(encoding="utf-8"))
+    assert payload["segments"] == [{"start": 1.0, "end": 2.0, "text": "你好"}]
+
+
+def test_upload_rejects_a_subtitle_without_timed_text(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    response = post_subtitle(
+        TestClient(main.app), text="这就是几行普通文字，没有时间码\n第二行\n"
+    )
+
+    assert response.status_code == 415
+    assert "带时间轴" in response.json()["detail"]
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_upload_enforces_separate_subtitle_size_limit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    monkeypatch.setattr(main, "MAX_SUBTITLE_BYTES", 10)
+    response = post_subtitle(TestClient(main.app))
+
+    assert response.status_code == 413
+    assert "上限" in response.json()["detail"]
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_subtitle_import_skips_download_and_transcription(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    client, upload_task_id, request = await _capture_subtitle_request(
+        monkeypatch,
+        tmp_path,
+        {
+            "include_screenshots": True,
+            "llm_config": {"model_type": "deepseek", "api_key": "test-key"},
+        },
+    )
+    assert request.include_screenshots is False
+    assert main.tasks[upload_task_id]["subtitle_import"] is True
+    _forbid_media_processor(monkeypatch)
+    monkeypatch.setattr(main, "LLMSummarizer", _fake_note_summarizer())
+
+    await main.process_video_task(upload_task_id, request)
+
+    task = main.tasks[upload_task_id]
+    assert task["status"] == "completed", task.get("error")
+    assert task["result"]["title"] == "机器学习第一讲"
+    assert any("已使用导入的字幕：2 条" in line for line in task["logs"])
+    assert not any("复用任务 None" in line for line in task["logs"])
+    assert (tmp_path / upload_task_id / "notes.md").is_file()
+
+
+@pytest.mark.asyncio
+async def test_subtitle_import_transcript_only_completes_without_llm(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    client, upload_task_id, request = await _capture_subtitle_request(
+        monkeypatch, tmp_path, {"output": "transcript", "llm_config": {}}
+    )
+    _forbid_media_processor(monkeypatch)
+
+    class ForbiddenSummarizer:
+        def __init__(self, **kwargs):
+            raise AssertionError("transcript-only must not construct the summarizer")
+
+    monkeypatch.setattr(main, "LLMSummarizer", ForbiddenSummarizer)
+    await main.process_video_task(upload_task_id, request)
+
+    task = main.tasks[upload_task_id]
+    assert task["status"] == "completed", task.get("error")
+    assert task["result"]["output"] == "transcript"
+    body = client.get(f"/api/task/{upload_task_id}/transcript").json()
+    assert body["segment_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_subtitle_import_note_respects_custom_destination_and_template(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    destination = tmp_path / "destination"
+    destination.mkdir()
+    client, upload_task_id, request = await _capture_subtitle_request(
+        monkeypatch,
+        tmp_path,
+        {
+            "note_destination": str(destination),
+            "llm_config": {"model_type": "deepseek", "api_key": "test-key"},
+        },
+    )
+    _forbid_media_processor(monkeypatch)
+    monkeypatch.setattr(main, "LLMSummarizer", _fake_note_summarizer())
+
+    await main.process_video_task(upload_task_id, request)
+
+    task = main.tasks[upload_task_id]
+    assert task["status"] == "completed", task.get("error")
+    assert (tmp_path / upload_task_id / "notes.md").is_file()
+    assert list(destination.glob("*.md")), "custom destination must receive the note"
+    manifest = json.loads(
+        (tmp_path / upload_task_id / "task.json").read_text(encoding="utf-8")
+    )
+    assert manifest["note_template"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_subtitle_import_note_never_calls_feishu_when_disabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def forbidden_cli(*args, **kwargs):
+        raise AssertionError("disabled feishu must not call lark-cli")
+
+    monkeypatch.setattr(main.note_integrations, "_run_cli", forbidden_cli)
+    _client, upload_task_id, request = await _capture_subtitle_request(
+        monkeypatch,
+        tmp_path,
+        {"llm_config": {"model_type": "deepseek", "api_key": "test-key"}},
+    )
+    _forbid_media_processor(monkeypatch)
+    monkeypatch.setattr(main, "LLMSummarizer", _fake_note_summarizer())
+
+    await main.process_video_task(upload_task_id, request)
+    assert main.tasks[upload_task_id]["status"] == "completed"
+    assert "feishu_publication" not in main.tasks[upload_task_id]
+
+
+@pytest.mark.asyncio
+async def test_subtitle_marker_survives_summarize_manifest_rewrite(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """submit 会重建 task.json：subtitle_import 标记必须继续写回，供重启恢复。"""
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    monkeypatch.setattr(main, "running_jobs", {})
+
+    async def fake_run(task_id, request):
+        return None
+
+    monkeypatch.setattr(main, "run_queued_video_task", fake_run)
+    client = TestClient(main.app)
+    upload_task_id = post_subtitle(client).json()["task_id"]
+    response = client.post(
+        "/api/summarize",
+        json={
+            "upload_task_id": upload_task_id,
+            "llm_config": {"model_type": "deepseek", "api_key": "test-key"},
+        },
+    )
+    assert response.status_code == 200
+    manifest = json.loads(
+        (tmp_path / upload_task_id / "task.json").read_text(encoding="utf-8")
+    )
+    assert manifest["subtitle_import"] is True
+
+
+@pytest.mark.asyncio
+async def test_non_subtitle_manifests_do_not_set_subtitle_import(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    monkeypatch.setattr(main, "running_jobs", {})
+
+    async def fake_run(task_id, request):
+        return None
+
+    monkeypatch.setattr(main, "run_queued_video_task", fake_run)
+    client = TestClient(main.app)
+
+    media = client.post(
+        "/api/upload", files={"file": ("a.mp4", b"bits", "video/mp4")}
+    ).json()
+    assert client.post(
+        "/api/summarize",
+        json={
+            "upload_task_id": media["task_id"],
+            "llm_config": {"model_type": "deepseek", "api_key": "k"},
+        },
+    ).status_code == 200
+    media_manifest = json.loads(
+        (tmp_path / media["task_id"] / "task.json").read_text(encoding="utf-8")
+    )
+    assert "subtitle_import" not in media_manifest
+
+    url = client.post(
+        "/api/summarize",
+        json={
+            "video_url": "https://www.bilibili.com/video/BV1xx",
+            "llm_config": {"model_type": "deepseek", "api_key": "k"},
+        },
+    )
+    assert url.status_code == 200
+    url_manifest = json.loads(
+        (tmp_path / url.json()["task_id"] / "task.json").read_text(encoding="utf-8")
+    )
+    assert "subtitle_import" not in url_manifest
+
+
+def test_restore_keeps_subtitle_upload_task(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    task_dir = tmp_path / "sub-restore"
+    task_dir.mkdir()
+    (task_dir / "subtitle.srt").write_text(IMPORT_SRT, encoding="utf-8")
+    write_transcript_artifacts(tmp_path, "sub-restore")
+    (task_dir / "task.json").write_text(
+        json.dumps(
+            {
+                "task_id": "sub-restore",
+                "uploaded_filename": "讲座字幕.srt",
+                "subtitle_import": True,
+                "runtime": {"status": "uploaded", "logs": []},
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    main.restore_tasks_from_workspace()
+
+    task = main.tasks["sub-restore"]
+    assert task["status"] == "uploaded"
+    assert task["subtitle_import"] is True
+    assert task["uploaded_filename"] == "讲座字幕.srt"
+
+
 def test_health_reports_upload_limit_for_the_frontend(monkeypatch) -> None:
     """前端不再自己写死 500MB：本机上限只能由健康接口下发。"""
     monkeypatch.setattr(main, "MAX_UPLOAD_MB", 1536)
+    monkeypatch.setattr(main, "MAX_SUBTITLE_MB", 64)
     response = TestClient(main.app).get("/api/health")
     assert response.json()["max_upload_mb"] == 1536
+    assert response.json()["max_subtitle_mb"] == 64
 
 
 def test_summarize_accepts_douyin_url_and_does_not_front_reject(
@@ -2672,6 +3026,48 @@ def test_transcript_endpoint_returns_segments_and_text(tmp_path, monkeypatch) ->
     assert as_markdown.json()["text"].startswith("# 带时间戳转录")
     assert as_markdown.json()["title"] == ""
     assert client.get("/api/task/t1/transcript?output_format=bogus").status_code == 422
+
+
+def test_transcript_endpoint_serves_srt_one_cue_per_segment(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SRT 与 json 版要逐条对得上：序号从 1 起、不并段、时间码按 SubRip 标准写。"""
+    task_dir = tmp_path / "srt-case"
+    task_dir.mkdir(parents=True)
+    (task_dir / "transcript.json").write_text(
+        json.dumps(
+            {
+                "language": "zh",
+                "source": "platform_subtitle",
+                "segments": [
+                    {"start": 0.5, "end": 3.24, "text": "第一段"},
+                    {"start": 3.24, "end": 65.5, "text": "第二段"},
+                    {"start": 3661.7, "end": 3665.0, "text": "第三段"},
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (task_dir / "task.json").write_text(
+        json.dumps({"task_id": "srt-case", "title": "老视频"}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+
+    body = TestClient(main.app).get(
+        "/api/task/srt-case/transcript?output_format=srt"
+    ).json()
+
+    assert body["format"] == "srt"
+    assert body["text"] == (
+        "1\r\n00:00:00,500 --> 00:00:03,240\r\n第一段\r\n"
+        "\r\n2\r\n00:00:03,240 --> 00:01:05,500\r\n第二段\r\n"
+        "\r\n3\r\n01:01:01,700 --> 01:01:05,000\r\n第三段\r\n"
+    )
+    assert body["filename"] == "老视频.srt"
+    assert main.parse_subtitle_payload(body["text"], "srt")[0].text == "第一段"
 
 
 def test_transcript_endpoint_serves_tasks_that_failed_after_transcribing(

@@ -34,6 +34,35 @@ def segments_to_prompt(segments: Sequence[TranscriptSegment]) -> str:
     )
 
 
+def format_srt_timestamp(seconds: float) -> str:
+    """SubRip 时间码 HH:MM:SS,mmm：毫秒三位补零，小时从 00 起。
+
+    先换算成整数毫秒再拆位，999.7 秒这种小数才不会写出 00:16:39,1000。
+    """
+    total_milliseconds = max(0, round(seconds * 1000))
+    hours, remainder = divmod(total_milliseconds, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    secs, millis = divmod(remainder, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def segments_to_srt(segments: Sequence[TranscriptSegment]) -> str:
+    """渲染成 SubRip 字幕文本，条目与传入 segments 一一对应、不并段。
+
+    行尾用 CRLF：这是 SubRip 的通行写法，剪映 / Premiere 对纯 LF 的容忍度不一。
+    """
+    blocks = [
+        "{}\r\n{} --> {}\r\n{}\r\n".format(
+            index,
+            format_srt_timestamp(segment.start),
+            format_srt_timestamp(segment.end),
+            segment.text,
+        )
+        for index, segment in enumerate(segments, start=1)
+    ]
+    return "\r\n".join(blocks)
+
+
 def merge_segment_lines(
     segments: Sequence[TranscriptSegment], target_characters: int = 48
 ) -> list[TranscriptSegment]:

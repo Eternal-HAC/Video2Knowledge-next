@@ -30,7 +30,8 @@ This file holds only the active gap-verification queue. For every item: close it
 2. ~~On-demand real checks for YouTube, Bilibili, and Douyin.~~ Completed as a one-off real validation milestone (see PROJECT_STATUS.md): YouTube platform subtitles, Bilibili audio download plus local ASR, and Douyin login through local ASR all passed. Automated tests remain the durable evidence; live results are point-in-time and do not guarantee ongoing platform availability.
 3. [x] Xiaoe-tech research: official permitted download/export followed by existing local import; no URL downloader. Other requested platforms and shop-authorized merchant OpenAPI remain separate future work.
 4. [x] Feishu native cloud image blocks: implemented as an online docx with inline image blocks and verified once against a real user-authorized test folder. Deferred: Wiki/docx import, overwrite or sync, permission management, automatic login.
+5. [x] Subtitle-file import and SRT export: ported from upstream `662f56b`. `.srt` / `.vtt` imports become an already-timed transcript without download or ASR; any transcript exports standard SubRip from backend segments.
 
 ## Next single execution task
 
-No active implementation task remains in the accepted Feishu online-docx milestone. Select and authorize the next roadmap slice before starting new feature work; Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred.
+Port and independently verify upstream `55166ad`: pin `.js/.mjs/.css/.html` media types in `NoCacheStaticFiles` so a broken Windows MIME registry cannot disable the frontend, including the 304 revalidation path. Keep HTML `no-store`, other assets `no-cache`, and `nosniff` unchanged.

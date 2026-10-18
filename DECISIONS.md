@@ -117,3 +117,13 @@ Reason: The `docs +create` Markdown path uploads local images inline (`![alt](<@
 Consequences: Readiness now requires the `docs` command plus three scope groups (create, write, media upload); the recommended narrow scopes are `docx:document:create`, `docx:document:write_only`, `docs:document.media:upload`, with `docx:document` accepted as a wide create/write substitute. Only referenced, in-task, allowed-format images within 20 MiB are staged; missing, escaping or oversized images fail closed before any CLI call. Publication remains opt-in, `--as user` only, never fails the local task, and still runs exactly one CLI command.
 
 Review condition: Revisit if a real-tenant smoke test shows unacceptable Markdown-to-docx fidelity, if the CLI JSON contract changes, or if overwrite/idempotency for the remote document becomes required.
+
+## 2026-10-19: Import timed subtitles and export SRT from persisted segments
+
+Decision: Accept local `.srt` / `.vtt` as an already-completed timestamped transcript instead of treating them as media, and export any existing transcript as SubRip from the persisted segments. Port the behavior from upstream `662f56b` rather than cherry-picking it.
+
+Reason: The existing parser already produces millisecond-accurate segments; plain text would force invented timestamps into notes and SRT. Rendering SRT on the backend avoids the whole-second Markdown timestamps and keeps one source of truth.
+
+Consequences: Subtitle files use a separate 20 MiB default limit, are stored as `subtitle.<ext>` (never `input.*`), and skip download, ASR and screenshots. Empty or untimed files fail at upload with no task directory. `subtitle.*` is preserved by media retention. Templates, custom destinations/Obsidian, Feishu publication and the local ZIP download are unchanged.
+
+Review condition: Revisit if users need untimed plain text with synthetic timing (a separate product decision), or if additional subtitle export formats become necessary.

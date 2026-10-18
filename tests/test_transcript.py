@@ -5,10 +5,12 @@ import pytest
 from backend.transcript import (
     TranscriptSegment,
     chunk_segments,
+    format_srt_timestamp,
     format_timestamp,
     merge_segment_lines,
     parse_subtitle_payload,
     segments_to_prompt,
+    segments_to_srt,
     transcript_quality,
 )
 
@@ -113,3 +115,35 @@ def test_quality_gate_accepts_normal_spoken_video() -> None:
     segments = [TranscriptSegment(0, 500, "正常口播内容" * 200)]
     quality = transcript_quality(segments, duration=600)
     assert quality["insufficient"] is False
+
+
+def test_format_srt_timestamp_uses_integer_milliseconds() -> None:
+    assert format_srt_timestamp(0) == "00:00:00,000"
+    assert format_srt_timestamp(0.5) == "00:00:00,500"
+    # 999.7 秒若先按秒拆分会写出 ,1000
+    assert format_srt_timestamp(999.7) == "00:16:39,700"
+    assert format_srt_timestamp(3_661.7) == "01:01:01,700"
+    assert format_srt_timestamp(-3) == "00:00:00,000"
+
+
+def test_srt_writes_standard_timecodes_one_cue_per_segment() -> None:
+    srt = segments_to_srt(
+        [
+            TranscriptSegment(0.5, 3.24, "第一段"),
+            TranscriptSegment(3.24, 65.5, "第二段"),
+            TranscriptSegment(3_661.7, 3_665, "第三段"),
+        ]
+    )
+    assert srt == (
+        "1\r\n00:00:00,500 --> 00:00:03,240\r\n第一段\r\n"
+        "\r\n2\r\n00:00:03,240 --> 00:01:05,500\r\n第二段\r\n"
+        "\r\n3\r\n01:01:01,700 --> 01:01:05,000\r\n第三段\r\n"
+    )
+
+
+def test_exported_srt_round_trips_through_the_subtitle_parser() -> None:
+    segments = [
+        TranscriptSegment(0.5, 3.24, "今天我们讲梯度下降"),
+        TranscriptSegment(3_661.7, 3_665.0, "跨过一整小时"),
+    ]
+    assert parse_subtitle_payload(segments_to_srt(segments), "srt") == segments

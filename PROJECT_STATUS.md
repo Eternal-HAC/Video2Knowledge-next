@@ -1,10 +1,10 @@
 # Project Status
 
-Updated: 2026-10-09
+Updated: 2026-10-19
 
 ## Current stage
 
-`Local import guidance and opt-in media retention implemented; independent acceptance pending`
+`Subtitle import and SRT export accepted; selective upstream reliability sync in progress`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx milestone is complete, including one separately authorized real-user smoke test in a user-supplied Drive folder. No next implementation milestone has been selected. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx and subtitle-import/SRT-export slices are complete locally; neither implies a permanent platform or player guarantee. The next approved slice pins frontend static-resource media types using upstream `55166ad`, followed by the separately gated reliability work recorded in `TODO.md`. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -153,6 +153,15 @@ The native Feishu online-docx milestone is complete, including one separately au
 - When the create envelope is `ok=true` but carries a non-empty `data.warnings`, the document stays `uploaded` and no retry is offered; a fixed redacted `warning {code: partial_publication, message: ...}` is stored and the raw warnings are never persisted.
 - Automated validation: focused `tests/test_note_integrations.py` (78 passed) and `tests/test_api.py` + `tests/test_frontend_hygiene.py` (140 passed, 1 skipped), plus the full suite (550 passed, 2 skipped); `node --check frontend/script.js` and `git diff --check` passed. These tests use fake runners and made no cloud writes or dependency changes.
 - Real-user smoke validation (2026-10-10, separately authorized): one online docx was created in the user-supplied test Drive folder through the project `publish_note` and `build_feishu_docx_staging` path. A read-back confirmed the test heading and list, a native `<img>` block at the referenced body position, removal of leading Frontmatter and its private image reference, and no create warning or fetch tip. The repository records no folder token, document token/URL, identity, or raw CLI output. This is point-in-time evidence for the tested tenant and CLI version, not a guarantee of permanent service behavior or full fidelity for every Markdown construct.
+
+## Completed subtitle import and SRT export milestone
+
+- Ported the timed-subtitle workflow from upstream `662f56b` without cherry-picking. `/api/upload` now accepts `.srt` / `.vtt` alongside media, parses them synchronously through the existing `parse_subtitle_payload`, and registers an already-transcribed uploaded task (`subtitle.<ext>`, `transcript.json` with source `subtitle_import`). Empty or untimed text returns HTTP 415 and removes the task directory.
+- Subtitle files use a separate limit (`MAX_SUBTITLE_MB`, default 20 MiB) exposed as `max_subtitle_mb`; the manifest records `subtitle_import` so restart keeps the task resolvable without an `input.*` media match. Submitting it skips metadata probing, subtitle discovery, audio extraction, ASR and screenshots; `include_screenshots` is forced off. Title comes from the original filename stem through the existing safe path.
+- `/api/task/{task_id}/transcript?output_format=srt` returns the existing JSON envelope with `format=srt`, `text` rendered by `segments_to_srt` (SubRip `HH:MM:SS,mmm`, CRLF, one cue per segment, integer-millisecond rounding and zero clamping) and a `_safe_filename`-derived `.srt` filename. Export round-trips through the project parser.
+- Local `notes.md` stays authoritative; templates, Frontmatter, custom destinations/Obsidian, opt-in Feishu publication, media retention and the local Markdown+attachments ZIP are unchanged. `subtitle.*` is not treated as owned media.
+- Validation (fresh): `tests/test_transcript.py` + `tests/test_api.py` + `tests/test_frontend_hygiene.py` 168 passed, 1 skipped; full suite 568 passed, 2 skipped. `node --check frontend/script.js` and `git diff --check` passed.
+- Remaining limit: automated tests prove orchestration and local transforms only; real-player SRT rendering and a real platform subtitle import are not exercised. Timed text is required; plain text is rejected instead of inventing timestamps.
 
 ## Current constraints
 
