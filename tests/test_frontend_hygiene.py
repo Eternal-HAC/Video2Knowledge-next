@@ -191,6 +191,19 @@ def test_browser_side_downloads_are_named_after_the_note() -> None:
     assert "-page-" in pages and "noteFileName(" in pages
 
 
+def test_completed_notice_prefers_archived_file() -> None:
+    assert 'id="outputPathLabel"' in PAGE
+    assert 'id="taskDirNotice"' in PAGE
+    assert 'id="taskDirPath"' in PAGE
+    assert 'id="archivedPath"' not in PAGE
+    fn = SCRIPT.split("async function showResult(", 1)[1].split("\n}\n", 1)[0]
+    assert "archivedPath || outputDirectory" in fn
+    assert "'已保存到'" in fn
+    assert "taskDirNotice" in fn and "taskDirPath" in fn
+    reset = SCRIPT.split("function resetTaskView(", 1)[1].split("\n}\n", 1)[0]
+    assert "taskDirPath" in reset
+
+
 def test_subtitle_source_mode_controls_accept_list_and_hides_recognition() -> None:
     assert '<option value="subtitle">字幕文件</option>' in PAGE
     assert 'id="recognitionSection"' in PAGE

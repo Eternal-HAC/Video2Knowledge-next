@@ -115,6 +115,10 @@ WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
 WHISPER_CACHE_DIR = Path(
     os.getenv("WHISPER_CACHE_DIR", str(WORKSPACE_DIR / "_model_cache"))
 ).resolve()
+# workspace/ 下两个面向人的产物目录。转录稿单独一个目录而不是混进 notes/：先转写、后生成
+# 笔记的同一视频会各留一份，分开摆一眼看得清。
+NOTES_DIR_NAME = "notes"
+TRANSCRIPTS_DIR_NAME = "transcripts"
 FRONTEND_DIR = BASE_DIR / "frontend"
 APP_ICON_PATH = BASE_DIR / "sources" / "icon.png"
 FAVICON_PATH = BASE_DIR / "sources" / "icon.ico"
@@ -2573,6 +2577,30 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             # 正文只留在 transcript.json / transcript.md：result 会被 wait_for_task
             # 每 2 秒轮询一次并由 persist_task_runtime 反复落盘，不能放大文本
             elapsed = finish_task_timing(task)
+            # 归档读的是刚落盘的那份 transcript.md（与下载端点同一个文件），
+            # 不在这里重新拼一遍格式。失败只记固定警告，绝不改判任务。
+            archived_path: Path | None = None
+            try:
+                transcript_markdown = (
+                    WORKSPACE_DIR / task_id / "transcript.md"
+                ).read_text(encoding="utf-8")
+            except OSError:
+                transcript_markdown = ""
+            if transcript_markdown:
+                try:
+                    archived_path = archive_note(
+                        download_stem(title, info, "transcript"),
+                        transcript_markdown,
+                        folder=TRANSCRIPTS_DIR_NAME,
+                    )
+                except Exception:
+                    archived_path = None
+            if archived_path:
+                task["logs"].append(f"转录稿已归档：{archived_path}")
+            else:
+                task["logs"].append(
+                    "转录稿未能归档到 workspace/transcripts（任务内 transcript.md 仍可下载）"
+                )
             task["result"] = {
                 "title": title,
                 "output": "transcript",
@@ -2584,6 +2612,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                 "transcript_language": transcript_result["language"],
                 "transcript_quality": quality,
                 "output_directory": str(WORKSPACE_DIR / task_id),
+                "archived_path": str(archived_path) if archived_path else None,
                 "processing_seconds": elapsed,
             }
             task.update(
@@ -3244,15 +3273,22 @@ def archive_note(
     content: str,
     task_id: str | None = None,
     destination: str | Path | None = None,
+    *,
+    folder: str = NOTES_DIR_NAME,
 ) -> Path | None:
     """归档最终笔记；自定义目的地同时复制正文实际引用的任务附件。
 
     留空目的地时保持原行为：归档到 workspace/notes，不复制截图，引用改写为
     ../<task_id>/frames/。自定义目的地写入失败会抛出稳定错误，让任务进入失败状态。
 
+    folder 只允许 notes / transcripts；destination 非空时继续完全走自定义目的地，
+    folder 不改变目标目录。
+
     默认归档写入失败仍返回 None，以保持上游兼容行为。
     """
-    notes_root = Path(destination) if destination else WORKSPACE_DIR / "notes"
+    if folder not in {NOTES_DIR_NAME, TRANSCRIPTS_DIR_NAME}:
+        raise ValueError("unsupported archive folder")
+    notes_root = Path(destination) if destination else WORKSPACE_DIR / folder
     if destination:
         task_dir = WORKSPACE_DIR / task_id if task_id else WORKSPACE_DIR
         attachments = referenced_note_attachments(content, task_dir)

@@ -36,7 +36,8 @@ This file holds only the active gap-verification queue. For every item: close it
 8. [x] Long-note resilience: adopted the capabilities of upstream `7642479` + `8e02db3` (dynamic note budgets, short-line merging before chunking, chunk/merge/tail-patch degradation, evidence-based thinking reserve, accurate advice for uncontrollable thinking). Explicitly excluded `23b057f`; no speed/quality UI or request-protocol change was introduced.
 9. [x] Packaged ASR worker: frozen builds run faster-whisper/paraformer in a child (protocol v1), source checkouts stay in-process; fake-worker tests cover crash, protocol errors, cancellation and exact-child cleanup. Portable real-machine verification remains separately authorized.
 10. [x] Title/page-aware artifact names: ported from upstream `7236040`. Download/archive/SRT names include B站 page selection and a transcript suffix via `download_stem`; request `bilibili_pages` is preserved and realized metadata is stored separately.
+11. [x] Transcript-only central archive and completion-page lead: ported from upstream `6d05b08` + `fedb621`. Successful transcripts archive to `workspace/transcripts` with the Gate 5 stem; archive failure keeps the task completed; the completion notice leads with the archived file and keeps the task directory as secondary.
 
 ## Next single execution task
 
-Gate 6: consolidate transcript-only archiving and highlight the final artifact on the completion page. The concrete implementation contract will be supplied by the coordinator.
+Gate 7: harden the LLM test-connection path around local key read and initialization failures. The concrete implementation contract will be supplied by the coordinator.

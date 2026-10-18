@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, and title/page-aware artifact naming slices are complete locally; none implies a permanent platform, player, or provider guarantee. The next planned slice is Gate 6: consolidate transcript-only archiving and highlight the final artifact on the completion page; the concrete contract will be supplied by the coordinator. A real portable-build ASR smoke test requires separate authorization. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, and transcript-archive/completion-page slices are complete locally; none implies a permanent platform, player, or provider guarantee. The next planned slice is Gate 7: harden the LLM test-connection path around local key read/initialization failures; the concrete contract will be supplied by the coordinator. A real portable-build ASR smoke test requires separate authorization. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -207,6 +207,15 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - The frontend tracks `currentDownloadName` from history and polling completion; txt/html/json/png/paginated PNG, Markdown/ZIP and SRT prefer the backend name, and reset clears it. The script cache version was bumped; the product version was not.
 - Validation (fresh): `tests/test_api.py` + `tests/test_frontend_hygiene.py` + `tests/test_transcript.py` 181 passed, 1 skipped; full suite 639 passed, 3 skipped. `node --check` and `git diff --check` clean.
 - Remaining risks: the stem is computed from persisted manifest metadata only; a task whose manifest lacks realized pages intentionally falls back to the title. Long multi-page lists are trimmed inside the marker, and the 80-character budget is a display/OS choice rather than a hard filesystem limit.
+
+## Completed transcript archive and completion-page gate
+
+- Ported upstream `6d05b08` + `fedb621` without cherry-picking. Added `NOTES_DIR_NAME` / `TRANSCRIPTS_DIR_NAME` and an internal archive `folder` keyword restricted to those two; a custom destination still bypasses the folder and keeps the existing attachment/identity/collision logic.
+- Successful transcript-only tasks now read the already-persisted `transcript.md` and best-effort archive it to `workspace/transcripts/<download_stem(..., output="transcript")>.md`. Same-name collisions use `-2`/`-3` with the existing exclusive-create race handling. The task remains `completed` on archive failure, with `archived_path=None` and a fixed warning; `transcript.md` stays downloadable.
+- `workspace/notes` and `workspace/transcripts` contain no `task.json`; restore, reuse lookup and media-retention scans do not treat them as tasks or remove their files (covered explicitly).
+- The completion notice now shows the archive file as the primary line (`已保存到 ...`) and keeps the task directory as secondary information; tasks without an archive keep the task/output directory as the primary line. Task-local names, custom destinations, attachments, Feishu retry and agent-origin history rules are unchanged.
+- Validation (fresh): `tests/test_api.py` + `tests/test_frontend_hygiene.py` + `tests/test_media_retention.py` 203 passed, 2 skipped; full suite 647 passed, 3 skipped. `node --check` and `git diff --check` clean.
+- Remaining limits: transcript archive is workspace-local only (no Obsidian/Feishu transcript sync); a custom destination is never used for transcripts; the completion page displays paths rather than linkifying them.
 
 ## Current constraints
 

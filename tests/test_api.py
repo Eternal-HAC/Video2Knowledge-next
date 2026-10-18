@@ -1062,6 +1062,253 @@ def test_archive_note_ignored_by_task_discovery(monkeypatch, tmp_path) -> None:
     assert main.find_reusable_task("https://www.bilibili.com/video/BV1xx") is None
 
 
+def test_archive_note_folder_is_restricted_to_known_archives(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    with pytest.raises(ValueError):
+        main.archive_note("x", "y", folder="../escape")
+    archived = main.archive_note("转录", "正文", folder=main.TRANSCRIPTS_DIR_NAME)
+    assert archived.parent == tmp_path / "transcripts"
+    assert archived.name == "转录.md"
+
+
+def test_archive_note_custom_destination_ignores_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    destination = tmp_path / "vault"
+    destination.mkdir()
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+
+    archived = main.archive_note(
+        "笔记",
+        "# 正文",
+        destination=destination,
+        folder=main.TRANSCRIPTS_DIR_NAME,
+    )
+
+    assert archived == destination / "笔记.md"
+    assert not (workspace / "transcripts").exists()
+
+
+def test_archive_note_transcripts_collision_and_race(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    first = main.archive_note("转录", "# 一", folder=main.TRANSCRIPTS_DIR_NAME)
+    second = main.archive_note("转录", "# 二", folder=main.TRANSCRIPTS_DIR_NAME)
+    assert first.name == "转录.md"
+    assert second.name == "转录-2.md"
+
+    raced = tmp_path / "transcripts" / "竞态.md"
+    real_open = Path.open
+    injected = False
+
+    def inject_race(path: Path, mode: str = "r", *args, **kwargs):
+        nonlocal injected
+        if path == raced and mode == "x" and not injected:
+            injected = True
+            with real_open(path, "x", encoding="utf-8") as handle:
+                handle.write("并发写入")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", inject_race)
+    archived = main.archive_note("竞态", "当前转录", folder=main.TRANSCRIPTS_DIR_NAME)
+    assert raced.read_text(encoding="utf-8") == "并发写入"
+    assert archived == tmp_path / "transcripts" / "竞态-2.md"
+    assert archived.read_text(encoding="utf-8") == "当前转录"
+
+
+def _transcript_archive_processor(title: str, source: str):
+    class FakeProcessor:
+        @staticmethod
+        def detect_source(*args, **kwargs):
+            return main.VideoSource.LOCAL if source == "local" else main.VideoSource.BILIBILI
+
+        @staticmethod
+        async def get_video_info(*args, **kwargs):
+            return {"title": title, "source": source, "duration": 1}
+
+        @staticmethod
+        async def fetch_subtitles(*args, **kwargs):
+            return SubtitleResult(
+                [TranscriptSegment(0, 1, "字幕正文")], "zh", "platform_subtitle"
+            )
+
+        @staticmethod
+        async def cleanup(value):
+            return None
+
+    return FakeProcessor()
+
+
+@pytest.mark.asyncio
+async def test_local_transcript_task_archives_markdown_by_title(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_id = "transcript-archive-local"
+    media = tmp_path / task_id / "input.mp4"
+    media.parent.mkdir()
+    media.write_bytes(b"bits")
+
+    class FakeTranscriber:
+        @staticmethod
+        async def transcribe(
+            media_path,
+            model,
+            use_gpu,
+            initial_prompt=None,
+            cancel_event=None,
+            progress_callback=None,
+        ):
+            return {
+                "segments": [TranscriptSegment(0, 1, "转录正文")],
+                "language": "zh",
+                "model": model,
+                "requested_model": model,
+                "device": "cpu",
+                "duration": 1,
+            }
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(
+        main, "video_processor", _transcript_archive_processor("归档测试", "local")
+    )
+    monkeypatch.setattr(main, "transcriber", FakeTranscriber())
+    task = main.new_task(status="uploaded", task_id=task_id)
+    task.update(uploaded_file_path=str(media), uploaded_filename="归档测试.mp4")
+    main.tasks[task_id] = task
+
+    await main.process_video_task(
+        task_id,
+        main.SummarizeRequest(
+            video_url=str(media), output="transcript", llm_config=main.LLMConfig()
+        ),
+    )
+
+    finished = main.tasks[task_id]
+    assert finished["status"] == "completed"
+    archived = Path(finished["result"]["archived_path"])
+    assert archived.parent == tmp_path / "transcripts"
+    assert archived.name == "归档测试【转录】.md"
+    assert archived.read_text(encoding="utf-8") == (
+        tmp_path / task_id / "transcript.md"
+    ).read_text(encoding="utf-8")
+    assert not (archived.parent / "task.json").exists()
+    main.tasks.pop(task_id, None)
+
+
+@pytest.mark.asyncio
+async def test_url_transcript_task_archives_markdown_by_title(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_id = "transcript-archive-url"
+    (tmp_path / task_id).mkdir()
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(
+        main, "video_processor", _transcript_archive_processor("URL归档", "bilibili")
+    )
+    main.tasks[task_id] = main.new_task()
+
+    await main.process_video_task(
+        task_id,
+        main.SummarizeRequest(
+            video_url="https://www.bilibili.com/video/BV1xx",
+            output="transcript",
+            llm_config=main.LLMConfig(),
+        ),
+    )
+
+    finished = main.tasks[task_id]
+    assert finished["status"] == "completed"
+    archived = Path(finished["result"]["archived_path"])
+    assert archived.name == "URL归档【转录】.md"
+    assert archived.read_text(encoding="utf-8") == (
+        tmp_path / task_id / "transcript.md"
+    ).read_text(encoding="utf-8")
+    main.tasks.pop(task_id, None)
+
+
+@pytest.mark.asyncio
+async def test_transcript_archive_failure_keeps_task_completed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task_id = "transcript-archive-fail"
+    media = tmp_path / task_id / "input.mp4"
+    media.parent.mkdir()
+    media.write_bytes(b"bits")
+
+    class FakeTranscriber:
+        @staticmethod
+        async def transcribe(
+            media_path,
+            model,
+            use_gpu,
+            initial_prompt=None,
+            cancel_event=None,
+            progress_callback=None,
+        ):
+            return {
+                "segments": [TranscriptSegment(0, 1, "转录正文")],
+                "language": "zh",
+                "model": model,
+                "requested_model": model,
+                "device": "cpu",
+                "duration": 1,
+            }
+
+    def broken_archive(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(
+        main, "video_processor", _transcript_archive_processor("归档失败", "local")
+    )
+    monkeypatch.setattr(main, "transcriber", FakeTranscriber())
+    monkeypatch.setattr(main, "archive_note", broken_archive)
+    task = main.new_task(status="uploaded", task_id=task_id)
+    task.update(uploaded_file_path=str(media), uploaded_filename="a.mp4")
+    main.tasks[task_id] = task
+
+    await main.process_video_task(
+        task_id,
+        main.SummarizeRequest(
+            video_url=str(media), output="transcript", llm_config=main.LLMConfig()
+        ),
+    )
+
+    finished = main.tasks[task_id]
+    assert finished["status"] == "completed"
+    assert finished["result"]["archived_path"] is None
+    assert any("未能归档" in log for log in finished["logs"])
+    assert (tmp_path / task_id / "transcript.md").is_file()
+    download = TestClient(main.app).get(f"/api/download/{task_id}")
+    assert download.status_code == 200
+    assert "转录正文" in download.text
+    main.tasks.pop(task_id, None)
+
+
+def test_workspace_archive_dirs_are_not_tasks_or_media(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    for name in (main.NOTES_DIR_NAME, main.TRANSCRIPTS_DIR_NAME):
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "kept.md").write_text("keep", encoding="utf-8")
+
+    main.restore_tasks_from_workspace()
+    assert main.tasks == {}
+    assert main.find_reusable_task("https://www.bilibili.com/video/BV1xx") is None
+
+    result = main.cleanup_expired_task_media(tmp_path, days=1, active_task_ids=set())
+    assert result["scanned"] == 0
+    for name in (main.NOTES_DIR_NAME, main.TRANSCRIPTS_DIR_NAME):
+        assert (tmp_path / name / "kept.md").is_file()
+
+
 def test_download_stem_matches_title_and_bilibili_page_selection() -> None:
     stem = main.download_stem
     assert main.SAFE_NAME_LIMIT == 80

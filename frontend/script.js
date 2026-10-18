@@ -2820,6 +2820,7 @@ function resetTaskView() {
     byId('regenerateBtn').disabled = true;
     byId('outputNotice').hidden = true;
     byId('outputPath').textContent = '';
+    byId('taskDirPath').textContent = '';
     byId('feishuNotice').hidden = true;
     renderTaskAdvisory(null);
     byId('networkState').textContent = '准备提交';
@@ -3065,13 +3066,20 @@ async function showResult(result) {
     const outputDirectory = typeof result.output_directory === 'string'
         ? result.output_directory.trim()
         : '';
-    byId('outputPath').textContent = outputDirectory;
-    byId('outputNotice').hidden = !outputDirectory;
     const archivedPath = typeof result.archived_path === 'string'
         ? result.archived_path.trim()
         : '';
-    byId('archivedPath').textContent = archivedPath;
-    byId('archivedNotice').hidden = !archivedPath;
+    // 主行放"该拿的那一份"：归档文件名带标题；任务目录是 UUID 加固定名中间产物，
+    // 降为补充信息，但保留给用户排查音频、抽帧与 transcript.json。
+    const primaryPath = archivedPath || outputDirectory;
+    const pathLabel = byId('outputPathLabel');
+    if (pathLabel) pathLabel.textContent = archivedPath ? '已保存到' : '输出文件已保存在';
+    byId('outputPath').textContent = primaryPath;
+    byId('outputNotice').hidden = !primaryPath;
+    const taskDirPath = byId('taskDirPath');
+    if (taskDirPath) taskDirPath.textContent = outputDirectory;
+    const taskDirNotice = byId('taskDirNotice');
+    if (taskDirNotice) taskDirNotice.hidden = !(archivedPath && outputDirectory);
     return true;
 }
 
