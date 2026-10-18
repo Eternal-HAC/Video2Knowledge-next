@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, and static-resource media-type slices are complete locally; none implies a permanent platform or player guarantee. The next approved slice ports upstream `68117a6` so model context-window exhaustion is diagnosed before generic HTTP status handling while rate-limit errors remain distinct. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, and model context-window diagnosis slices are complete locally; none implies a permanent platform or player guarantee. The next planned slice is Gate 3: reference upstream `7642479` + `8e02db3` to strengthen long-note resilience; the concrete implementation contract will be supplied separately. Wiki integration, overwrite/sync, permission management, automatic login, new platform adapters and merchant integrations remain deferred until separately prioritized and authorized.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -169,6 +169,14 @@ The native Feishu online-docx, subtitle-import/SRT-export, and static-resource m
 - Correct types are applied to both 200 responses and 304 revalidation responses; the existing HTML `Cache-Control: no-store`, other-asset `no-cache`, `X-Content-Type-Options: nosniff` and other security headers are unchanged.
 - Validation (fresh): `tests/test_api.py` 132 passed, 1 skipped; full suite 569 passed, 2 skipped. The new regression forces `starlette.responses.guess_type` to `text/plain` and asserts the JS/CSS/HTML types plus a 304 carrying the ETag; it failed before the production change.
 - Remaining limit: this covers the extensions the bundled frontend serves; new asset kinds need an explicit entry instead of falling back to the OS table.
+
+## Completed model context-window diagnosis gate
+
+- Ported upstream `68117a6` without cherry-picking. `friendly_llm_error` now recognizes `context_length_exceeded`, `context length`, `context window`, `prompt is too long`, `num_ctx`, and `maximum capacity of` case-insensitively before quota/429/401/403/404 matching, so token-count digits such as `9403` no longer hit the 403 branch.
+- The user-facing message states that the model-side context window is too small, not a program token setting; it gives `OLLAMA_CONTEXT_LENGTH=16384` and `num_ctx 16384` examples for Ollama / LM Studio / llama.cpp, plus larger-context models or the condensed summary option.
+- "Too many tokens per minute" remains a rate-limit error; a dedicated regression pins it and asserts the message does not mention the context window.
+- Validation (fresh): the two `friendly_llm_error` regressions passed; `tests/test_api.py` 134 passed, 1 skipped; full suite 571 passed, 2 skipped. The context regression failed before the production change.
+- Next: Gate 3, reference upstream `7642479` + `8e02db3` to strengthen long-note resilience; the concrete implementation contract will be given separately by the coordinator.
 
 ## Current constraints
 

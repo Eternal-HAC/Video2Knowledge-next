@@ -32,7 +32,8 @@ This file holds only the active gap-verification queue. For every item: close it
 4. [x] Feishu native cloud image blocks: implemented as an online docx with inline image blocks and verified once against a real user-authorized test folder. Deferred: Wiki/docx import, overwrite or sync, permission management, automatic login.
 5. [x] Subtitle-file import and SRT export: ported from upstream `662f56b`. `.srt` / `.vtt` imports become an already-timed transcript without download or ASR; any transcript exports standard SubRip from backend segments.
 6. [x] Windows static-asset MIME pinning: ported from upstream `55166ad`. `.js` / `.mjs` / `.css` / `.html` types are fixed in code (including 304 revalidation), independent of the OS registry; cache and security headers are unchanged.
+7. [x] Model context-window diagnosis: ported from upstream `68117a6`. Context-window markers are recognized before generic status codes, with actionable local-model guidance; `Too many tokens per minute` remains a rate-limit error.
 
 ## Next single execution task
 
-Port and independently verify upstream `68117a6`: recognize model context-window exhaustion before generic HTTP status handling and return actionable local-model guidance. Preserve rate-limit classification for messages such as `Too many tokens per minute`.
+Gate 3: reference upstream `7642479` + `8e02db3` to strengthen long-note resilience. The concrete implementation contract will be supplied separately by the coordinator before implementation starts.
