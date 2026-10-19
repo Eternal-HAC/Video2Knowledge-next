@@ -82,7 +82,7 @@ The note-template milestone is complete locally with the following contract:
 
 | Area | Current evidence | Successor status |
 | --- | --- | --- |
-| Subtitle preference and ASR fallback | `prefer_subtitles` defaults to true; platform subtitles and automatic captions are checked before local ASR; regression tests cover subtitle reuse and ASR paths. | Upstream capability present. Final successor end-to-end acceptance is pending. |
+| Subtitle preference and ASR fallback | `prefer_subtitles` defaults to true; platform subtitles and automatic captions are checked before local ASR; regression tests cover subtitle reuse and ASR paths. A frozen Windows build completed an offline local-media smoke through its isolated ASR child with the cached Whisper `small` model. | Source and packaged offline transcription paths are accepted for the first successor prerelease. Real-provider note generation remains separately authorized and unverified in this release. |
 | Markdown and transcript artifacts | Upstream writes UTF-8 `notes.md`, `transcript.md`, and `transcript.json`, and exposes completed transcripts through API/MCP paths. | Upstream capability present. |
 | Selected directory or Vault output | Note tasks accept an optional absolute final-note destination. Custom destinations receive only the final Markdown and referenced task attachments; leaving it empty preserves `workspace/notes`. Collision, Unicode-path, invalid-path, and credential-boundary tests cover the contract. | Successor customization implemented. Final real-chain acceptance is pending. |
 | Personal Markdown template | Four immutable built-ins, backend-stored custom templates, safe deterministic layouts, task snapshots, transcript-reuse regeneration, and frontend management are covered by code and tests. | Successor customization implemented locally. |
@@ -101,6 +101,7 @@ The note-template milestone is complete locally with the following contract:
 5. One-off real validation for YouTube, Bilibili, and Douyin: complete; this does not guarantee permanent availability.
 6. Xiaoe-tech research and local import guidance: complete. Other platform or merchant integrations require separate authorization.
 7. Subtitle-file import and SRT export: ported from upstream `662f56b`; complete locally.
+8. Windows successor prerelease: `v1.4.2-v2k.1` packages the current MVP and has completed an offline frozen-build local-ASR smoke, including JSON, Markdown, SRT and central transcript archive artifacts. Real LLM Provider validation is not claimed.
 
 ## Non-goals for the current phase
 

@@ -1,7 +1,7 @@
 <p align="center">
   <img src="sources/icon.png" width="96" alt="VideoToNo 图标">
 </p>
-<h1 align="center">VideoToNo v1.4.2</h1>
+<h1 align="center">VideoToNo v1.4.2-v2k.1</h1>
 
 <p align="center"><em>把视频变成可回看的 Markdown 笔记</em></p>
 
@@ -11,9 +11,9 @@
 
 项目文档：[产品基线](PRD.md) · [当前状态](PROJECT_STATUS.md) · [当前任务](TODO.md) · [长期决定](DECISIONS.md) · [开发约定](AGENTS.md)
 
-<p align="center"><span style="white-space: nowrap;"><a href="https://github.com/like-attract/video-to-note/releases/latest"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/like-attract/video-to-note?display_name=tag&style=flat-square&label=release&color=2563eb" alt="最新版本"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/like-attract/video-to-note?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
+<p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=successor&color=2563eb" alt="successor 版本"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/like-attract/video-to-note/releases/latest"><strong>⬇️ 下载 Windows 便携版</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.4.2-v2k.1"><strong>⬇️ 下载 Windows 便携版预发布</strong></a></p>
 
 <p align="center">🎬 宣传视频：<a href="https://www.bilibili.com/video/BV1Qwby6DEu1/">https://www.bilibili.com/video/BV1Qwby6DEu1/</a> &nbsp;·&nbsp; 👥 QQ 交流群：<code>739200648</code></p>
 
@@ -21,7 +21,13 @@ VideoToNo 把「视频 → 结构化笔记」这条链路做成了一个**本地
 
 > 🤖 **Agent Skill 已上线**：把仓库里的 `skills/video-to-note/` 目录复制到 agent 的技能目录（如 `C:/Users/用户名/.agents/skills/`），即可让 Claude Code、pi 等直接一句话生成视频笔记。详见该目录下的 `SKILL.md`。
 
-## 🆕 What's New（v1.4.1 → v1.4.2）
+## 🆕 Successor 预发布（v1.4.2-v2k.1）
+
+- 在 VideoToNo v1.4.2 上保持原下载、字幕、本地 ASR 和任务架构，增加个人模板、Obsidian/自定义目录、可选飞书在线文档、字幕文件导入与 SRT 导出。
+- YouTube、B 站、抖音和本地媒体继续使用字幕优先、本地 ASR 兜底；平台登录、验证、会员和区域限制不会被绕过。
+- 这是 Video2Knowledge successor 的首个 Windows 预发布。真实 LLM Provider 未纳入本次离线 RC 验收，使用前仍需用户自行配置并承担相应服务调用。
+
+## 上游 v1.4.2 摘要
 
 - **模型档位是新的了**：DeepSeek V4.1 Flash、智谱 GLM-5.3 与免费档 GLM-4.7-Flash、通义 Qwen3.8 都进了下拉框；旧档位一个没删，之前存过的配置照常能用
 - **报错会告诉你下一步做什么**：「测试连接失败」「B 站取不到内容」「笔记没出正文」这三类以前只有一串代号，现在写清楚是谁的问题、该改哪里——该换档位的时候不会再让你去重新登录
@@ -66,7 +72,7 @@ VideoToNo 把「视频 → 结构化笔记」这条链路做成了一个**本地
 
 ## 🚀 便携版下载（推荐）
 
-普通用户无需安装 Python 或配置开发环境，直接下载 [最新 Release](https://github.com/like-attract/video-to-note/releases/latest) 中的 `VideoToNo-1.4.2-portable.exe`：
+普通用户无需安装 Python 或配置开发环境，直接下载 [successor 预发布](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.4.2-v2k.1) 中的 `VideoToNo-1.4.2-v2k.1-portable.exe`：
 
 1. 下载并双击 exe；
 2. 等待浏览器自动打开本地页面；
@@ -74,6 +80,8 @@ VideoToNo 把「视频 → 结构化笔记」这条链路做成了一个**本地
 4. 等待生成笔记或字幕稿。
 
 便携版会自动启动本地服务并驻留系统托盘。第一次使用 Whisper 转写时需要下载模型，请保持网络畅通；生成的任务、转录、截图和笔记默认保存在 exe 同目录的 `workspace/` 中。
+
+本预发布已在 Windows 11 上使用缓存的 Whisper `small` 模型完成打包态离线转录验收。发布资产的 SHA-256 见 Release 附带的 `SHA256SUMS.txt`。真实 LLM Provider 未包含在本次验收中。
 
 ## ✨ 主要功能
 

@@ -32,7 +32,7 @@ $versionInfoText = $templateText `
 [System.IO.File]::WriteAllText($versionInfoPath, $versionInfoText, [System.Text.Encoding]::UTF8)
 
 if (-not $SkipInstall) {
-    & $Python -m pip install --quiet pyinstaller
+    & $Python -m pip install --quiet "pyinstaller==6.22.3"
     if ($LASTEXITCODE -ne 0) { throw "pyinstaller 安装失败" }
 }
 

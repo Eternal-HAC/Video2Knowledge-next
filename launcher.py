@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -24,12 +25,15 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.4.2"
+VERSION = "1.4.2-v2k.1"
 DEFAULT_PORT = 8000
 PORT_SCAN_RANGE = 20
 START_TIMEOUT_SECONDS = 60
 APP_NAME = f"VideoToNo v{VERSION}"
-GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/like-attract/video-to-note/releases/latest"
+GITHUB_RELEASES_API = (
+    "https://api.github.com/repos/Eternal-HAC/Video2Knowledge-next/releases?per_page=20"
+)
+GITHUB_RELEASES_URL = "https://github.com/Eternal-HAC/Video2Knowledge-next/releases"
 
 
 def is_frozen() -> bool:
@@ -220,25 +224,21 @@ def open_in_shell(path: Path) -> None:
 
 
 def version_tuple(value: str) -> tuple[int, ...]:
-    """把 v1.2.3 或 1.2.3 转成可比较的版本元组。"""
+    """把普通版本或 successor 的 ``-v2k.N`` 标签转成可比较元组。"""
     text = str(value or "").strip().lstrip("vV")
-    parts: list[int] = []
-    for part in text.split("."):
-        digits = ""
-        for character in part:
-            if not character.isdigit():
-                break
-            digits += character
-        if not digits:
-            break
-        parts.append(int(digits))
-    return tuple(parts or [0])
+    match = re.match(r"^(\d+(?:\.\d+)*)(?:-v2k\.(\d+))?", text, re.IGNORECASE)
+    if not match:
+        return (0,)
+    parts = [int(part) for part in match.group(1).split(".")]
+    if match.group(2) is not None:
+        parts.append(int(match.group(2)))
+    return tuple(parts)
 
 
 def latest_release_info() -> dict[str, str]:
-    """读取 GitHub 最新 Release；只在用户点击托盘菜单时调用。"""
+    """读取 Fork 最新的非草稿 Release，包括 successor 预发布版。"""
     request = urllib.request.Request(
-        GITHUB_LATEST_RELEASE_API,
+        GITHUB_RELEASES_API,
         headers={
             "Accept": "application/vnd.github+json",
             "User-Agent": f"VideoToNo/{VERSION}",
@@ -246,11 +246,17 @@ def latest_release_info() -> dict[str, str]:
     )
     with urllib.request.urlopen(request, timeout=5) as response:
         payload = json.loads(response.read().decode("utf-8"))
-    tag = str(payload.get("tag_name") or "").strip()
-    url = str(payload.get("html_url") or "https://github.com/like-attract/video-to-note/releases/latest")
-    if not tag:
-        raise RuntimeError("GitHub 未返回有效版本号")
-    return {"tag_name": tag, "html_url": url}
+    if not isinstance(payload, list):
+        raise RuntimeError("GitHub 未返回有效 Release 列表")
+    for release in payload:
+        if not isinstance(release, dict) or release.get("draft"):
+            continue
+        tag = str(release.get("tag_name") or "").strip()
+        if not tag:
+            continue
+        url = str(release.get("html_url") or GITHUB_RELEASES_URL)
+        return {"tag_name": tag, "html_url": url}
+    raise RuntimeError("GitHub 未返回有效版本号")
 
 
 def show_update_message(message: str, title: str = APP_NAME, flags: int = 0x40) -> int:

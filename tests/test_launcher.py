@@ -4,9 +4,16 @@ from pathlib import Path
 import launcher
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
 def test_version_tuple_accepts_release_tags() -> None:
     assert launcher.version_tuple("v1.1.4") == (1, 1, 4)
     assert launcher.version_tuple("1.2.0-rc1") == (1, 2, 0)
+    assert launcher.version_tuple("v1.4.2-v2k.1") == (1, 4, 2, 1)
+    assert launcher.version_tuple("v1.4.2-v2k.2") > launcher.version_tuple(
+        "v1.4.2-v2k.1"
+    )
     assert launcher.version_tuple("invalid") == (0,)
 
 
@@ -49,7 +56,19 @@ def test_latest_release_info_reads_tag_and_url(monkeypatch) -> None:
 
         def read(self):
             return json.dumps(
-                {"tag_name": "v1.2.0", "html_url": "https://github.com/example/release"}
+                [
+                    {
+                        "tag_name": "v9.9.9-draft",
+                        "html_url": "https://github.com/example/draft",
+                        "draft": True,
+                    },
+                    {
+                        "tag_name": "v1.4.2-v2k.1",
+                        "html_url": "https://github.com/example/release",
+                        "draft": False,
+                        "prerelease": True,
+                    },
+                ]
             ).encode("utf-8")
 
     captured = {}
@@ -61,10 +80,28 @@ def test_latest_release_info_reads_tag_and_url(monkeypatch) -> None:
 
     monkeypatch.setattr(launcher.urllib.request, "urlopen", fake_urlopen)
     assert launcher.latest_release_info() == {
-        "tag_name": "v1.2.0",
+        "tag_name": "v1.4.2-v2k.1",
         "html_url": "https://github.com/example/release",
     }
-    assert captured == {"url": launcher.GITHUB_LATEST_RELEASE_API, "timeout": 5}
+    assert captured == {"url": launcher.GITHUB_RELEASES_API, "timeout": 5}
+
+
+def test_release_api_points_to_successor_fork() -> None:
+    assert launcher.GITHUB_RELEASES_API.startswith(
+        "https://api.github.com/repos/Eternal-HAC/Video2Knowledge-next/releases"
+    )
+
+
+def test_release_version_is_synchronized_across_runtime_and_frontend() -> None:
+    page = (PROJECT_ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert f'id="appVersion" class="app-version">v{launcher.VERSION}</span>' in page
+
+
+def test_build_script_pins_the_approved_pyinstaller_version() -> None:
+    build_script = (PROJECT_ROOT / "scripts" / "build_exe.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert 'pip install --quiet "pyinstaller==6.22.3"' in build_script
 
 
 def test_check_for_updates_opens_new_release_after_confirmation(monkeypatch) -> None:

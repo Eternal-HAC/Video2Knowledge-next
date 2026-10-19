@@ -1,14 +1,14 @@
 # Project Status
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 
 ## Current stage
 
-`Selective upstream reliability sync independently accepted locally`
+`Windows successor prerelease validated; publication authorized`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
-The first successor customization is complete in local commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. The feature commit has not been pushed, so local `main` remains ahead of `origin/main`.
+The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
 ## Baseline
 
@@ -128,7 +128,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync is complete. Remaining work requires user decisions or authorization: a real portable-build ASR smoke test, a proxy/diagnostics policy (including the deliberate choice not to auto-bypass proxies), headless agent operation, new platform and Feishu extensions, and any push or release.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync and first Windows successor prerelease validation are complete. After publication, remaining product directions require separate decisions: proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, new platform and Feishu extensions, or broader brand migration.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -224,6 +224,16 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - Summarizer construction/test failures sanitize `str(exc)` with `utf8_safe`, then `redact_secrets(..., api_key)`, then `redact_paths`, so fake keys, Bearer tokens, Windows paths and lone surrogates cannot leak or break JSON. No raw configuration is logged or returned.
 - Validation (fresh): `tests/test_api.py` 156 passed, 1 skipped; full suite 653 passed, 3 skipped. `git diff --check` clean.
 - Remaining risks: path redaction is pattern-based; unusual path shapes could still appear, and the handler still returns exception type names (never `str(exc)`). No real provider or network request was made.
+
+## Completed Windows successor prerelease gate
+
+- Release identity is `v1.4.2-v2k.1`: it preserves the VideoToNo runtime name and workspace/credential compatibility while identifying the first Video2Knowledge successor prerelease. Runtime, FastAPI health and frontend display the same successor version.
+- The manual update check now reads non-draft releases, including prereleases, from `Eternal-HAC/Video2Knowledge-next`; it no longer directs successor users to an upstream release that lacks successor features. Version comparison recognizes the `-v2k.N` sequence.
+- The Windows one-file build used Python 3.13.7, PyInstaller 6.22.3 and its newly installed build-only dependencies. Existing runtime packages were not upgraded, and `pip check` reported no broken requirements.
+- Built artifact: `VideoToNo-1.4.2-v2k.1-portable.exe`, 133,634,842 bytes (127.4 MiB), SHA-256 `D4548392E372293A7CDD8E8C0FC34ED7067D06598C2196AFC0D9A073C74016D1`. Windows file/product version remains `1.4.2.0` because PE numeric versions cannot encode the successor suffix; the application and health API report the full version.
+- Real frozen-build smoke: an isolated workspace and Windows SAPI-generated Chinese WAV were submitted through the packaged HTTP API with network model access disabled. The cached Whisper `small` model completed through the frozen ASR child, producing 3 non-empty Chinese segments plus JSON, Markdown, standards-shaped SRT and one central transcript archive. The exact launched process tree and all temporary media/workspace files were removed afterward.
+- Automated evidence: targeted release tests `194 passed, 1 skipped`; final complete suite `656 passed, 3 skipped`; `node --check frontend/script.js`, tracked and untracked diff checks, PowerShell smoke-script parsing, and `pip check` passed.
+- Boundary: no public media/model download, platform login/cookies, real LLM Provider call or Feishu write was performed. This prerelease proves the packaged offline transcription route, not real-provider compatibility.
 
 ## Current constraints
 

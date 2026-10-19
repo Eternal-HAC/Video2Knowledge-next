@@ -127,3 +127,15 @@ Reason: The existing parser already produces millisecond-accurate segments; plai
 Consequences: Subtitle files use a separate 20 MiB default limit, are stored as `subtitle.<ext>` (never `input.*`), and skip download, ASR and screenshots. Empty or untimed files fail at upload with no task directory. `subtitle.*` is preserved by media retention. Templates, custom destinations/Obsidian, Feishu publication and the local ZIP download are unchanged.
 
 Review condition: Revisit if users need untimed plain text with synthetic timing (a separate product decision), or if additional subtitle export formats become necessary.
+
+## 2026-10-20: Publish the first successor as a lineage-marked prerelease
+
+Decision: Publish the first successor build as `v1.4.2-v2k.1` and keep the VideoToNo runtime/product name for compatibility. Point manual update checks and release links at `Eternal-HAC/Video2Knowledge-next`, while retaining the upstream MIT attribution and v1.4.2 lineage.
+
+Reason: A `v1.5.0` tag could collide conceptually with upstream development, while a broad Video2Knowledge runtime rename would change workspace, credential and user-facing compatibility beyond a release-validation milestone. The suffix identifies the successor without overstating a new independent version line.
+
+Alternatives considered: release as `v1.5.0`; complete a full brand migration before packaging; continue directing the update checker to upstream releases.
+
+Impact: The application/API/frontend expose `1.4.2-v2k.1`; the numeric Windows PE version remains `1.4.2.0`; the update comparator recognizes later `-v2k.N` releases. The GitHub Release is a prerelease because real LLM Provider operation was deliberately outside the authorized offline acceptance.
+
+Review condition: Choose an independent version and brand migration only as a separately scoped compatibility project, or promote a later successor build after its declared real-world acceptance gates pass.

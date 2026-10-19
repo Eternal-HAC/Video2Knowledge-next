@@ -168,7 +168,7 @@ NOTE_IMAGE_REF_RE = re.compile(
     rf"(!\[[^\]]*\]\()\./(?:{FRAMES_DIR_NAME}|images)/([^)]+)\)"
 )
 
-app = FastAPI(title="VideoToNo API", version="1.4.2")
+app = FastAPI(title="VideoToNo API", version="1.4.2-v2k.1")
 
 
 def is_loopback_client(host: str | None) -> bool:
