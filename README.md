@@ -13,7 +13,7 @@
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.1，候选版本，尚未发布）</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.1）</strong></a></p>
 
 ## 产品定位
 
@@ -53,7 +53,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 ## 🚀 安装（Windows 便携版）
 
-> **发布状态**：`v1.0.0-beta.1` 是独立版本线的第一个候选发布，**尚未发布**。发布前还需完成完整测试套件、候选 EXE 构建、打包态离线 ASR 验收与 SHA-256 登记；完成后本节链接指向的 Release 才会可用。当前状态见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+> **发布状态**：`v1.0.0-beta.1` 是独立版本线的第一个预发布版。本地候选已完成完整测试、Windows EXE 构建、打包态离线 ASR、兼容环境变量与 SHA-256 验收；Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准。详细证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
 发布后，普通用户无需安装 Python 或配置开发环境，从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1) 下载 `Video2Knowledge-1.0.0-beta.1-portable.exe`：
 

@@ -44,11 +44,11 @@ This file holds only the active gap-verification queue. For every item: close it
 
 ## Next single execution task
 
-- [ ] `v1.0.0-beta.1` candidate release gate (authorized by the current release plan; each step still requires its own verification):
-  1. Final complete `pytest` run on the intended release commit.
-  2. Candidate build of `Video2Knowledge-1.0.0-beta.1-portable.exe`.
-  3. Packaged offline-ASR acceptance for this version (the earlier frozen-build smoke covered `v1.4.2-v2k.1` and does not carry over automatically).
-  4. [x] Generate real Knowledge Studio README screenshots from an isolated page with synthetic data; SHA-256 registration (`SHA256SUMS.txt`) remains pending until the final EXE exists.
-  5. Tag and remote GitHub Release publication after all local gates pass; the current plan already grants this release authorization.
+- [ ] `v1.0.0-beta.1` remote release closeout (authorized by the current release plan):
+  1. [x] Run the complete `pytest` suite on the intended release branch and repeat it after the build-script fix.
+  2. [x] Build `Video2Knowledge-1.0.0-beta.1-portable.exe` with the existing PyInstaller 6.22.3.
+  3. [x] Pass packaged offline-ASR acceptance with cached Whisper `small`, plus legacy environment-variable and static-resource smoke checks.
+  4. [x] Generate byte-stable Knowledge Studio README screenshots and a candidate `SHA256SUMS.txt` (`9c2cda4e...aa50`).
+  5. [ ] Push `main`, create the annotated tag and GitHub Pre-release, then verify released asset digests and repository Description/Topics.
 
 Other future directions still require a separate product decision: proxy/diagnostics policy (no automatic bypass), headless agent operation, and new platform/Feishu extensions. No further automatic coding gate is queued.

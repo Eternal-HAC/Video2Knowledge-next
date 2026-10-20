@@ -14,7 +14,7 @@ Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.1, candidate, not yet published)</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.1)</strong></a></p>
 
 ## Product positioning
 
@@ -54,7 +54,7 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 
 ## 🚀 Install (Windows portable build)
 
-> **Release status**: `v1.0.0-beta.1` is the first candidate of the independent version line and is **not yet published**. A full test-suite run, the candidate EXE build, a packaged offline-ASR acceptance and SHA-256 registration are still required before the Release linked below becomes available. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for current status.
+> **Release status**: `v1.0.0-beta.1` is the first prerelease on the independent version line. The local candidate has passed the full test suite, Windows EXE build, packaged offline-ASR, compatibility-environment, and SHA-256 gates. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for evidence.
 
 Once published, no Python or development setup is required: download `Video2Knowledge-1.0.0-beta.1-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1):
 
