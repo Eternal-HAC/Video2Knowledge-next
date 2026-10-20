@@ -4,9 +4,11 @@ Updated: 2026-10-21
 
 ## Current stage
 
-`Windows successor prerelease published; limited real note chain validated`
+`Independent Video2Knowledge brand and Knowledge Studio UI implemented locally; v1.0.0-beta.1 candidate pending build and acceptance`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
+
+The product is now branded **Video2Knowledge** with an independent version line starting at `1.0.0-beta.1` (driven solely by `product_info.py`), an original script-generated logo, and a redesigned Knowledge Studio workspace per `DESIGN.md`. Local UI automation and visual acceptance for the redesign have passed. The `v1.0.0-beta.1` candidate has **not** been built or published: the final complete `pytest` run on the release commit, the candidate EXE, its packaged offline-ASR acceptance, SHA-256 registration, and the remote GitHub Release are all still pending and must not be treated as done.
 
 The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
@@ -128,7 +130,16 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync and first Windows successor prerelease validation are complete. After publication, remaining product directions require separate decisions: proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, new platform and Feishu extensions, or broader brand migration.
+The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync and first Windows successor prerelease validation are complete. The brand-migration direction listed below has since been decided and implemented locally (see "Implemented independent brand and Knowledge Studio UI milestone"); remaining product directions still require separate decisions: proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, and new platform or Feishu extensions.
+
+## Implemented independent brand and Knowledge Studio UI milestone
+
+- The product is renamed to **Video2Knowledge** with an independent version line: `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0`. `product_info.py` is the single metadata source for the launcher, backend, build script, and release workflow. The transitional `v1.4.2-v2k.N` line sorts below the independent line in update checks, so existing successor installs still see later versions as updates.
+- Compatibility boundaries are preserved by contract: `/api/health` keeps the legacy `service: "VideoToNo"` value and adds `product`/`api_compat` (additive-only); `VIDEO2KNOWLEDGE_*` environment variables take priority while `VIDEOTONOTES_*` names keep working; browser-local preferences migrate from `vtn_prefs` to `v2k_prefs` while the old key remains for rollback and no API key enters localStorage; the `workspace/` layout, credential files, MCP tool names, and Agent Skill directory remain compatible.
+- The workspace UI is redesigned as Knowledge Studio per `DESIGN.md`: task-first first screen, settings collected into a slide-out panel, state conveyed by text plus color, system-font-only styling, and `prefers-reduced-motion` support. The brand mark is an original geometric logo generated reproducibly by `scripts/make_brand_assets.py`; no third-party icon sets or upstream-derived artwork are used. Backend APIs, task semantics, and the frontend element-ID contract (`tests/test_frontend_hygiene.py`) are unchanged.
+- Acceptance so far: local UI automation checks and visual acceptance of the redesigned workspace have **passed**.
+- Explicitly **pending** for the `v1.0.0-beta.1` candidate (do not read this milestone as release acceptance): a final complete `pytest` run on the release commit; the candidate `Video2Knowledge-1.0.0-beta.1-portable.exe` build; a packaged offline-ASR acceptance for this version; SHA-256 registration; and the remote GitHub Release publication. Three README screenshots have been generated from the real page with isolated synthetic data by `scripts/capture_readme_screenshots.mjs`; animation is disabled only in the capture page so repeated runs are byte-identical.
+- Evidence carried over from earlier stages: the `v1.4.2-v2k.1` offline frozen-build ASR smoke and the limited DeepSeek real-note-chain acceptance below remain valid for that build; they do not by themselves accept the rebranded candidate, and the DeepSeek evidence remains limited to one short synthetic transcript and one model.
 
 ## Implemented local import and optional age cleanup milestone
 
@@ -227,6 +238,8 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 
 ## Completed Windows successor prerelease gate
 
+Historical record for `v1.4.2-v2k.1`. Its decision to keep the VideoToNo runtime/product name has been superseded by the independent-brand milestone above; the build and acceptance evidence below still stands for that release.
+
 - Release identity is `v1.4.2-v2k.1`: it preserves the VideoToNo runtime name and workspace/credential compatibility while identifying the first Video2Knowledge successor prerelease. Runtime, FastAPI health and frontend display the same successor version.
 - The manual update check now reads non-draft releases, including prereleases, from `Eternal-HAC/Video2Knowledge-next`; it no longer directs successor users to an upstream release that lacks successor features. Version comparison recognizes the `-v2k.N` sequence.
 - The Windows one-file build used Python 3.13.7, PyInstaller 6.22.3 and its newly installed build-only dependencies. Existing runtime packages were not upgraded, and `pip check` reported no broken requirements.
@@ -245,6 +258,7 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 
 ## Current constraints
 
+- The product brand is Video2Knowledge on an independent version line; the legacy `service: "VideoToNo"` health field, `VIDEOTONOTES_*` environment names, browser preferences, MCP tool names and Skill discovery are compatibility positions that must not be dropped without a dedicated migration decision.
 - Successor additions include configurable final-note export, safe templates, destination convenience/publication, permitted local-import guidance and opt-in failed/cancelled media retention.
 - Custom destinations receive only the final Markdown and attachments referenced by that note. Task manifests, transcripts, downloaded media, model cache, and credentials remain in the workspace.
 - Relative paths, ordinary files, and unavailable destinations are rejected before media processing with stable validation errors.

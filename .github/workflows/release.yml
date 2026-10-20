@@ -123,14 +123,18 @@ jobs:
           NOTES=$(cat <<EOF
           ## $PRODUCT_NAME $GITHUB_REF_NAME
 
-          Video2Knowledge 是 VideoToNo 的继任分支：在本机把视频/字幕转成结构化笔记（下载、转写、总结、导出），数据不出本机。
+          Video2Knowledge 是 VideoToNo 的继任产品（Derived from VideoToNo v1.4.2）：在本机把视频/字幕转成结构化笔记，数据不出本机。仓库保留上游 Git 历史与 MIT License 归属，详见 UPSTREAM.md。
 
-          本版本是独立版本线的第一个 beta：
-          - 产品与界面更名为 Video2Knowledge，版本号、构建产物与发布流程统一由 product_info.py 驱动
-          - 便携版 EXE：解压即用，下载后可用 SHA256SUMS.txt 校验完整性
-          - 品牌与界面细节将在后续批次继续完善，能力以仓库文档为准
+          本版本是独立品牌与独立版本线（1.0.0-beta → rc → stable）的第一个候选发布：
+          - 产品与界面更名为 Video2Knowledge，工作区按 Knowledge Studio 重新设计（任务优先首屏 + 收纳式设置面板），品牌标志为仓库脚本可复现生成的原创图形
+          - 兼容迁移：/api/health 继续返回旧服务标识（同时携带 product 与 api_compat）；VIDEO2KNOWLEDGE_* 环境变量优先、旧名 VIDEOTONOTES_* 继续生效；浏览器偏好从 vtn_prefs 迁移到 v2k_prefs 并保留旧键；workspace 布局、MCP 工具与 Agent Skill 继续兼容
+          - 视频下载、平台字幕与本地 ASR 等子系统沿用上游成熟实现，非本项目从零重写
+          - 便携版 EXE：解压即用，下载后可用随附的 SHA256SUMS.txt 校验完整性
 
-          beta 版本可能存在未发现问题，欢迎到 Issues 反馈。
+          验收边界（发布前必读）：
+          - 打包态离线 ASR 验收是本版本发布前的独立验收项，结果以 PROJECT_STATUS.md 的记录为准
+          - 上一阶段的真实链路证据仅限一条短合成字幕 + DeepSeek 单模型的笔记任务，不构成对其他 Provider、长视频、公开平台或网络环境的兼容保证
+          - beta 版本可能存在未发现问题，欢迎到 Issues 反馈
 
           EOF
           )

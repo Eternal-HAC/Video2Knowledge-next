@@ -1,5 +1,26 @@
 # Video2Knowledge Product Baseline
 
+## Brand and version line
+
+- The user-visible product is **Video2Knowledge**; `VideoToNo` appears only in protocol-compatibility positions (for example the `/api/health` `service` field) and in attribution.
+- From `v1.0.0-beta.1` the project uses an **independent version line**: `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0`. The transitional `v1.4.2-v2k.N` line always sorts below the independent line in update checks. `product_info.py` is the single source for the product name, version, environment-variable prefixes, and release metadata consumed by the launcher, backend, build script, and release workflow.
+- The Windows portable artifact for this line is `Video2Knowledge-<version>-portable.exe`; `v1.0.0-beta.1` is a candidate that has **not been published yet**.
+
+## Compatibility boundaries of the rebrand
+
+The rename must not break existing integrations:
+
+- **Service identity**: `/api/health` keeps returning the legacy `service: "VideoToNo"` alongside `product: "Video2Knowledge"` and `api_compat: 1`. The compat level is additive-only; it bumps only when an existing field's semantics break.
+- **API**: endpoint paths, request shapes, and task manifest format are unchanged by the rebrand.
+- **Environment variables**: new `VIDEO2KNOWLEDGE_*` names take priority; legacy `VIDEOTONOTES_*` names keep working (`WORKSPACE`, `BACKEND_URL`, `REJECTED_LLM_PARAMS`, `LLM_API_KEY`, and so on).
+- **Browser preferences**: non-sensitive localStorage preferences move to `v2k_prefs`. On first launch the app copies legacy `vtn_prefs`, preserves that old key for rollback, and never migrates API keys into localStorage.
+- **MCP / Agent Skill**: discovery recognizes both the new `product` field and the legacy `service` value; tool names, the SSE endpoint, and the Skill directory layout are unchanged.
+- **Workspace**: the `workspace/` directory layout, credential files, and model cache locations are unchanged.
+
+## Knowledge Studio UI principles
+
+The redesigned workspace ("Knowledge Studio") follows [DESIGN.md](DESIGN.md) as the single design baseline: task-first first screen (source → output type → start), one-screen-one-thing with low-frequency settings collected into a slide-out panel, state conveyed by text and badges rather than color alone, local-trust copy that states where data goes, and restrained motion honoring `prefers-reduced-motion`. The brand mark is an original geometric logo generated reproducibly by repository scripts (`scripts/make_brand_assets.py`); no third-party icon sets or upstream-derived artwork are used. The rebrand does not change backend APIs, task semantics, or the element-ID contract guarded by `tests/test_frontend_hygiene.py`.
+
 ## User goal
 
 Turn saved YouTube, Bilibili, and Douyin videos plus local media into reusable Markdown notes that can be imported into Obsidian or another knowledge tool. The successor builds on VideoToNo and should add only the differences needed for this workflow.
@@ -91,6 +112,7 @@ The note-template milestone is complete locally with the following contract:
 | Same-name output | Default and custom destinations use exclusive creation, safe Unicode filenames, and `-2`, `-3`, and later suffixes. Controlled race tests cover notes and attachment directories without overwriting foreign content. | Covered by automated tests. |
 | LLM failure preserves transcript | Transcript artifacts are written before the LLM step and remain readable for failed note tasks. | Covered by code and tests. |
 | Unicode and Frontmatter | UTF-8 reads/writes, Chinese filenames, Unicode destination paths, URI-encoded attachment links, deterministic YAML Frontmatter, and YAML-sensitive Unicode escaping are tested. | Covered by automated tests. |
+| Brand and workspace UI | Product metadata is centralized in `product_info.py`; the frontend implements the Knowledge Studio layout per `DESIGN.md` with the element-ID contract guarded by `tests/test_frontend_hygiene.py`; brand assets are generated reproducibly by repository scripts. | Successor customization implemented locally. Local UI automation and visual acceptance have passed; the release-gate items for `v1.0.0-beta.1` (final full test run, candidate EXE, packaged offline ASR, SHA-256, remote Release) remain pending. |
 
 ## Ordered successor roadmap
 
@@ -103,6 +125,8 @@ The note-template milestone is complete locally with the following contract:
 7. Subtitle-file import and SRT export: ported from upstream `662f56b`; complete locally.
 8. Windows successor prerelease: `v1.4.2-v2k.1` packages the current MVP and has completed an offline frozen-build local-ASR smoke, including JSON, Markdown, SRT and central transcript archive artifacts.
 9. Limited real note chain: the GitHub Release EXE completed `short synthetic SRT -> DeepSeek deepseek-flash -> built-in template -> one Markdown file in an isolated custom destination`. This closes the first end-to-end evidence gap without claiming broad Provider, long-video, public-platform or network compatibility.
+10. Independent brand, version line, and Knowledge Studio UI: implemented locally. Product metadata is driven by `product_info.py`; the legacy service id, environment-variable aliases, browser preferences, and MCP/Skill discovery remain compatible; local UI automation and visual acceptance have passed.
+11. `v1.0.0-beta.1` candidate release: **pending**. Still owed before publication: a final complete `pytest` run on the release commit, the candidate EXE build, a packaged offline-ASR acceptance for this version, SHA-256 registration, and the remote GitHub Release itself.
 
 ## Non-goals for the current phase
 

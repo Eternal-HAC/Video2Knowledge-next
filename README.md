@@ -1,121 +1,70 @@
 <p align="center">
-  <img src="sources/icon.png" width="96" alt="VideoToNo 图标">
+  <img src="sources/icon.png" width="96" alt="Video2Knowledge 图标">
 </p>
-<h1 align="center">VideoToNo v1.4.2-v2k.1</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.1</h1>
 
-<p align="center"><em>把视频变成可回看的 Markdown 笔记</em></p>
+<p align="center"><em>本机知识工作台：把视频沉淀为可回看的 Markdown 笔记</em></p>
 
 <p align="center">🌐 <a href="README.md">简体中文</a> · <a href="README_EN.md">English</a></p>
 
-> **Fork 说明**：本仓库是 Video2Knowledge successor，基于 [VideoToNo](https://github.com/like-attract/video-to-note) 派生，并保留原项目的 MIT License 与作者署名。上游基线和后续定制方向见 [UPSTREAM.md](UPSTREAM.md)。
+> **派生说明**：Video2Knowledge 派生自 [VideoToNo](https://github.com/like-attract/video-to-note) `v1.4.2`，保留原项目的 MIT License 与作者署名。上游基线、后续定制方向与归属约定见 [UPSTREAM.md](UPSTREAM.md)。
 
-项目文档：[产品基线](PRD.md) · [当前状态](PROJECT_STATUS.md) · [当前任务](TODO.md) · [长期决定](DECISIONS.md) · [开发约定](AGENTS.md)
+项目文档：[产品基线](PRD.md) · [当前状态](PROJECT_STATUS.md) · [当前任务](TODO.md) · [长期决定](DECISIONS.md) · [界面设计基线](DESIGN.md) · [开发约定](AGENTS.md)
 
-<p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=successor&color=2563eb" alt="successor 版本"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
+<p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.4.2-v2k.1"><strong>⬇️ 下载 Windows 便携版预发布</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.1，候选版本，尚未发布）</strong></a></p>
 
-<p align="center">🎬 宣传视频：<a href="https://www.bilibili.com/video/BV1Qwby6DEu1/">https://www.bilibili.com/video/BV1Qwby6DEu1/</a> &nbsp;·&nbsp; 👥 QQ 交流群：<code>739200648</code></p>
+## 产品定位
 
-VideoToNo 把「视频 → 结构化笔记」这条链路做成了一个**本地优先**的服务：输入 B 站、抖音、YouTube 链接或本地视频，优先读取平台字幕、B 站 AI 字幕，无字幕时用本机模型离线转写（中文首选 paraformer，也可选 whisper 系），再由你选择的大模型生成带时间轴的 Markdown 笔记。
+Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖音、YouTube 链接或本地音视频文件，优先读取平台字幕（含 B 站 AI 字幕），无字幕时用本机模型离线转写（中文首选 paraformer，也可选 Whisper 系），再由你选择的大模型生成带时间轴的 Markdown 笔记；也可以只要一份带时间轴的字幕稿，全程不调用大模型。
 
-> 🤖 **Agent Skill 已上线**：把仓库里的 `skills/video-to-note/` 目录复制到 agent 的技能目录（如 `C:/Users/用户名/.agents/skills/`），即可让 Claude Code、pi 等直接一句话生成视频笔记。详见该目录下的 `SKILL.md`。
+它不是视频下载器，也不是通用 AI 控制台：所有下载、转写和文件生成都发生在本机，服务默认只监听 `127.0.0.1`；界面只回答「给我什么、要哪种产物、点开始」，低频配置统一收纳进设置面板。界面与品牌的设计基线见 [DESIGN.md](DESIGN.md)。
 
-## 🆕 Successor 预发布（v1.4.2-v2k.1）
+> 🤖 **Agent Skill**：把仓库里的 `skills/video-to-note/` 目录复制到 agent 的技能目录（如 `~/.agents/skills/`），即可让 Claude Code、pi 等直接一句话生成视频笔记。详见该目录下的 `SKILL.md`。
 
-- 在 VideoToNo v1.4.2 上保持原下载、字幕、本地 ASR 和任务架构，增加个人模板、Obsidian/自定义目录、可选飞书在线文档、字幕文件导入与 SRT 导出。
-- YouTube、B 站、抖音和本地媒体继续使用字幕优先、本地 ASR 兜底；平台登录、验证、会员和区域限制不会被绕过。
-- 这是 Video2Knowledge successor 的首个 Windows 预发布。发布后的有限验收已用短合成字幕和 DeepSeek `deepseek-flash` 跑通单篇 Markdown 自定义目录链路；其他 Provider、长视频和不同网络环境仍需分别验证，服务调用由用户自行配置和承担。
+## 🖼️ Knowledge Studio 界面
 
-## 上游 v1.4.2 摘要
+以下截图由 `scripts/capture_readme_screenshots.mjs` 使用隔离 workspace 与合成数据从真实页面生成，不包含真实凭据、私人路径或用户任务标题。
 
-- **模型档位是新的了**：DeepSeek V4.1 Flash、智谱 GLM-5.3 与免费档 GLM-4.7-Flash、通义 Qwen3.8 都进了下拉框；旧档位一个没删，之前存过的配置照常能用
-- **报错会告诉你下一步做什么**：「测试连接失败」「B 站取不到内容」「笔记没出正文」这三类以前只有一串代号，现在写清楚是谁的问题、该改哪里——该换档位的时候不会再让你去重新登录
-- **界面打不开时不再只有一句 Not Found**：给一页可操作的说明，标题栏顺手显示本机端口，本机开过两个实例也能一眼对上
-- **贴了新链接，按钮就变回「开始生成」**：不会再停在「再次生成」，让你以为还在跑上一个视频
+### 工作台首页
 
-<details>
-<summary>历史版本摘要（v1.4.1 及更早）</summary>
+<p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio 工作台首页：来源输入与任务提交" width="100%"></p>
 
-- **v1.4.1**：带截图的笔记导出后不再丢图（Markdown 连截图打包、HTML 自包含，历史任务重新导出即可）；Whisper 档位按本机实测标好「中文推荐 / 不推荐」；`paraformer-zh` 手动导入不再把你领到空文件夹；侧栏新增「让 agent 接入（MCP）」卡；模型报错与运行记录里不再出现明文 API Key。
-- **v1.4.0**：长视频笔记改为按时间顺序逐段完整记录（3 小时课不再丢约 2 小时），并自带「内容概览 + 带时间范围的目录」；出稿速度快一个量级（3 小时的课约 10 分钟）；笔记公式在预览与导出的 Markdown 里正常渲染；新增 paraformer-zh / belle-turbo-zh 两种更快的中文转写引擎并调优 CPU 解码；转写每 30 秒回报进度；B 站分 P 提交前显式勾选且沿用上次；模型档案一键重命名；失败提示按平台和阶段说清。
-- **v1.3.5**：界面新增「仅转录字幕」输出（全程不调大模型、不需要 Key，字幕稿可一键改走笔记路线）；转录出口同步开放给 MCP / Skill（`transcribe_video` + `get_transcript`）；历史失败任务的字幕稿照样能取；本地视频首次上传即正常（不再必须失败一次重试）、上限真正放开到 2 GB；GPU 缺 CUDA 运行库自动退回 CPU；「待处理」任务可删除。
-- **v1.3.0**：API Key 与 B 站凭据按**接口地址**「保存到本机」（Windows 用系统 DPAPI 加密落盘、复用前校验地址、输入框旁新增密钥状态芯片）；模型档案各自记忆所选模型，自定义接口可保存多个命名档案，非敏感设置改动即保存；取消任务在任意阶段秒级生效（实测 18.6s → 0.02s）；修复切换 Provider 时模型 ID 串写、早期失败让任务卡在 `processing`；MCP 新增只读工具 `list_llm_keys`，`save_llm_config` 支持 `label`，`get_saved_config` 增加 `endpoints` / `key_storage`。
-- **v1.2.3**：B 站 412 风控自动回退到 `api.bilibili.com` 开放接口（含多分 P 与预览流，Issue #1）、「详细复原」卡在生成阶段的三道护栏、生成进度心跳、推理强度按风格自适应、思考参数被网关拒绝时自动降级并记住结论
-- **v1.2.2**：Agent Skill 接入（skills/video-to-note/，一句话生成笔记）、任务完成/失败的 Windows 托盘通知、仓库与文档定位重写
-- **v1.2.1**：取消真正立即生效（LLM 流式/下载钩子/模型下载逐块取消）、上传上限 2GB + 超大视频自动提音频、Whisper base 模型导入包
-- **v1.2.0**：B 站多分 P 视频（全部/指定分P合并笔记）、语音转写段粒度取消、B 站无字幕误报修正、Whisper 手动导入模型界面
-- **v1.1.8**：运行模式与应用版本隔离、最近任务滚动条、详细复原元信息去重、自定义 Base URL 错误诊断
-- **v1.1.7**：抖音单条公开分享链接、浏览器验证回退、转写复用和已取消任务删除。
-- **v1.1.6**：Whisper 下载确认记忆和自定义工作目录修复。
-- **v1.1.5**：旧缓存页面、MCP SSE 和启动告警修复。
-- **v1.1.4**：笔记元信息、托盘更新检查、B 站下载稳定性和 Whisper 回退改进。
-- **v1.1.3 及更早**：B 站 412 处理、LLM 测试、MCP、任务恢复和多格式导出等基础能力。
+### 处理进度
 
-</details>
+<p align="center"><img src="sources/knowledge-studio-progress.png" alt="Video2Knowledge 任务处理进度与运行记录" width="100%"></p>
 
+### 笔记结果
 
+<p align="center"><img src="sources/knowledge-studio-result.png" alt="Video2Knowledge 生成的 Markdown 笔记结果区" width="100%"></p>
 
-## 🖼️ 界面预览
+## ✨ 主要功能
 
-### ⚙️ 配置与提交
+- 🎥 **多种输入**：B 站、抖音、YouTube、其他可被 `yt-dlp` 解析的视频链接，以及本地音视频文件；也可直接导入 `.srt` / `.vtt` 字幕文件作为已有时间轴的转录。
+- 🇨🇳 **B 站深度适配**：除常规字幕外，可在登录后读取 B 站 AI 字幕；凭据支持扫码导入；视频页被风控时自动回退到开放接口取信息与音频。
+- 🎵 **抖音单链接适配**：支持公开分享链接直接解析；需要验证时可在独立本机浏览器完成登录后重试。
+- 🧾 **真实时间轴**：保留字幕或 Whisper 分段的起止时间，不让模型凭空猜时间点；任一任务的转录都可导出标准 SubRip `.srt`。
+- 🧠 **长内容整理**：短转录直接生成，长转录自动分块、归并并控制上下文压力；生成后会核对是否写到材料结尾，小缺口自动补写。
+- 📝 **笔记模板与目的地**：四套内置只读模板 + 后端保存的自定义模板；成品 Markdown 可写入指定目录或 Obsidian Vault，并可选择性发布为飞书在线文档。
+- 🖼️ **多格式输出**：Markdown 笔记、HTML、JSON、纯文本和 PNG 图片；可选提取视频截图作为附件。
+- 🤖 **给 agent 留了原料出口**：接入的 agent 只要「带时间轴转录」，可以不走大模型、不需要给本机配 API Key，笔记风格由 agent 自己定。
+- 🛡️ **本地优先**：媒体下载、转录和文件生成在本机完成；服务默认只监听 `127.0.0.1`。
 
-<p align="center"><img src="sources/preview.png" alt="VideoToNo 配置与视频提交界面" width="100%"></p>
+## 🚀 安装（Windows 便携版）
 
-### ⏳ 处理进度
+> **发布状态**：`v1.0.0-beta.1` 是独立版本线的第一个候选发布，**尚未发布**。发布前还需完成完整测试套件、候选 EXE 构建、打包态离线 ASR 验收与 SHA-256 登记；完成后本节链接指向的 Release 才会可用。当前状态见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
-<p align="center"><img src="sources/process.png" alt="VideoToNo 任务处理进度与运行记录" width="100%"></p>
-
-### 📝 笔记输出
-
-<p align="center"><img src="sources/output-public.png" alt="VideoToNo 生成的详细视频笔记" width="100%"></p>
-
-## 🚀 便携版下载（推荐）
-
-普通用户无需安装 Python 或配置开发环境，直接下载 [successor 预发布](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.4.2-v2k.1) 中的 `VideoToNo-1.4.2-v2k.1-portable.exe`：
+发布后，普通用户无需安装 Python 或配置开发环境，从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1) 下载 `Video2Knowledge-1.0.0-beta.1-portable.exe`：
 
 1. 下载并双击 exe；
 2. 等待浏览器自动打开本地页面；
 3. 粘贴视频链接或上传本地文件：要成品笔记就先填 Provider、模型和 API Key；**只要带时间轴的字幕稿，选「仅转录字幕」即可，什么都不用填**；
 4. 等待生成笔记或字幕稿。
 
-便携版会自动启动本地服务并驻留系统托盘。第一次使用 Whisper 转写时需要下载模型，请保持网络畅通；生成的任务、转录、截图和笔记默认保存在 exe 同目录的 `workspace/` 中。
+便携版会自动启动本地服务并驻留系统托盘。第一次使用本地转写时需要下载模型，请保持网络畅通；生成的任务、转录、截图和笔记默认保存在 exe 同目录的 `workspace/` 中。发布资产的 SHA-256 将随 Release 附带的 `SHA256SUMS.txt` 提供。
 
-本预发布已在 Windows 11 上使用缓存的 Whisper `small` 模型完成打包态离线转录验收。发布资产的 SHA-256 见 Release 附带的 `SHA256SUMS.txt`。发布后的有限真实链验收另使用 DeepSeek `deepseek-flash` 和一份短合成 SRT，成功导出单篇 Markdown 到隔离自定义目录；该结果不代表所有 Provider、长视频或网络环境均兼容。
-
-## ✨ 主要功能
-
-- 🎥 **多种输入**：B 站、抖音、YouTube、其他可被 `yt-dlp` 解析的视频链接，以及本地音视频文件。
-- 🇨🇳 **B 站深度适配**：除常规字幕外，可在登录后读取 B 站 AI 字幕；凭据支持扫码导入；视频页被风控时自动回退到开放接口取信息与音频。
-- 🎵 **抖音单链接适配**：支持公开分享链接直接解析；需要验证时可在独立本机浏览器完成登录后重试。
-- 🧾 **真实时间轴**：保留字幕或 Whisper 分段的起止时间，不让模型凭空猜时间点。
-- 🧠 **长内容整理**：短转录直接生成，长转录自动分块、归并并控制上下文压力；生成后会核对是否写到材料结尾，小缺口自动补写。
-- 🖼️ **多格式输出**：Markdown 笔记、HTML、JSON、纯文本和 PNG 图片；可选提取视频截图作为附件。
-- 🤖 **给 agent 留了原料出口**：接入的 agent 只要「带时间轴转录」，可以不走大模型、不需要给本机配 API Key，笔记风格由 agent 自己定。
-- 🛡️ **本地优先**：媒体下载、转录和文件生成在本机完成；服务默认只监听 `127.0.0.1`。
-
-## 🔁 处理流程
-
-```text
-视频链接 / 本地文件
-        ↓
-平台字幕（B 站 AI 字幕优先）
-        ↓ 无可用字幕
-faster-whisper 本地转写
-        ↓
-带时间轴转录 ──────→ 交给 agent 自己写笔记（不调用大模型，无需 API Key）
-        ↓
-大模型生成带时间轴的 Markdown 笔记
-```
-
-## 🌍 支持范围
-
-- B 站、抖音、YouTube，以及当前版本 `yt-dlp` 能解析的其他 `http` / `https` 视频链接；B 站输入支持分享文本、`b23.tv` 短链（可缺省 scheme）与裸 BV/av 号；
-- 抖音支持单条公开分享链接；匿名解析受限时，可从页面打开独立的本机抖音浏览器完成登录或验证后重试；
-- `.mp3`、`.m4a`、`.wav`、`.flac`、`.aac`、`.mp4`、`.mkv`、`.mov`、`.webm`、`.avi` 等本地媒体；
-- 爱奇艺、腾讯视频目前未做专门适配，能否处理取决于平台访问权限、字幕可见性和 `yt-dlp` 的解析能力。
-
-## ⚙️ 使用与配置
+## ⚙️ 使用
 
 启动后按页面提示完成以下操作即可：
 
@@ -125,34 +74,63 @@ faster-whisper 本地转写
 4. 粘贴视频链接，或切换为本地文件 / 字幕文件上传；
 5. 生成完成后预览、复制或下载结果。字幕稿会留在「最近任务」里（标题前带「转录」标记）随时回看和下载，也可以点「基于字幕稿生成笔记」改走笔记路线——转录不重跑，只补一次大模型调用。
 
+## 🔁 处理流程
+
+```text
+视频链接 / 本地文件 / 字幕文件
+        ↓
+平台字幕（B 站 AI 字幕优先）
+        ↓ 无可用字幕
+本地 ASR 转写（paraformer / faster-whisper）
+        ↓
+带时间轴转录 ──────→ 交给 agent 自己写笔记（不调用大模型，无需 API Key）
+        ↓
+大模型生成带时间轴的 Markdown 笔记 → 本地目录 / Obsidian Vault / 可选飞书文档
+```
+
+## 🌍 支持范围与兼容边界
+
+- **重点支持**：B 站、抖音、YouTube 和本地媒体，走字幕优先、本地 ASR 兜底的链路，并有针对性的回归测试与可操作报错。
+- **通用兼容**：其他当前版本 `yt-dlp` 能解析的 `http` / `https` 视频链接按通用链路尽力处理，不做平台级保证。
+- **待适配**：爱奇艺、腾讯视频等未做专门适配的平台，能否处理取决于平台访问权限、字幕可见性和 `yt-dlp` 的解析能力。
+- 项目不绕过付费、登录、验证、会员或地区限制；平台接口变化可能导致解析暂时失效。
+
+`.mp3`、`.m4a`、`.wav`、`.flac`、`.aac`、`.mp4`、`.mkv`、`.mov`、`.webm`、`.avi` 等本地媒体与 `.srt` / `.vtt`（UTF-8，自动兼容 BOM，默认上限 20 MB）字幕文件均可作为输入。
+
+## 🧬 与上游 VideoToNo 的关系
+
+- 本仓库 **Derived from VideoToNo `v1.4.2`**（基线提交与上游仓库见 [UPSTREAM.md](UPSTREAM.md)），保留上游 Git 历史、[MIT License](LICENSE) 与作者署名。
+- 视频下载、平台字幕读取、本地 ASR（faster-whisper / paraformer）、任务管理等子系统**沿用上游的成熟实现**，本项目没有、也不宣称对这些能力从零重写。Successor 的差异集中在产品定位、界面、笔记模板、输出目的地与发布品牌上。
+- **版本线**：`v1.0.0-beta.1` 起使用独立的 Video2Knowledge 版本线（beta → rc → stable）；过渡期的 `v1.4.2-v2k.N` 版本号在更新检查中始终排在独立线之前。
+- **兼容边界**：产品与界面更名为 Video2Knowledge，但以下协议位置保持兼容——
+  - `/api/health` 继续返回旧服务标识 `service: "VideoToNo"`（同时携带 `product: "Video2Knowledge"` 与 `api_compat: 1`），既有启动器、MCP 客户端与 Agent Skill 的发现逻辑不受影响；
+  - 环境变量新名 `VIDEO2KNOWLEDGE_*` 优先，旧名 `VIDEOTONOTES_*` 继续生效（如 `VIDEO2KNOWLEDGE_WORKSPACE`、`VIDEO2KNOWLEDGE_BACKEND_URL`）；
+  - 浏览器非敏感偏好迁移到 `v2k_prefs`；首次启动会从旧 `vtn_prefs` 复制，旧键保留供回滚，API Key 不进入 localStorage；`workspace/` 目录布局不变。
+
+## ⚙️ 进阶使用与配置
+
 小鹅通等课程平台当前通过本地导入使用：如果平台提供且允许下载或导出，请先取得媒体文件，再选择「本地文件」上传，复用现有转录、模板、Markdown、Obsidian 和可选飞书流程。当前不提供小鹅通 URL 下载器，也不绕过付费、登录或内容保护；没有官方允许的文件获取方式时，不支持提取内容。
 
-字幕文件导入：来源切到「字幕文件」后可上传 `.srt` / `.vtt`（UTF-8，自动兼容 BOM），单文件默认上限 20 MB（由后端 `/api/health` 的 `max_subtitle_mb` 下发）。字幕上传时当场解析成带时间轴的转录，之后直接生成笔记或只保留转录，不再下载、抽音频或跑 Whisper；无法读出时间码的文件会当场拒绝，不会留下半个任务。导入文件保存为 `subtitle.<ext>`，不会混进本地媒体。
+字幕文件导入：来源切到「字幕文件」后可上传 `.srt` / `.vtt`，单文件默认上限 20 MB（由后端 `/api/health` 的 `max_subtitle_mb` 下发）。字幕上传时当场解析成带时间轴的转录，之后直接生成笔记或只保留转录，不再下载、抽音频或跑 Whisper；无法读出时间码的文件会当场拒绝，不会留下半个任务。导入文件保存为 `subtitle.<ext>`，不会混进本地媒体。
 
-任一任务只要已有带时间轴的转录，下载菜单都可以选「字幕 (.srt)」导出标准 SubRip 字幕：时间码为 `HH:MM:SS,mmm`、CRLF 行尾、一段一条、不并段，由后端从原始分段渲染，不用整秒的 Markdown 时间戳现拼。
+任一任务只要已有带时间轴的转录，下载菜单都可以选「字幕 (.srt)」导出标准 SubRip 字幕：时间码为 `HH:MM:SS,mmm`、CRLF 行尾、一段一条、不并段，由后端从原始分段渲染。
 
 「失败任务媒体保留」默认永久保留，可选 1、7、30 天。有限天数从失败或取消任务的结束时间算起；保存该设置后，页面下次成功连接本地后端会尝试清理一次，也可点「立即清理」。只清理过期任务的已知媒体与下载 sidecar，保留笔记、转录、任务清单、截图和未知文件；活动任务与正在被复用的媒体跳过。不可靠的时间、链接文件和无法安全删除的文件会保留。清理后重试可能需要重新上传或下载。设置只保存在本机浏览器中，没有定时后台清理服务。
 
 按天删除当前在 Windows 上提供句柄级身份保护；其他系统会保守保留媒体并返回警告。
 
-「上传到飞书」默认关闭。勾选并填写 Drive 文件夹 token 或 `/drive/folder/` 链接后，笔记完成会在该文件夹创建一篇飞书在线文档，把正文引用的截图以内联原生图片块插入正文。发布只使用本机 `lark-cli` 的 user 身份，不自动登录、不回退 bot、不覆盖已有文件。首次使用前请自行完成授权（下列命令仅为示例，程序不会自动执行）：
-
-```powershell
-lark-cli auth login --scope "docx:document:create docx:document:write_only docs:document.media:upload" --no-wait --json
-```
-
-最小权限为 `docx:document:create`、`docx:document:write_only`、`docs:document.media:upload` 三项；已授予宽权限 `docx:document` 的账号同样可用。只会上传笔记正文引用、位于本任务截图目录内且格式/大小合规的图片。飞书发布失败不影响本地笔记，可在结果区重试；超时等结果不确定时会提示可能重复创建。
+「上传到飞书」默认关闭。勾选并填写 Drive 文件夹 token 或 `/drive/folder/` 链接后，笔记完成会在该文件夹创建一篇飞书在线文档，把正文引用的截图以内联原生图片块插入正文。发布只使用本机 `lark-cli` 的 user 身份，不自动登录、不回退 bot、不覆盖已有文件。首次使用前请自行完成 `lark-cli` 授权（最小权限为 `docx:document:create`、`docx:document:write_only`、`docs:document.media:upload` 三项；已授予宽权限 `docx:document` 的账号同样可用）。只会上传笔记正文引用、位于本任务截图目录内且格式/大小合规的图片。飞书发布失败不影响本地笔记，可在结果区重试；超时等结果不确定时会提示可能重复创建。
 
 模型档案、识别参数和主题等非敏感设置会自动记在本机浏览器里，改动即生效，不需要手动保存。API Key 默认只留在当前页面内存中，刷新即失效；点「保存到本机」后才会写入 `workspace/llm_keys.json`——Windows 上用系统自带的 DPAPI 加密（换机器或换 Windows 账户就解不开，需要重填），其他平台会明文保存并在界面标注。**已保存的 Key 与接口地址绑定**：只有目标地址与保存时一致才会复用，绝不会发给别的网关。扫码取得的 B 站 Cookie 仍只保留在本机进程内，只有显式保存时才会落盘，请勿分享工作目录里的这些文件。
 
 <details>
 <summary>🧑‍💻 源码运行与构建（开发者）</summary>
 
-源码用户直接 `git clone` 或在 GitHub 选择 **Code → Download ZIP** 即可获取完整项目。项目主要面向 Windows + Python 3.11，安装 `backend/requirements.txt` 后可使用 `start.ps1` 启动；需要自行构建便携版时运行：
+源码用户直接 `git clone` 或在 GitHub 选择 **Code → Download ZIP** 即可获取完整项目。项目主要面向 Windows + Python 3.11，安装 `backend/requirements.txt` 后可使用 `start.ps1` 启动：
 
 ```powershell
-git clone https://github.com/like-attract/video-to-note.git
-cd video-to-note
+git clone https://github.com/Eternal-HAC/Video2Knowledge-next.git
+cd Video2Knowledge-next
 .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 .\start.ps1
 ```
@@ -168,7 +146,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1
 <details>
 <summary>🤖 MCP / AI 客户端（进阶）</summary>
 
-VideoToNo 内置 MCP（Model Context Protocol）服务，可以在 Cherry Studio、Codex 等 AI 客户端里直接输入视频链接取字幕稿或生成笔记。**使用前请先启动 VideoToNo**：MCP 工具通过本地后端执行任务，会复用本机的 Whisper 模型缓存和任务目录，不会重复下载。
+Video2Knowledge 内置 MCP（Model Context Protocol）服务，可以在 Cherry Studio、Codex 等 AI 客户端里直接输入视频链接取字幕稿或生成笔记。**使用前请先启动 Video2Knowledge**：MCP 工具通过本地后端执行任务，会复用本机的 Whisper 模型缓存和任务目录，不会重复下载。
 
 两条路线按需选：客户端**自己就有模型**时，用 `transcribe_video` + `get_transcript` 只取带时间轴的转录，**不需要给本机配 API Key**，笔记的结构与风格由客户端自己定；要一份现成成品笔记（或超长视频后台跑完）才用 `summarize_video`。
 
@@ -199,23 +177,16 @@ VideoToNo 内置 MCP（Model Context Protocol）服务，可以在 Cherry Studio
 
 ### Cherry Studio（推荐，无需本机 Python）
 
-1. 启动 VideoToNo 后，打开 Cherry Studio「设置 → MCP 服务器 → 添加」；
+1. 启动 Video2Knowledge 后，打开 Cherry Studio「设置 → MCP 服务器 → 添加」；
 2. 类型选择 **Server-Sent Events (SSE)**，URL 填：
 
 ```text
 http://127.0.0.1:8000/mcp/sse
 ```
 
-若服务端口不是 8000，请填写实际端口。保存并启用后，就可以在对话中让 AI 调用 VideoToNo。
+若服务端口不是 8000，请填写实际端口。保存并启用后，就可以在对话中让 AI 调用本机服务。
 
-首次使用时，建议让 AI 先保存一次配置；之后不必在每次对话中重复提供敏感信息：
-
-```text
-请调用 save_llm_config 保存配置：我的 DeepSeek API Key 是 sk-xxx
-再调用 save_bilibili_credentials 保存：sessdata=xxx，bili_jct=xxx，buvid3=xxx
-```
-
-之后直接描述需求即可：
+首次使用时，可让 AI 调用 `save_llm_config` 与 `save_bilibili_credentials` 各保存一次配置（按界面提示把 Key 与凭据交给工具即可，不要在对话或文档里留下明文 Key）；之后直接描述需求即可：
 
 ```text
 帮我总结这个 B 站视频：https://www.bilibili.com/video/BV1xx
@@ -232,10 +203,10 @@ http://127.0.0.1:8000/mcp/sse
 支持 stdio 的客户端可运行：
 
 ```bash
-codex mcp add local videotono -- python -m backend.mcp_server
+codex mcp add local video2knowledge -- python -m backend.mcp_server
 ```
 
-MCP server 会自动扫描 8000–8019 端口来找到已运行的 VideoToNo 服务；也可以用环境变量 `VIDEOTONOTES_BACKEND_URL` 显式指定服务地址。
+MCP server 会自动扫描 8000–8019 端口来找到已运行的 Video2Knowledge 服务（新旧身份都认）；也可以用环境变量 `VIDEO2KNOWLEDGE_BACKEND_URL` 显式指定服务地址（旧名 `VIDEOTONOTES_BACKEND_URL` 继续生效）。
 
 > 隐私说明：`save_llm_config`（以及网页端的「保存到本机」）把 API Key 写入本机 `workspace/llm_keys.json`——Windows 上用系统 DPAPI 按当前用户加密，把该文件拷到另一台机器或另一个 Windows 账户都解不开；非 Windows 平台没有 DPAPI，会明文保存并在界面标注。Key 与保存时的接口地址绑定，只有目标地址一致才会复用。`save_bilibili_credentials` 保存的 SESSDATA / bili_jct 走同一套信封加密写入 `workspace/bili_credentials.json`（同样绑定当前 Windows 账户，换机器需重新保存；`buvid3` 是设备标识，客户端本就明文携带，故保持明文）。未显式调用保存工具时，凭据不会落盘；`workspace/` 已被 `.gitignore` 排除，不会进入 Git 仓库，也请勿分享这些文件。
 
@@ -244,15 +215,15 @@ MCP server 会自动扫描 8000–8019 端口来找到已运行的 VideoToNo 服
 <details>
 <summary>🧩 Agent Skill（进阶）</summary>
 
-除了 MCP，VideoToNo 也提供 **Agent Skill**（`skills/video-to-note/`），供 Claude Code、pi 等支持技能的编码类 agent 使用：agent 读取 `SKILL.md` 后，会自动调用本仓库附带的脚本完成「提交任务 → 轮询进度 → 取回笔记」全流程。**使用前请先启动 VideoToNo**，与 MCP 相同，任务由本地后端执行。
+除了 MCP，Video2Knowledge 也提供 **Agent Skill**（`skills/video-to-note/`），供 Claude Code、pi 等支持技能的编码类 agent 使用：agent 读取 `SKILL.md` 后，会自动调用本仓库附带的脚本完成「提交任务 → 轮询进度 → 取回笔记」全流程。**使用前请先启动 Video2Knowledge**，与 MCP 相同，任务由本地后端执行。
 
 ### 安装
 
 把仓库里的 `skills/video-to-note/` 整个目录复制到 agent 的技能目录，例如：
 
 ```text
-C:\Users\<用户名>\.agents\skills\video-to-note\        # pi / 通用约定
-~/.claude/skills/video-to-note/                         # Claude Code
+~/.agents/skills/video-to-note/        # pi / 通用约定
+~/.claude/skills/video-to-note/        # Claude Code
 ```
 
 ### 使用
@@ -270,7 +241,7 @@ C:\Users\<用户名>\.agents\skills\video-to-note\        # pi / 通用约定
 
 agent 会调用技能附带的 `scripts/video_note.py`，自动探测服务端口、提交任务、实时打印运行日志，完成后输出（或保存）结果。后一种说法会走 `--transcript-only` 取原料，本机不需要任何 API Key，拿到文字稿之后的取舍、补背景、换结构都由 agent 自己完成，提示词不必写得很具体。常用参数：`--transcript-only`（只要带时间轴转录，不调用大模型）、`--style detailed|faithful|concise`、`--wait 秒数`、`--out 文件路径`；本地视频文件路径也可直接作为输入。
 
-> **agent 自带模型时优先用 `--transcript-only`**：这条路线完全不调用大模型，因此不需要 API Key，转录到的内容由 agent 自己组织成笔记，不受内置笔记模板约束。只有需要一份现成成品笔记时才走 `--style`，而那需要大模型 API Key：agent 会向你要，用 `--provider` / `--api-key` 传入；若本机只为一个接口地址保存过 Key（网页端「保存到本机」或 MCP 的 `save_llm_config`），省略这些参数即可直接复用，不需要再传。
+> **agent 自带模型时优先用 `--transcript-only`**：这条路线完全不调用大模型，因此不需要 API Key，转录到的内容由 agent 自己组织成笔记，不受内置笔记模板约束。只有需要一份现成成品笔记时才走 `--style`，而那需要大模型 API Key。凭据请按 `SKILL.md` 的约定通过环境变量传入，不要把 Key 写进命令行参数；若本机只为一个接口地址保存过 Key（网页端「保存到本机」或 MCP 的 `save_llm_config`），省略这些参数即可直接复用。
 
 </details>
 
@@ -279,7 +250,7 @@ agent 会调用技能附带的 `scripts/video_note.py`，自动探测服务端�
 
 ### 首次转写为什么等待很久？
 
-`faster-whisper` 会在第一次使用某个模型时下载模型文件。下载耗时取决于模型大小和网络状况，后续会复用本机缓存；切换到另一个模型时仍可能再次下载。
+本地 ASR 会在第一次使用某个模型时下载模型文件。下载耗时取决于模型大小和网络状况，后续会复用本机缓存；切换到另一个模型时仍可能再次下载。
 
 模型默认缓存在 `workspace/_model_cache/`。如需改到其他磁盘，可在 `.env` 中设置 `WHISPER_CACHE_DIR`。下载默认走 **hf-mirror.com 镜像**，支持断点续传和重试；如需切换，可设置 `HF_ENDPOINT`，例如 `HF_ENDPOINT=https://huggingface.co` 使用官方源。若仍失败，请检查网络、代理和缓存目录写入权限。
 
@@ -290,7 +261,7 @@ agent 会调用技能附带的 `scripts/video_note.py`，自动探测服务端�
 大模型体积大（medium 约 1.5GB），网络不佳时容易中断。除了重试（支持断点续传），推荐手动导入：
 
 1. 在「语音转写」设置中选择目标模型，点击「**手动导入模型**」按钮，弹窗会列出该模型需要哪几个文件、去哪个页面下载，确认后程序自动打开导入文件夹（`workspace/_model_cache/manual/<模型名>/`）；
-2. 用浏览器（或下载工具）按弹窗里的下载页保存这些文件：`config.json`、`model.bin`、`tokenizer.json`，加上词表文件 `vocabulary.txt` 或 `vocabulary.json`（各仓库用的名字不一样，例如 `large-v3` 只提供 `.json`，页面上有哪个就下载哪个，点开每个文件右上角的下载箭头）；
+2. 用浏览器（或下载工具）按弹窗里的下载页保存这些文件：`config.json`、`model.bin`、`tokenizer.json`，加上词表文件 `vocabulary.txt` 或 `vocabulary.json`（各仓库用的名字不一样，页面上有哪个就下载哪个）；
 3. 把这些文件原样放入打开的文件夹，程序几秒内自动识别，下拉框会显示「已缓存」。
 
 程序会对下载和缓存做完整性校验；检测到历史中断留下的损坏文件时会自动清理并重新下载，无需手动删除缓存。
@@ -301,11 +272,11 @@ agent 会调用技能附带的 `scripts/video_note.py`，自动探测服务端�
 
 ### 为什么需要 B 站 Cookie？
 
-公开且可直接访问的视频通常不需要 Cookie。部分播放器可见的中文 AI 字幕只会在登录态字幕接口中返回；未填写凭据时，程序会记录提示并回退到 Whisper。登录可见、访问受限或字幕接口受限的视频可能需要当前账号凭据，但 Cookie 不能绕过账号本身没有的权限。凭据过期后需重新获取，平台策略变化也可能导致解析失败。
+公开且可直接访问的视频通常不需要 Cookie。部分播放器可见的中文 AI 字幕只会在登录态字幕接口中返回；未填写凭据时，程序会记录提示并回退到本地 ASR。登录可见、访问受限或字幕接口受限的视频可能需要当前账号凭据，但 Cookie 不能绕过账号本身没有的权限。凭据过期后需重新获取，平台策略变化也可能导致解析失败。
 
 ### 重启服务后任务会怎样？
 
-VideoToNo 会从 `workspace/<task-id>/task.json` 恢复最近任务。已完成任务可继续预览和下载；上传后尚未开始的任务可重新提交。重启时仍在运行的任务会标记为失败，因为外部下载、Whisper 或大模型请求无法跨进程续跑；已经生成的字幕、转录和音频仍可在重新提交时复用。
+Video2Knowledge 会从 `workspace/<task-id>/task.json` 恢复最近任务。已完成任务可继续预览和下载；上传后尚未开始的任务可重新提交。重启时仍在运行的任务会标记为失败，因为外部下载、ASR 或大模型请求无法跨进程续跑；已经生成的字幕、转录和音频仍可在重新提交时复用。
 
 ### 为什么某个链接无法处理？
 
@@ -313,7 +284,7 @@ VideoToNo 会从 `workspace/<task-id>/task.json` 恢复最近任务。已完成�
 
 ### 没有字幕时会发生什么？
 
-应用会下载该链接可取得的最佳音频，并在本机运行 `faster-whisper`。这比直接读取字幕耗时更多，也会受到音质、口音、背景噪声和专业术语的影响。
+应用会下载该链接可取得的最佳音频，并在本机运行本地 ASR。这比直接读取字幕耗时更多，也会受到音质、口音、背景噪声和专业术语的影响。
 
 ### 为什么会提示“模型未返回正文，已关闭深度思考并重试”？
 
@@ -329,19 +300,16 @@ VideoToNo 会从 `workspace/<task-id>/task.json` 恢复最近任务。已完成�
 
 ### 大模型报 400 `unsupported_parameter`（`thinking` / `reasoning_effort`）怎么办？
 
-不同 OpenAI 兼容通道对「思考控制参数」的支持差别很大：有的只认标准的 `reasoning_effort`，收到厂商私有的 `thinking` 字段就直接 400。应用现在**默认只发标准参数**（私有的 `thinking` 仅用于官方 DeepSeek 关闭思考），并且真的被拒时会自动降级重试：`reasoning_effort` → 嵌套 `reasoning.effort` → 不注入（用模型默认思考）；同理，当我们为思考链抬高的 `max_tokens` 超过网关上限时，也会自动退回笔记长度甚至不下发该参数。日志会写明「该通道不支持 xxx 参数」。若想跳过「第一次先失败」的那一次请求，可用环境变量直接声明通道能力（逗号分隔，可取 `thinking` / `reasoning_effort` / `reasoning` / `enable_thinking`）：
+不同 OpenAI 兼容通道对「思考控制参数」的支持差别很大：有的只认标准的 `reasoning_effort`，收到厂商私有的 `thinking` 字段就直接 400。应用**默认只发标准参数**（私有的 `thinking` 仅用于官方 DeepSeek 关闭思考），并且真的被拒时会自动降级重试：`reasoning_effort` → 嵌套 `reasoning.effort` → 不注入（用模型默认思考）；同理，当我们为思考链抬高的 `max_tokens` 超过网关上限时，也会自动退回笔记长度甚至不下发该参数。日志会写明「该通道不支持 xxx 参数」。若想跳过「第一次先失败」的那一次请求，可用环境变量直接声明通道能力（逗号分隔，可取 `thinking` / `reasoning_effort` / `reasoning` / `enable_thinking`）：
 
 ```powershell
-$env:VIDEOTONOTES_REJECTED_LLM_PARAMS = "thinking,reasoning_effort"
+$env:VIDEO2KNOWLEDGE_REJECTED_LLM_PARAMS = "thinking,reasoning_effort"
 ```
+
+旧名 `VIDEOTONOTES_REJECTED_LLM_PARAMS` 继续生效，两个都设时新名优先。
 
 </details>
 
-## 🎬 宣传视频与交流群
-
-- 🎬 宣传视频（B 站）：<a href="https://www.bilibili.com/video/BV1Qwby6DEu1/">BV1Qwby6DEu1</a>
-- 👥 QQ 交流群：<code>739200648</code>（欢迎反馈问题、提建议、获取模型附件）
-
 ## 📄 开源许可
 
-这是一个面向本地个人使用的工具，采用 [MIT License](LICENSE) 开源。
+Video2Knowledge 派生自 VideoToNo，采用 [MIT License](LICENSE) 开源，保留上游版权声明；归属细节见 [UPSTREAM.md](UPSTREAM.md)。

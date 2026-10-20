@@ -40,7 +40,15 @@ This file holds only the active gap-verification queue. For every item: close it
 12. [x] LLM test-connection key-read/initializer boundary: selected part of upstream `088b665` (no diagnostics, proxy bypass, DNS probes or frontend). Non-RuntimeError key resolution failures return fixed redacted 200 JSON; initializer errors are utf8_safe plus secret and path redacted.
 13. [x] First successor Windows prerelease: version/update metadata targets `Eternal-HAC/Video2Knowledge-next`; PyInstaller is pinned to 6.22.3; `VideoToNo-1.4.2-v2k.1-portable.exe` passed the authorized offline packaged-ASR smoke. The release gate itself made no real-provider claim; the separate post-release acceptance is recorded below.
 14. [x] Limited real note chain: the downloaded GitHub Release EXE processed a three-segment synthetic SRT with DeepSeek `deepseek-flash`, the general template, `faithful` style and an isolated custom destination. It produced one Markdown file with parseable Frontmatter and all coverage anchors, without saving the page-session Key.
+15. [x] Independent brand and Knowledge Studio UI: product metadata centralized in `product_info.py` (Video2Knowledge, independent `1.0.0-beta.N` line); legacy service id, `VIDEOTONOTES_*` env aliases, browser preferences, MCP tool names and Skill discovery kept compatible; workspace redesigned per `DESIGN.md` with an original script-generated logo. Local UI automation and visual acceptance have passed. This closes the local implementation slice only — it is not release acceptance.
 
 ## Next single execution task
 
-The `v1.4.2-v2k.1` Windows prerelease and its first limited real note-chain acceptance are complete. The next development direction still requires a separate product decision: proxy/diagnostics policy (no automatic bypass), headless agent operation, new platform/Feishu extensions, or a broader Video2Knowledge brand migration. No further automatic coding gate is queued.
+- [ ] `v1.0.0-beta.1` candidate release gate (authorized by the current release plan; each step still requires its own verification):
+  1. Final complete `pytest` run on the intended release commit.
+  2. Candidate build of `Video2Knowledge-1.0.0-beta.1-portable.exe`.
+  3. Packaged offline-ASR acceptance for this version (the earlier frozen-build smoke covered `v1.4.2-v2k.1` and does not carry over automatically).
+  4. [x] Generate real Knowledge Studio README screenshots from an isolated page with synthetic data; SHA-256 registration (`SHA256SUMS.txt`) remains pending until the final EXE exists.
+  5. Tag and remote GitHub Release publication after all local gates pass; the current plan already grants this release authorization.
+
+Other future directions still require a separate product decision: proxy/diagnostics policy (no automatic bypass), headless agent operation, and new platform/Feishu extensions. No further automatic coding gate is queued.
