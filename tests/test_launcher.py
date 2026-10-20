@@ -289,6 +289,16 @@ def test_build_and_release_read_canonical_metadata_and_brand_outputs() -> None:
     assert '--title "$PRODUCT_NAME $GITHUB_REF_NAME"' in workflow
 
 
+def test_build_script_rewrites_checksum_for_the_versioned_artifact() -> None:
+    build_script = (PROJECT_ROOT / "scripts" / "build_exe.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "Get-FileHash -LiteralPath $target -Algorithm SHA256" in build_script
+    assert 'Join-Path $projectRoot "dist\\SHA256SUMS.txt"' in build_script
+    assert '"$hash  $artifactName`r`n"' in build_script
+    assert "[System.Text.Encoding]::ASCII" in build_script
+
+
 def test_version_info_keeps_numeric_file_and_full_product_version() -> None:
     """PE 规范里 filevers/FileVersion 必须是纯数字四段（1.0.0.0），
     而 ProductVersion 字符串要保留完整语义化版本（1.0.0-beta.1）——

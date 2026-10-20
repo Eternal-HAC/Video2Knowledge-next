@@ -67,7 +67,19 @@ Copy-Item -LiteralPath $built -Destination $target -Force
 $latest = Join-Path $projectRoot "dist\$productName-portable.exe"
 Copy-Item -LiteralPath $built -Destination $latest -Force
 Remove-Item -LiteralPath $built -Force
+
+# 本地构建与 GitHub Release 使用同一份校验文件合同。每次构建都覆盖旧文件，
+# 避免 dist 中残留上一版本的文件名或摘要被误上传/误验收。
+$hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+$artifactName = Split-Path -Leaf $target
+$checksumPath = Join-Path $projectRoot "dist\SHA256SUMS.txt"
+[System.IO.File]::WriteAllText(
+    $checksumPath,
+    "$hash  $artifactName`r`n",
+    [System.Text.Encoding]::ASCII
+)
 Write-Host ""
 Write-Host "构建完成: $target" -ForegroundColor Green
 Write-Host "固定名（快捷方式可指向此文件）: $latest" -ForegroundColor Cyan
 Write-Host "大小: $([math]::Round((Get-Item -LiteralPath $target).Length / 1MB, 1)) MB"
+Write-Host "SHA-256: $hash" -ForegroundColor Cyan
