@@ -1,10 +1,10 @@
 # Project Status
 
-Updated: 2026-10-20
+Updated: 2026-10-21
 
 ## Current stage
 
-`Windows successor prerelease validated; publication authorized`
+`Windows successor prerelease published; limited real note chain validated`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -197,7 +197,7 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - Launcher dispatches only the exact `--asr-child` argv, before port probing, logging redirection, server, browser or tray startup.
 - Review follow-up: cancel commands carry protocol=1 (the worker validates it); job fields are strictly typed (use_gpu must be a bool, title str or None, model_name in ASR_MODELS); progress rejects negative values; error codes are limited to worker_error/invalid_job/protocol_error with string messages; up to 16 non-JSON stdout noise lines are ignored while malformed JSON or wrong protocol versions still fail immediately.
 - Validation (fresh): `tests/test_asr_process.py` + `tests/test_launcher.py` 46 passed, 1 skipped; `tests/test_api.py` 136 passed, 1 skipped; full suite 631 passed, 3 skipped; `compileall` and `git diff --check` clean.
-- Limits/risks: after `started` there is no overall timeout (only user cancellation); the path check has a TOCTOU window; non-default concurrent model-cache contention is unverified; automated tests use fake `python -c` workers and cannot prove noconsole behavior, DLL availability, real model loading or spec collection. A portable real-machine smoke test requires separate authorization; no build was produced and no real ASR ran.
+- Historical gate limits at that point: after `started` there is no overall timeout (only user cancellation); the path check has a TOCTOU window; non-default concurrent model-cache contention is unverified; automated tests used fake `python -c` workers. The later Windows successor prerelease gate below superseded the then-pending build/real-ASR limitation with a successful frozen-build smoke.
 
 ## Completed title/page-aware artifact naming gate
 
@@ -233,7 +233,15 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - Built artifact: `VideoToNo-1.4.2-v2k.1-portable.exe`, 133,634,842 bytes (127.4 MiB), SHA-256 `D4548392E372293A7CDD8E8C0FC34ED7067D06598C2196AFC0D9A073C74016D1`. Windows file/product version remains `1.4.2.0` because PE numeric versions cannot encode the successor suffix; the application and health API report the full version.
 - Real frozen-build smoke: an isolated workspace and Windows SAPI-generated Chinese WAV were submitted through the packaged HTTP API with network model access disabled. The cached Whisper `small` model completed through the frozen ASR child, producing 3 non-empty Chinese segments plus JSON, Markdown, standards-shaped SRT and one central transcript archive. The exact launched process tree and all temporary media/workspace files were removed afterward.
 - Automated evidence: targeted release tests `194 passed, 1 skipped`; final complete suite `656 passed, 3 skipped`; `node --check frontend/script.js`, tracked and untracked diff checks, PowerShell smoke-script parsing, and `pip check` passed.
-- Boundary: no public media/model download, platform login/cookies, real LLM Provider call or Feishu write was performed. This prerelease proves the packaged offline transcription route, not real-provider compatibility.
+- Boundary of the release gate itself: no public media/model download, platform login/cookies, real LLM Provider call or Feishu write was performed. A separate limited real-provider acceptance followed after publication.
+
+## Completed limited real note-chain acceptance
+
+- On 2026-10-21, the published GitHub Release assets were downloaded into an isolated temporary directory. The 133,634,842-byte EXE matched `SHA256SUMS.txt`, the GitHub asset digest, and the expected SHA-256 `D4548392E372293A7CDD8E8C0FC34ED7067D06598C2196AFC0D9A073C74016D1`.
+- The downloaded EXE reported `1.4.2-v2k.1` in `portable` mode and used an isolated workspace. A three-segment synthetic Chinese SRT was registered as `subtitle_import`; the task reused all three segments and explicitly skipped subtitle lookup, audio and Whisper.
+- One authorized note task used DeepSeek `deepseek-flash`, the built-in general template, `faithful` style and reasoning `off`. It completed in about 3 seconds and exported exactly one Markdown file to the isolated custom destination, with parseable YAML Frontmatter, the expected footer, and all three coverage anchors (`V2K-ALPHA-17`, `CHECK-42`, `DONE-93`).
+- The page-session Key was not saved: the isolated workspace contained no `llm_keys.json`, the manifest contained no LLM configuration or API-key field, and targeted scans found no key-shaped or Authorization value in task files, the note, or the app log. The exact two-process portable tree was terminated and port 8000 had no remaining listener.
+- This is deliberately narrow evidence for one short synthetic transcript and one DeepSeek model. It does not establish compatibility for other Providers, long videos, public-platform acquisition, unstable networks or paid/login-protected sources.
 
 ## Current constraints
 

@@ -25,7 +25,7 @@ VideoToNo 把「视频 → 结构化笔记」这条链路做成了一个**本地
 
 - 在 VideoToNo v1.4.2 上保持原下载、字幕、本地 ASR 和任务架构，增加个人模板、Obsidian/自定义目录、可选飞书在线文档、字幕文件导入与 SRT 导出。
 - YouTube、B 站、抖音和本地媒体继续使用字幕优先、本地 ASR 兜底；平台登录、验证、会员和区域限制不会被绕过。
-- 这是 Video2Knowledge successor 的首个 Windows 预发布。真实 LLM Provider 未纳入本次离线 RC 验收，使用前仍需用户自行配置并承担相应服务调用。
+- 这是 Video2Knowledge successor 的首个 Windows 预发布。发布后的有限验收已用短合成字幕和 DeepSeek `deepseek-flash` 跑通单篇 Markdown 自定义目录链路；其他 Provider、长视频和不同网络环境仍需分别验证，服务调用由用户自行配置和承担。
 
 ## 上游 v1.4.2 摘要
 
@@ -81,7 +81,7 @@ VideoToNo 把「视频 → 结构化笔记」这条链路做成了一个**本地
 
 便携版会自动启动本地服务并驻留系统托盘。第一次使用 Whisper 转写时需要下载模型，请保持网络畅通；生成的任务、转录、截图和笔记默认保存在 exe 同目录的 `workspace/` 中。
 
-本预发布已在 Windows 11 上使用缓存的 Whisper `small` 模型完成打包态离线转录验收。发布资产的 SHA-256 见 Release 附带的 `SHA256SUMS.txt`。真实 LLM Provider 未包含在本次验收中。
+本预发布已在 Windows 11 上使用缓存的 Whisper `small` 模型完成打包态离线转录验收。发布资产的 SHA-256 见 Release 附带的 `SHA256SUMS.txt`。发布后的有限真实链验收另使用 DeepSeek `deepseek-flash` 和一份短合成 SRT，成功导出单篇 Markdown 到隔离自定义目录；该结果不代表所有 Provider、长视频或网络环境均兼容。
 
 ## ✨ 主要功能
 
