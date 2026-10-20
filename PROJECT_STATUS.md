@@ -4,11 +4,11 @@ Updated: 2026-10-21
 
 ## Current stage
 
-`Video2Knowledge v1.0.0-beta.1 local candidate accepted; remote prerelease publication pending`
+`Video2Knowledge v1.0.0-beta.1 published and accepted`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
-The product is now branded **Video2Knowledge** with an independent version line starting at `1.0.0-beta.1` (driven solely by `product_info.py`), an original script-generated logo, and a redesigned Knowledge Studio workspace per `DESIGN.md`. Local UI automation and visual acceptance have passed. The Windows candidate has been built and accepted locally; the remaining gate is remote push/tag/Pre-release publication and authoritative asset read-back.
+The product is now branded **Video2Knowledge** with an independent version line starting at `1.0.0-beta.1` (driven solely by `product_info.py`), an original script-generated logo, and a redesigned Knowledge Studio workspace per `DESIGN.md`. Local UI automation, visual acceptance, Windows candidate acceptance, remote publication, asset read-back and downloaded-release offline ASR have passed.
 
 The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
@@ -142,7 +142,8 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - Packaged smoke: an isolated Windows SAPI Chinese WAV completed through the frozen ASR child with cached Whisper `small` and Hugging Face offline mode, producing 3 non-empty Chinese segments plus JSON, Markdown, SRT and one central transcript archive. No media/model download, LLM call or Feishu write occurred; the exact process tree and temporary workspace were removed.
 - Compatibility/static smoke: a second isolated launch used only legacy `VIDEOTONOTES_WORKSPACE`/`VIDEOTONOTES_NO_BROWSER`; the candidate wrote its log into that workspace, returned `product=Video2Knowledge`, `service=VideoToNo`, `api_compat=1`, version `1.0.0-beta.1`, mode `portable`, and served the branded home page, favicon and PNG icon with correct media types. Its exact process tree and temporary directory were removed.
 - Three README screenshots have been generated from the real page with isolated synthetic data by `scripts/capture_readme_screenshots.mjs`; animation is disabled only in the capture page so repeated runs are byte-identical.
-- Explicitly **pending**: remote `main` push, annotated tag, GitHub Pre-release publication, released-asset checksum/read-back and repository Description/Topics update. Local evidence does not substitute for that remote verification.
+- Remote closeout: `main` and the annotated `v1.0.0-beta.1` tag resolve to release commit `dfe83b388f8029cc9903694bda621e7a9be9537c`; the GitHub Release is a non-draft Pre-release. GitHub reported the EXE as 133,191,612 bytes with digest `sha256:9c2cda4ecc3316ab926cdb458e37025a39cd05ae8196010d7d4d50b42094aa50`. A fresh download matched that digest and `SHA256SUMS.txt`, then passed the packaged offline-ASR smoke with 3 Chinese segments and JSON, Markdown, SRT and one central archive.
+- Repository metadata closeout: the approved Chinese Description and all 12 Topics were written and read back through GitHub. The tag-triggered Actions run did not start (the Actions API returned zero runs), so the already accepted local artifact was uploaded through the authorized manual fallback; no tag deletion, force push or history rewrite occurred.
 - Evidence carried over from earlier stages: the `v1.4.2-v2k.1` offline frozen-build ASR smoke and the limited DeepSeek real-note-chain acceptance below remain valid for that build; they do not by themselves accept the rebranded candidate, and the DeepSeek evidence remains limited to one short synthetic transcript and one model.
 
 ## Implemented local import and optional age cleanup milestone

@@ -44,11 +44,11 @@ This file holds only the active gap-verification queue. For every item: close it
 
 ## Next single execution task
 
-- [ ] `v1.0.0-beta.1` remote release closeout (authorized by the current release plan):
+- [x] `v1.0.0-beta.1` remote release closeout:
   1. [x] Run the complete `pytest` suite on the intended release branch and repeat it after the build-script fix.
   2. [x] Build `Video2Knowledge-1.0.0-beta.1-portable.exe` with the existing PyInstaller 6.22.3.
   3. [x] Pass packaged offline-ASR acceptance with cached Whisper `small`, plus legacy environment-variable and static-resource smoke checks.
   4. [x] Generate byte-stable Knowledge Studio README screenshots and a candidate `SHA256SUMS.txt` (`9c2cda4e...aa50`).
-  5. [ ] Push `main`, create the annotated tag and GitHub Pre-release, then verify released asset digests and repository Description/Topics.
+  5. [x] Push `main`, create the annotated tag and GitHub Pre-release, verify the downloaded EXE against `SHA256SUMS.txt` and GitHub's digest, rerun packaged offline ASR, and read back the approved Description/Topics.
 
 Other future directions still require a separate product decision: proxy/diagnostics policy (no automatic bypass), headless agent operation, and new platform/Feishu extensions. No further automatic coding gate is queued.

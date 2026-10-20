@@ -4,7 +4,7 @@
 
 - The user-visible product is **Video2Knowledge**; `VideoToNo` appears only in protocol-compatibility positions (for example the `/api/health` `service` field) and in attribution.
 - From `v1.0.0-beta.1` the project uses an **independent version line**: `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0`. The transitional `v1.4.2-v2k.N` line always sorts below the independent line in update checks. `product_info.py` is the single source for the product name, version, environment-variable prefixes, and release metadata consumed by the launcher, backend, build script, and release workflow.
-- The Windows portable artifact for this line is `Video2Knowledge-<version>-portable.exe`; the local `v1.0.0-beta.1` candidate has passed its build and offline acceptance gates, while remote Pre-release publication remains pending.
+- The Windows portable artifact for this line is `Video2Knowledge-<version>-portable.exe`; `v1.0.0-beta.1` has passed its local and downloaded-release acceptance gates and is published as a GitHub Pre-release.
 
 ## Compatibility boundaries of the rebrand
 
@@ -112,7 +112,7 @@ The note-template milestone is complete locally with the following contract:
 | Same-name output | Default and custom destinations use exclusive creation, safe Unicode filenames, and `-2`, `-3`, and later suffixes. Controlled race tests cover notes and attachment directories without overwriting foreign content. | Covered by automated tests. |
 | LLM failure preserves transcript | Transcript artifacts are written before the LLM step and remain readable for failed note tasks. | Covered by code and tests. |
 | Unicode and Frontmatter | UTF-8 reads/writes, Chinese filenames, Unicode destination paths, URI-encoded attachment links, deterministic YAML Frontmatter, and YAML-sensitive Unicode escaping are tested. | Covered by automated tests. |
-| Brand and workspace UI | Product metadata is centralized in `product_info.py`; the frontend implements the Knowledge Studio layout per `DESIGN.md` with the element-ID contract guarded by `tests/test_frontend_hygiene.py`; brand assets are generated reproducibly by repository scripts. | Successor customization implemented locally. UI automation, visual acceptance, the complete test suite, candidate EXE build, packaged offline ASR, compatibility smoke and local SHA-256 registration have passed; remote Release publication and read-back remain pending. |
+| Brand and workspace UI | Product metadata is centralized in `product_info.py`; the frontend implements the Knowledge Studio layout per `DESIGN.md` with the element-ID contract guarded by `tests/test_frontend_hygiene.py`; brand assets are generated reproducibly by repository scripts. | Released in `v1.0.0-beta.1`. UI automation, visual acceptance, the complete test suite, candidate build, packaged offline ASR, compatibility smoke, remote asset checksum and downloaded-release ASR have passed. |
 
 ## Ordered successor roadmap
 
@@ -126,7 +126,7 @@ The note-template milestone is complete locally with the following contract:
 8. Windows successor prerelease: `v1.4.2-v2k.1` packages the current MVP and has completed an offline frozen-build local-ASR smoke, including JSON, Markdown, SRT and central transcript archive artifacts.
 9. Limited real note chain: the GitHub Release EXE completed `short synthetic SRT -> DeepSeek deepseek-flash -> built-in template -> one Markdown file in an isolated custom destination`. This closes the first end-to-end evidence gap without claiming broad Provider, long-video, public-platform or network compatibility.
 10. Independent brand, version line, and Knowledge Studio UI: implemented locally. Product metadata is driven by `product_info.py`; the legacy service id, environment-variable aliases, browser preferences, and MCP/Skill discovery remain compatible; local UI automation and visual acceptance have passed.
-11. `v1.0.0-beta.1` candidate release: **local acceptance complete, remote closeout pending**. The final local gate passed with `693 passed, 3 skipped`; the branded EXE, cached-model packaged ASR, legacy-environment/static-resource smoke and candidate SHA-256 are accepted. Still owed: push `main`, create the annotated tag and GitHub Pre-release, verify the released assets, and update/read back repository metadata.
+11. `v1.0.0-beta.1` release: **complete**. The final local gate passed with `693 passed, 3 skipped`; the branded EXE, cached-model packaged ASR, legacy-environment/static-resource smoke and candidate SHA-256 passed. `main`, the annotated tag and GitHub Pre-release are published; the downloaded EXE matched its checksum and GitHub digest and passed the same offline ASR smoke. Repository Description and Topics were read back successfully.
 
 ## Non-goals for the current phase
 

@@ -55,7 +55,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 > **发布状态**：`v1.0.0-beta.1` 是独立版本线的第一个预发布版。本地候选已完成完整测试、Windows EXE 构建、打包态离线 ASR、兼容环境变量与 SHA-256 验收；Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准。详细证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
-发布后，普通用户无需安装 Python 或配置开发环境，从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1) 下载 `Video2Knowledge-1.0.0-beta.1-portable.exe`：
+普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1) 下载 `Video2Knowledge-1.0.0-beta.1-portable.exe`：
 
 1. 下载并双击 exe；
 2. 等待浏览器自动打开本地页面；

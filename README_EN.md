@@ -56,7 +56,7 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 
 > **Release status**: `v1.0.0-beta.1` is the first prerelease on the independent version line. The local candidate has passed the full test suite, Windows EXE build, packaged offline-ASR, compatibility-environment, and SHA-256 gates. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for evidence.
 
-Once published, no Python or development setup is required: download `Video2Knowledge-1.0.0-beta.1-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1):
+No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.1-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1):
 
 1. Download and double-click the exe;
 2. Wait for the local page to open in your browser;
