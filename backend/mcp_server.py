@@ -1,4 +1,4 @@
-"""VideoToNo MCP Server：把「视频链接 → Markdown 笔记」能力暴露为 MCP 工具。
+"""Video2Knowledge MCP Server：把「视频链接 → Markdown 笔记」能力暴露为 MCP 工具。
 
 接入方式（两种传输，工具完全相同）：
 - stdio：`python -m backend.mcp_server`，供 Codex CLI、Cherry Studio 等以本地命令方式接入；
@@ -27,6 +27,8 @@ from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 
+from product_info import LEGACY_SERVICE_ID, PRODUCT_NAME, env_value
+
 # mcp SDK 的 FastMCP Settings 模型里 lifespan 字段带泛型前向引用，
 # pydantic-settings 每次启动都会打印 IncompleteFieldDefinitionWarning。
 # 该字段由 SDK 内部直接赋值、不从环境变量读取，告警无实际影响；
@@ -38,9 +40,9 @@ PORT_SCAN_RANGE = 20
 HTTP_TIMEOUT = httpx.Timeout(20.0)
 
 mcp = FastMCP(
-    "VideoToNo",
+    PRODUCT_NAME,
     instructions=(
-        "VideoToNo 本地视频处理服务：输入 B 站 / YouTube 等视频链接，可拿到带时间轴的转录或成品笔记。\n"
+        "Video2Knowledge 本地视频处理服务：输入 B 站 / YouTube 等视频链接，可拿到带时间轴的转录或成品笔记。\n"
         "**先选路线**：如果你（宿主 agent）本身就有可用的模型，优先用 transcribe_video 提交 + "
         "get_transcript 取正文——这条路不需要 API Key，转录内容由你自己组织结构与风格，"
         "不受内置笔记模板限制；只有用户明确要一份成品笔记、或视频很长希望后台跑完时，"
@@ -67,7 +69,7 @@ def _extract_detail(response: httpx.Response) -> str:
 
 
 class BackendClient:
-    """stdio 模式后端：通过 HTTP 调用本地 VideoToNo（带端口自动发现）。"""
+    """stdio 模式后端：通过 HTTP 调用本地 Video2Knowledge（带端口自动发现）。"""
 
     def __init__(self, base_url: str = "", transport: Any = None) -> None:
         self.base_url = (base_url or DEFAULT_BACKEND_URL).rstrip("/")
@@ -126,7 +128,7 @@ class BackendClient:
             discovered = _discover_backend_url(self.base_url)
             if discovered == self.base_url:
                 raise RuntimeError(
-                    f"无法连接本地 VideoToNo 服务（{self.base_url}）。"
+                    f"无法连接本地 {PRODUCT_NAME} 服务（{self.base_url}）。"
                     "请先启动服务（python launcher.py 或 start.ps1）后再试。"
                 ) from exc
             # 端口扫描找到实际运行的服务（launcher 会在 8000-8019 之间选端口）
@@ -134,20 +136,31 @@ class BackendClient:
             return self._request(method, path, **kwargs)
         if response.status_code >= 400:
             raise RuntimeError(
-                f"VideoToNo 后端返回错误（HTTP {response.status_code}）：{_extract_detail(response)}"
+                f"{PRODUCT_NAME} 后端返回错误（HTTP {response.status_code}）：{_extract_detail(response)}"
             )
         return response.json()
 
 
+def _is_our_service(payload: dict[str, Any]) -> bool:
+    """健康响应对得上本服务的新旧两个身份（product=Video2Knowledge / service=VideoToNo）。"""
+    return (
+        payload.get("status") == "ok"
+        and (
+            payload.get("product") == PRODUCT_NAME
+            or payload.get("service") in (PRODUCT_NAME, LEGACY_SERVICE_ID)
+        )
+    )
+
+
 def _discover_backend_url(current: str) -> str:
-    """在当前地址连不上时，扫描 8000-8019 寻找正在运行的 VideoToNo 服务。"""
+    """在当前地址连不上时，扫描 8000-8019 寻找正在运行的本服务。"""
     for port in range(8000, 8000 + PORT_SCAN_RANGE):
         url = f"http://127.0.0.1:{port}"
         if url == current:
             continue
         try:
             response = httpx.get(f"{url}/api/health", timeout=1.0, trust_env=False)
-            if response.status_code == 200 and response.json().get("status") == "ok":
+            if response.status_code == 200 and _is_our_service(response.json()):
                 return url
         except Exception:
             continue
@@ -185,7 +198,7 @@ class InProcessBackend:
         try:
             return await get_task_transcript(task_id, output_format)
         except HTTPException as exc:
-            raise RuntimeError(f"VideoToNo 后端返回错误（HTTP {exc.status_code}）：{exc.detail}") from exc
+            raise RuntimeError(f"{PRODUCT_NAME} 后端返回错误（HTTP {exc.status_code}）：{exc.detail}") from exc
 
     async def whisper_models(self) -> dict[str, Any]:
         from .main import whisper_models_status
@@ -224,7 +237,7 @@ _backend: BackendClient | InProcessBackend | None = None
 def use_http_backend(base_url: str = "") -> None:
     """stdio 模式：通过 HTTP 调用本地后端（支持端口自动发现）。"""
     global _backend
-    _backend = BackendClient(base_url or os.getenv("VIDEOTONOTES_BACKEND_URL", ""))
+    _backend = BackendClient(base_url or env_value("BACKEND_URL", "") or "")
 
 
 def use_in_process_backend() -> None:

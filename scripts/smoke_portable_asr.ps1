@@ -3,7 +3,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Exe,
-    [string]$ExpectedVersion = "1.4.2-v2k.1",
+    # 留空时从 product_info.py 读（与构建脚本同一来源，不再重复维护一份版本号）
+    [string]$ExpectedVersion = "",
     [string]$Model = "small",
     [int]$StartupTimeoutSeconds = 180,
     [int]$TaskTimeoutSeconds = 600
@@ -11,12 +12,20 @@ param(
 
 $ErrorActionPreference = "Stop"
 $exePath = (Resolve-Path -LiteralPath $Exe).Path
+if (-not $ExpectedVersion) {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $versionLine = Select-String -Path (Join-Path $repoRoot "product_info.py") -Pattern '^VERSION = "([^"]+)"' | Select-Object -First 1
+    if (-not $versionLine) { throw "无法从 product_info.py 读取 VERSION" }
+    $ExpectedVersion = $versionLine.Matches[0].Groups[1].Value
+}
 $tempBase = [System.IO.Path]::GetTempPath().TrimEnd("\")
 $smokeRoot = Join-Path $tempBase ("v2k-rc-smoke-" + [guid]::NewGuid().ToString("N"))
 $workspace = Join-Path $smokeRoot "workspace"
 $wav = Join-Path $smokeRoot "packaged-asr-smoke.wav"
 $process = $null
 $oldEnv = @{
+    VIDEO2KNOWLEDGE_WORKSPACE = $env:VIDEO2KNOWLEDGE_WORKSPACE
+    VIDEO2KNOWLEDGE_NO_BROWSER = $env:VIDEO2KNOWLEDGE_NO_BROWSER
     VIDEOTONOTES_WORKSPACE = $env:VIDEOTONOTES_WORKSPACE
     VIDEOTONOTES_NO_BROWSER = $env:VIDEOTONOTES_NO_BROWSER
     HF_HUB_OFFLINE = $env:HF_HUB_OFFLINE
@@ -84,8 +93,8 @@ try {
         throw "SAPI failed to generate the smoke-test audio."
     }
 
-    $env:VIDEOTONOTES_WORKSPACE = $workspace
-    $env:VIDEOTONOTES_NO_BROWSER = "1"
+    $env:VIDEO2KNOWLEDGE_WORKSPACE = $workspace
+    $env:VIDEO2KNOWLEDGE_NO_BROWSER = "1"
     $env:HF_HUB_OFFLINE = "1"
     $env:TRANSFORMERS_OFFLINE = "1"
     $env:WHISPER_CACHE_DIR = $modelRoot
@@ -100,7 +109,9 @@ try {
                 $health = Invoke-RestMethod -Uri "$candidate/api/health" -TimeoutSec 1
                 if (
                     $health.status -eq "ok" -and
+                    $health.product -eq "Video2Knowledge" -and
                     $health.service -eq "VideoToNo" -and
+                    $health.api_compat -eq 1 -and
                     $health.mode -eq "portable" -and
                     $health.version -eq $ExpectedVersion
                 ) {

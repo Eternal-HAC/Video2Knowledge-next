@@ -1,4 +1,4 @@
-"""VideoToNo 启动器。
+"""Video2Knowledge 启动器。
 
 开发模式（`python launcher.py`）：
   - 控制台窗口显示地址，Ctrl+C 退出
@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import re
 import socket
 import subprocess
 import sys
@@ -25,15 +24,25 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.4.2-v2k.1"
+from product_info import (
+    APP_NAME,
+    GITHUB_REPO,
+    LEGACY_SERVICE_ID,
+    PRODUCT_NAME,
+    VERSION,
+    env_value,
+    is_update,
+    set_env_aliases,
+    version_key,
+)
+
 DEFAULT_PORT = 8000
 PORT_SCAN_RANGE = 20
 START_TIMEOUT_SECONDS = 60
-APP_NAME = f"VideoToNo v{VERSION}"
 GITHUB_RELEASES_API = (
-    "https://api.github.com/repos/Eternal-HAC/Video2Knowledge-next/releases?per_page=20"
+    f"https://api.github.com/repos/{GITHUB_REPO}/releases?per_page=20"
 )
-GITHUB_RELEASES_URL = "https://github.com/Eternal-HAC/Video2Knowledge-next/releases"
+GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases"
 
 
 def is_frozen() -> bool:
@@ -46,28 +55,51 @@ def base_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
+def _probe_writable(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write_test"
+        probe.write_text("", encoding="utf-8")
+        probe.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def _fallback_workspace() -> Path:
+    """exe 所在目录不可写时（如 Program Files）退回用户目录。
+
+    改名不搬数据：新品牌目录已存在就用它；否则旧版已落过数据的机器继续用
+    旧目录；全新安装才创建新品牌目录。
+    """
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    fallback_root = Path(local_app_data) if local_app_data else Path.home() / ".videotono"
+    branded = fallback_root / PRODUCT_NAME / "workspace"
+    legacy = fallback_root / LEGACY_SERVICE_ID / "workspace"
+    if branded.exists() or not legacy.exists():
+        return branded
+    return legacy
+
+
 def configure_runtime_dirs() -> None:
-    """设置工作目录：打包模式默认放在 exe 旁边（便携），允许环境变量覆盖。"""
+    """设置工作目录：打包模式默认放在 exe 旁边（便携），允许环境变量覆盖。
+
+    环境变量新旧名都认（VIDEO2KNOWLEDGE_WORKSPACE 优先于
+    VIDEOTONOTES_WORKSPACE）；解析结果补进两个名字，下游 backend 与
+    ASR 子进程读到的是同一份。
+    """
     if is_frozen():
-        exe_dir = base_dir()
-        default_workspace = exe_dir / "workspace"
-        try:
-            default_workspace.mkdir(parents=True, exist_ok=True)
-            probe = default_workspace / ".write_test"
-            probe.write_text("", encoding="utf-8")
-            probe.unlink()
-        except OSError:
-            # exe 所在目录不可写时（如 Program Files），退回用户目录
-            local_app_data = os.environ.get("LOCALAPPDATA")
-            fallback_root = Path(local_app_data) if local_app_data else Path.home() / ".videotono"
-            default_workspace = fallback_root / "VideoToNo" / "workspace"
+        default_workspace = base_dir() / "workspace"
+        if not _probe_writable(default_workspace):
+            default_workspace = _fallback_workspace()
             default_workspace.mkdir(parents=True, exist_ok=True)
     else:
         default_workspace = base_dir() / "workspace"
         default_workspace.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("VIDEOTONOTES_WORKSPACE", str(default_workspace))
+    resolved = env_value("WORKSPACE") or str(default_workspace)
+    set_env_aliases("WORKSPACE", resolved)
     # 环境变量覆盖的路径也要确保存在：打包版写日志文件前依赖此目录，缺失会启动崩溃
-    Path(os.environ["VIDEOTONOTES_WORKSPACE"]).mkdir(parents=True, exist_ok=True)
+    Path(resolved).mkdir(parents=True, exist_ok=True)
 
 
 RUN_MODE = "portable" if is_frozen() else "dev"
@@ -88,7 +120,11 @@ def server_alive(
             if response.status != 200:
                 return False
             payload = json.loads(response.read().decode("utf-8"))
-            if not (payload.get("status") == "ok" and payload.get("service") == "VideoToNo"):
+            # 新旧两个身份都认：product=Video2Knowledge，或旧版只发的 service=VideoToNo
+            identity_ok = payload.get("product") == PRODUCT_NAME or payload.get(
+                "service"
+            ) in (PRODUCT_NAME, LEGACY_SERVICE_ID)
+            if not (payload.get("status") == "ok" and identity_ok):
                 return False
             if mode is not None and payload.get("mode") != mode:
                 return False
@@ -126,7 +162,7 @@ def start_server(port: int) -> tuple[Any, threading.Thread]:
     import uvicorn
 
     # 让挂载的 MCP 端点（/mcp/sse）自调命中实际端口
-    os.environ.setdefault("VIDEOTONOTES_BACKEND_URL", f"http://127.0.0.1:{port}")
+    set_env_aliases("BACKEND_URL", f"http://127.0.0.1:{port}")
     from backend.main import app
 
     config = uvicorn.Config(
@@ -163,7 +199,7 @@ def wait_healthy(
 def print_banner(url: str, workspace: Path) -> None:
     width = 58
     print("=" * width)
-    print("  VideoToNo v" + VERSION + "（开发模式）")
+    print("  " + APP_NAME + "（开发模式）")
     print(f"  界面地址: {url}")
     print(f"  工作目录: {workspace}")
     print("  关闭本窗口或按 Ctrl+C 退出。")
@@ -223,16 +259,13 @@ def open_in_shell(path: Path) -> None:
         subprocess.Popen(["xdg-open", str(path)])
 
 
-def version_tuple(value: str) -> tuple[int, ...]:
-    """把普通版本或 successor 的 ``-v2k.N`` 标签转成可比较元组。"""
-    text = str(value or "").strip().lstrip("vV")
-    match = re.match(r"^(\d+(?:\.\d+)*)(?:-v2k\.(\d+))?", text, re.IGNORECASE)
-    if not match:
-        return (0,)
-    parts = [int(part) for part in match.group(1).split(".")]
-    if match.group(2) is not None:
-        parts.append(int(match.group(2)))
-    return tuple(parts)
+def version_tuple(value: str) -> tuple[int, tuple[int, ...], int, int]:
+    """旧入口的兼容壳：比较语义已并入 product_info.version_key。
+
+    过渡线（v1.4.2-v2k.N）整体低于独立线（v1.0.0-beta.N 起），
+    无法识别的版本号返回最小键。
+    """
+    return version_key(value)
 
 
 def latest_release_info() -> dict[str, str]:
@@ -241,7 +274,7 @@ def latest_release_info() -> dict[str, str]:
         GITHUB_RELEASES_API,
         headers={
             "Accept": "application/vnd.github+json",
-            "User-Agent": f"VideoToNo/{VERSION}",
+            "User-Agent": f"{PRODUCT_NAME}/{VERSION}",
         },
     )
     with urllib.request.urlopen(request, timeout=5) as response:
@@ -273,7 +306,7 @@ def check_for_updates(_icon: Any = None, _item: Any = None) -> None:
     """手动检查 GitHub Release，不阻塞启动，也不在启动时联网。"""
     try:
         release = latest_release_info()
-        if version_tuple(release["tag_name"]) <= version_tuple(VERSION):
+        if not is_update(release["tag_name"], VERSION):
             show_update_message(f"当前已是最新版本（v{VERSION}）。", flags=0x40)
             return
         message = (
@@ -305,7 +338,7 @@ def run_tray(url: str, workspace: Path, server: Any) -> int:
     import pystray
 
     log_path = workspace / "_app.log"
-    print(f"VideoToNo v{VERSION} 已启动: {url}（托盘图标可退出）", flush=True)
+    print(f"{APP_NAME} 已启动: {url}（托盘图标可退出）", flush=True)
 
     def on_open(_icon: Any, _item: Any) -> None:
         webbrowser.open(url)
@@ -324,13 +357,13 @@ def run_tray(url: str, workspace: Path, server: Any) -> int:
         pystray.MenuItem("检查更新", check_for_updates),
         pystray.MenuItem("退出", on_quit),
     )
-    icon = pystray.Icon("videotono", tray_icon_image(), f"{APP_NAME} · {url}", menu)
+    icon = pystray.Icon("video2knowledge", tray_icon_image(), f"{APP_NAME} · {url}", menu)
     # 任务结果通知：把 backend 的完成/失败事件接到托盘气泡（Windows 通知）
     try:
         from backend import main as backend_main
 
         backend_main.register_task_notify(
-            lambda title, message: icon.notify(message, f"VideoToNo · {title}")
+            lambda title, message: icon.notify(message, f"{PRODUCT_NAME} · {title}")
         )
     except Exception:
         pass  # 通知注册失败不影响服务
@@ -355,8 +388,8 @@ def main() -> int:
         # 转写工人：只干活，不起服务、不进托盘、不重定向 stdout（主程序在用管道读它）
         return run_asr_child()
     configure_runtime_dirs()
-    workspace = Path(os.environ["VIDEOTONOTES_WORKSPACE"])
-    no_browser = os.environ.get("VIDEOTONOTES_NO_BROWSER") == "1"
+    workspace = Path(env_value("WORKSPACE") or str(base_dir() / "workspace"))
+    no_browser = env_value("NO_BROWSER") == "1"
 
     try:
         port = find_available_port()

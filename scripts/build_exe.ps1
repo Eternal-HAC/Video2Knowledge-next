@@ -13,13 +13,19 @@ if (-not (Test-Path -LiteralPath $Python)) {
     throw "Python 解释器不存在: $Python"
 }
 
-$versionLine = Select-String -Path (Join-Path $projectRoot "launcher.py") -Pattern '^VERSION = "([^"]+)"' | Select-Object -First 1
-if (-not $versionLine) { throw "无法从 launcher.py 读取 VERSION" }
+# 产品名与版本号的唯一来源是 product_info.py（launcher/backend/发布流程同读这一份）
+$metadataSource = Join-Path $projectRoot "product_info.py"
+$versionLine = Select-String -Path $metadataSource -Pattern '^VERSION = "([^"]+)"' | Select-Object -First 1
+if (-not $versionLine) { throw "无法从 product_info.py 读取 VERSION" }
 $version = $versionLine.Matches[0].Groups[1].Value
-Write-Host "打包版本: $version" -ForegroundColor Cyan
+$nameLine = Select-String -Path $metadataSource -Pattern '^PRODUCT_NAME = "([^"]+)"' | Select-Object -First 1
+if (-not $nameLine) { throw "无法从 product_info.py 读取 PRODUCT_NAME" }
+$productName = $nameLine.Matches[0].Groups[1].Value
+Write-Host "打包产品: $productName $version" -ForegroundColor Cyan
 
 # 版本元数据同步：从模板（scripts/version_info.txt.template）生成 version_info.txt，
-# 版本号取自 launcher.py 的 VERSION，避免 exe 属性页版本号滞后
+# 版本号取自 product_info.py 的 VERSION，避免 exe 属性页版本号滞后。
+# FileVersion 必须是纯数字四段（PE 规范），ProductVersion 保留完整语义化字符串。
 $versionInfoTemplate = Join-Path $projectRoot "scripts\version_info.txt.template"
 $versionInfoPath = Join-Path $projectRoot "scripts\version_info.txt"
 $templateText = Get-Content -LiteralPath $versionInfoTemplate -Raw -Encoding UTF8
@@ -28,7 +34,8 @@ $versionParts = @(($cleanVersion -split '\.' | ForEach-Object { [int]$_ }) + @(0
 $fileVersion = $versionParts -join '.'
 $versionInfoText = $templateText `
     -replace '__VERSION_PARTS__', ($versionParts -join ', ') `
-    -replace '__VERSION__', $fileVersion
+    -replace '__FILE_VERSION__', $fileVersion `
+    -replace '__PRODUCT_VERSION__', $version
 [System.IO.File]::WriteAllText($versionInfoPath, $versionInfoText, [System.Text.Encoding]::UTF8)
 
 if (-not $SkipInstall) {
@@ -38,7 +45,7 @@ if (-not $SkipInstall) {
 
 Set-Location -LiteralPath $projectRoot
 & $Python -m PyInstaller --noconfirm --clean --onefile --noconsole `
-    --name "VideoToNo" `
+    --name "$productName" `
     --add-data "frontend;frontend" `
     --add-data "sources/icon.png;sources" `
     --add-data "sources/icon.ico;sources" `
@@ -53,12 +60,13 @@ Set-Location -LiteralPath $projectRoot
     launcher.py
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller 构建失败" }
 
-$target = Join-Path $projectRoot "dist\VideoToNo-$version-portable.exe"
-Copy-Item -LiteralPath (Join-Path $projectRoot "dist\VideoToNo.exe") -Destination $target -Force
+$built = Join-Path $projectRoot "dist\$productName.exe"
+$target = Join-Path $projectRoot "dist\$productName-$version-portable.exe"
+Copy-Item -LiteralPath $built -Destination $target -Force
 # 固定名副本：桌面快捷方式指向它，升级后无需改快捷方式目标
-$latest = Join-Path $projectRoot "dist\VideoToNo-portable.exe"
-Copy-Item -LiteralPath (Join-Path $projectRoot "dist\VideoToNo.exe") -Destination $latest -Force
-Remove-Item -LiteralPath (Join-Path $projectRoot "dist\VideoToNo.exe") -Force
+$latest = Join-Path $projectRoot "dist\$productName-portable.exe"
+Copy-Item -LiteralPath $built -Destination $latest -Force
+Remove-Item -LiteralPath $built -Force
 Write-Host ""
 Write-Host "构建完成: $target" -ForegroundColor Green
 Write-Host "固定名（快捷方式可指向此文件）: $latest" -ForegroundColor Cyan

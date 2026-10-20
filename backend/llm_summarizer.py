@@ -9,6 +9,8 @@ from collections.abc import Awaitable, Callable
 from typing import Any, Sequence
 from urllib.parse import urlparse
 
+from product_info import env_value
+
 from .transcript import (
     TranscriptSegment,
     chunk_segments,
@@ -238,13 +240,14 @@ def utf8_safe(text: str) -> str:
 
 
 def _rejected_params_from_env() -> set[str]:
-    """逃生口：`VIDEOTONOTES_REJECTED_LLM_PARAMS=thinking,reasoning_effort`。
+    """逃生口：`VIDEO2KNOWLEDGE_REJECTED_LLM_PARAMS=thinking,reasoning_effort`
+    （旧名 `VIDEOTONOTES_REJECTED_LLM_PARAMS` 继续生效，新名优先）。
 
     跟 pi/pivi 的 `compat.supportsReasoningEffort` 同一思路：通道能力靠声明而不是
     猜名字。自动降级能覆盖绝大多数情况，但“每阶段都先吃一次 400 再重试”仍然很浪费
     时，遇到这种通道让用户一行环境变量声明掉即可（多个用逗号分隔）。
     """
-    raw = (os.getenv("VIDEOTONOTES_REJECTED_LLM_PARAMS") or "").lower()
+    raw = (env_value("REJECTED_LLM_PARAMS") or "").lower()
     return {
         name.strip()
         for name in raw.replace(" ", ",").split(",")

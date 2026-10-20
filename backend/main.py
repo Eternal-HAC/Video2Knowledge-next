@@ -62,6 +62,9 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 from pydantic import BaseModel, Field, SecretStr
 
+import product_info
+from product_info import API_COMPAT, LEGACY_SERVICE_ID, PRODUCT_NAME, VERSION, env_value
+
 from . import (
     asr_process,
     media_retention,
@@ -109,7 +112,7 @@ from .whisper_asr import WhisperTranscriber
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 WORKSPACE_DIR = Path(
-    os.getenv("VIDEOTONOTES_WORKSPACE", str(BASE_DIR / "workspace"))
+    env_value("WORKSPACE", str(BASE_DIR / "workspace"))
 ).resolve()
 WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
 WHISPER_CACHE_DIR = Path(
@@ -168,7 +171,7 @@ NOTE_IMAGE_REF_RE = re.compile(
     rf"(!\[[^\]]*\]\()\./(?:{FRAMES_DIR_NAME}|images)/([^)]+)\)"
 )
 
-app = FastAPI(title="VideoToNo API", version="1.4.2-v2k.1")
+app = FastAPI(title=f"{PRODUCT_NAME} API", version=VERSION)
 
 
 def is_loopback_client(host: str | None) -> bool:
@@ -222,7 +225,7 @@ class LocalSecurityMiddleware:
         client_host = client[0] if isinstance(client, (tuple, list)) and client else None
         if not is_loopback_client(client_host):
             body = json.dumps(
-                {"detail": "VideoToNo 仅允许本机访问"}, ensure_ascii=False
+                {"detail": f"{PRODUCT_NAME} 仅允许本机访问"}, ensure_ascii=False
             ).encode("utf-8")
             await send(
                 {
@@ -270,10 +273,10 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 
 
 FRONTEND_MISSING_HTML = """<!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"><title>VideoToNo 界面没加载出来</title></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>Video2Knowledge 界面没加载出来</title></head>
 <body style="font-family:system-ui,sans-serif;max-width:34em;margin:14vh auto;padding:0 1.2em;line-height:1.9">
 <h1>界面没加载出来</h1>
-<p><strong>这样做就好：</strong>在右下角任务栏找到 VideoToNo 图标，右键选「退出」，
+<p><strong>这样做就好：</strong>在右下角任务栏找到 Video2Knowledge 图标，右键选「退出」，
 再双击打开程序。找不到那个图标的话，直接再双击一次程序也行。</p>
 <p>要是反复出现，请把程序目录里 <code>workspace\\_app.log</code> 发给作者，
 并说一下你地址栏里的端口号（这台机器上是 __PORT__）。</p>
@@ -1711,7 +1714,10 @@ async def note_destinations() -> dict[str, Any]:
 async def health_check() -> dict[str, Any]:
     return {
         "status": "ok",
-        "service": "VideoToNo",
+        # 旧发现逻辑按 service 认服务，字段名与取值都不能动
+        "service": LEGACY_SERVICE_ID,
+        "product": PRODUCT_NAME,
+        "api_compat": API_COMPAT,
         "version": app.version,
         # portable/dev 互不复用对方实例，避免 dev 服务占用端口导致打包版不驻留托盘
         "mode": "portable" if getattr(sys, "frozen", False) else "dev",
@@ -3546,7 +3552,7 @@ if FRONTEND_DIR.is_dir():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
-    os.environ.setdefault("VIDEOTONOTES_BACKEND_URL", f"http://127.0.0.1:{port}")
+    product_info.set_env_aliases("BACKEND_URL", f"http://127.0.0.1:{port}")
     uvicorn.run(
         "backend.main:app",
         host=os.getenv("HOST", "127.0.0.1"),

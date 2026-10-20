@@ -126,15 +126,18 @@ def test_health_and_frontend_are_served() -> None:
     client = TestClient(main.app)
     health = client.get("/api/health")
     assert health.status_code == 200
-    assert health.json()["version"] == "1.4.2-v2k.1"
+    assert health.json()["version"] == "1.0.0-beta.1"
     assert health.json()["version"] == launcher.VERSION
+    # 旧发现逻辑按 service 认服务；product/api_compat 是改名后新增的兼容契约
     assert health.json()["service"] == "VideoToNo"
+    assert health.json()["product"] == "Video2Knowledge"
+    assert health.json()["api_compat"] == 1
     assert health.json()["mode"] == "dev"  # 测试进程非打包；打包版应报 portable
     # 前端 MCP 卡片靠这个字段决定"给地址"还是"说本机没装依赖"
     assert health.json()["dependencies"]["mcp_sse"] is True
     page = client.get("/")
     assert page.status_code == 200
-    assert "VideoToNo" in page.text
+    assert "Video2Knowledge" in page.text
     assert 'id="mcpSseUrl"' in page.text
     assert 'id="mcpStatusChip" class="mcp-chip" type="button" hidden' in page.text
     assert 'id="mcpHint" class="hint-bar info" hidden' in page.text
@@ -242,7 +245,7 @@ def test_remote_clients_are_rejected() -> None:
     assert health.status_code == 403
     page = client.get("/")
     assert page.status_code == 403
-    assert page.json()["detail"] == "VideoToNo 仅允许本机访问"
+    assert page.json()["detail"] == "Video2Knowledge 仅允许本机访问"
 
 
 def test_frontend_sanitizes_generated_markdown() -> None:

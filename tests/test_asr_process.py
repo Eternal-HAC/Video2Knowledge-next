@@ -24,8 +24,24 @@ def _setup_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     task_dir.mkdir(parents=True)
     media = task_dir / "input.mp3"
     media.write_bytes(b"not-really-audio")
+    monkeypatch.delenv("VIDEO2KNOWLEDGE_WORKSPACE", raising=False)
     monkeypatch.setenv("VIDEOTONOTES_WORKSPACE", str(workspace))
     return workspace, task_dir, media
+
+
+def test_workspace_root_env_alias_prefers_new_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ASR 子进程与父进程用同一套环境变量别名：新名优先，旧名继续生效。"""
+    new_dir = tmp_path / "new-ws"
+    legacy_dir = tmp_path / "legacy-ws"
+    new_dir.mkdir()
+    legacy_dir.mkdir()
+    monkeypatch.setenv("VIDEOTONOTES_WORKSPACE", str(legacy_dir))
+    monkeypatch.setenv("VIDEO2KNOWLEDGE_WORKSPACE", str(new_dir))
+    assert asr_process._workspace_root() == new_dir.resolve()
+    monkeypatch.delenv("VIDEO2KNOWLEDGE_WORKSPACE")
+    assert asr_process._workspace_root() == legacy_dir.resolve()
 
 
 def _fake_child(script: str):

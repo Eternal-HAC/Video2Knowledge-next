@@ -9,7 +9,10 @@ const CUSTOM_PROFILE_PREFIX = 'custom:';
 const DEFAULT_NOTE_TEMPLATE_ID = 'builtin-general-structured';
 // 所有偏好集中在一个命名空间对象里写入，"浏览器存储中没有任何密钥"因此是
 // 单个函数（persistPrefs）的性质，而不是 13 个散装键的逐处审查结果。
-const PREFS_KEY = 'vtn_prefs';
+// 改名迁移：新键 v2k_prefs 优先；缺席时才读旧键 vtn_prefs（旧键保留不删，
+// 下次 persistPrefs 把清洗后的副本写进新键即完成迁移）。
+const PREFS_KEY = 'v2k_prefs';
+const LEGACY_PREFS_KEY = 'vtn_prefs';
 const PREFS_SCHEMA = 2;
 const PREFS_DEBOUNCE_MS = 250;
 // 旧版本每个设置一个散装键，仅用于一次性迁移，读取后立即删除。
@@ -172,7 +175,7 @@ function safeStep(action, label) {
     try {
         action();
     } catch (error) {
-        console.error(`[VideoToNo] ${label} 初始化失败：`, error);
+        console.error(`[Video2Knowledge] ${label} 初始化失败：`, error);
     }
 }
 
@@ -366,7 +369,7 @@ function bindListener(id, event, handler) {
     if (element) {
         element.addEventListener(event, handler);
     } else {
-        console.warn(`[VideoToNo] 页面缺少元素 #${id}，已跳过对应事件绑定`);
+        console.warn(`[Video2Knowledge] 页面缺少元素 #${id}，已跳过对应事件绑定`);
     }
 }
 
@@ -645,14 +648,18 @@ function defaultPrefs() {
 }
 
 function readStoredPrefs() {
-    try {
-        const raw = localStorage.getItem(PREFS_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (_error) {
-        return null;
+    // 新键优先；它缺席或损坏时才读旧键。旧键只读不写（保留给旧版页面兜底）。
+    for (const key of [PREFS_KEY, LEGACY_PREFS_KEY]) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (_error) {
+            // 某个键损坏就试下一个；隐私模式禁用存储时整体返回 null
+        }
     }
+    return null;
 }
 
 // 递归丢弃敏感字段名的值，并把不可序列化的东西剔掉。
@@ -662,7 +669,7 @@ function sanitizeForStorage(value) {
         const clean = {};
         Object.entries(value).forEach(([key, item]) => {
             if (SECRET_FIELD_PATTERN.test(key)) {
-                console.warn(`[VideoToNo] 拒绝把敏感字段 ${key} 写入浏览器存储`);
+                console.warn(`[Video2Knowledge] 拒绝把敏感字段 ${key} 写入浏览器存储`);
                 return;
             }
             const sanitized = sanitizeForStorage(item);
@@ -681,7 +688,7 @@ function persistPrefs() {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify(sanitizeForStorage(prefs)));
     } catch (error) {
-        console.warn('[VideoToNo] 偏好保存失败（浏览器可能禁用了本地存储）：', error);
+        console.warn('[Video2Knowledge] 偏好保存失败（浏览器可能禁用了本地存储）：', error);
     }
 }
 
@@ -722,7 +729,7 @@ function legacyWhisperConfirms() {
                 localStorage.removeItem(key);
             });
     } catch (error) {
-        console.warn('[VideoToNo] 迁移下载确认记录失败：', error);
+        console.warn('[Video2Knowledge] 迁移下载确认记录失败：', error);
     }
     return confirmed;
 }
@@ -823,7 +830,7 @@ function initPreferences() {
         stored = migrateLegacyPrefs() || mergePrefs(readStoredPrefs());
     } catch (error) {
         // 隐私模式等禁用本地存储时，只丢"记住上次的选择"，页面必须照常可用。
-        console.warn('[VideoToNo] 读取历史偏好失败，改用默认设置：', error);
+        console.warn('[Video2Knowledge] 读取历史偏好失败，改用默认设置：', error);
     }
     prefs = stored || defaultPrefs();
     if (!['forever', '1', '7', '30'].includes(prefs.global.media_retention_days)) {
@@ -1104,7 +1111,7 @@ function resetPreferences() {
     try {
         localStorage.removeItem(PREFS_KEY);
     } catch (error) {
-        console.warn('[VideoToNo] 清除偏好失败：', error);
+        console.warn('[Video2Knowledge] 清除偏好失败：', error);
     }
     prefs = defaultPrefs();
     applyPreferencesToForm();
@@ -1547,7 +1554,7 @@ async function loadNoteTemplates(preferredId = null) {
         noteTemplates = Array.isArray(data.templates) ? data.templates : [];
         noteTemplatesStatus = 'ready';
     } catch (error) {
-        console.warn('[VideoToNo] 读取笔记模板失败：', error);
+        console.warn('[Video2Knowledge] 读取笔记模板失败：', error);
         noteTemplates = [];
         noteTemplatesStatus = 'error';
     }
@@ -2485,7 +2492,7 @@ async function loadNoteDestinations() {
         renderObsidianVaults(data.obsidian || {});
         renderFeishuReadiness(data.feishu || {});
     } catch (error) {
-        console.warn('[VideoToNo] 笔记目的地检测失败：', error);
+        console.warn('[Video2Knowledge] 笔记目的地检测失败：', error);
         renderObsidianVaults({ status: 'missing', vaults: [] });
         if (obsidianStatus) obsidianStatus.textContent = '检测失败，可手动填写上方路径';
         if (feishuStatus) feishuStatus.textContent = '检测失败，提交时后端会再次校验';

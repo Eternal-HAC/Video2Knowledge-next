@@ -33,6 +33,8 @@ from typing import Any, Callable
 from .media_retention import is_owned_media_name, is_safe_task_id
 from .transcript import TranscriptSegment
 
+from product_info import env_value
+
 PROTOCOL_VERSION = 1
 # Parent-initiated cancellation: how long to wait for the worker before killing it.
 CANCEL_GRACE_SECONDS = 60.0
@@ -168,7 +170,7 @@ def decode_result(payload: Any) -> dict[str, Any]:
 
 
 def _workspace_root() -> Path | None:
-    raw = os.environ.get("VIDEOTONOTES_WORKSPACE")
+    raw = env_value("WORKSPACE")
     if not raw:
         return None
     try:

@@ -1,1 +1,1 @@
-"""VideoToNo backend package."""
+"""Video2Knowledge backend package."""

@@ -43,6 +43,145 @@ def test_retired_loose_preference_keys_are_never_written() -> None:
         assert f"setItem('{key}'" not in SCRIPT
 
 
+def test_preference_namespace_is_v2k_with_vtn_fallback() -> None:
+    """改名迁移：新键 v2k_prefs 优先，旧键 vtn_prefs 只读不删。"""
+    assert "const PREFS_KEY = 'v2k_prefs'" in SCRIPT
+    assert "const LEGACY_PREFS_KEY = 'vtn_prefs'" in SCRIPT
+    reader = SCRIPT.split("function readStoredPrefs()", 1)[1].split("\n}", 1)[0]
+    assert reader.index("PREFS_KEY") < reader.index("LEGACY_PREFS_KEY")
+    assert "removeItem(LEGACY_PREFS_KEY)" not in SCRIPT
+    assert "removeItem('vtn_prefs')" not in SCRIPT
+    bootstrap = (FRONTEND / "theme-bootstrap.js").read_text(encoding="utf-8")
+    assert bootstrap.index("'v2k_prefs'") < bootstrap.index("'vtn_prefs'")
+
+
+def test_theme_bootstrap_falls_back_from_corrupt_v2k_to_vtn() -> None:
+    """在存储桩里真跑 theme-bootstrap：v2k_prefs 损坏（非法 JSON）时
+    必须落到 vtn_prefs.ui.theme，再坏才落到散装 'theme' 键；两个 prefs 键都只读不写。"""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node is unavailable")
+    harness = r"""
+const vm = require('node:vm');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const storage = {
+    v2k_prefs: '{corrupt json',
+    vtn_prefs: JSON.stringify({ ui: { theme: 'dark' } })
+};
+const dataset = {};
+const context = vm.createContext({
+    console, setTimeout, clearTimeout,
+    window: { addEventListener() {}, setTimeout, clearTimeout },
+    document: {
+        documentElement: { dataset },
+        addEventListener() {},
+        createElement: () => ({ setAttribute() {} }),
+        body: { appendChild() {} }
+    },
+    localStorage: {
+        getItem: key => (key in storage ? storage[key] : null),
+        setItem: (key, value) => { storage[key] = value; },
+        removeItem: key => { delete storage[key]; }
+    }
+});
+const source = fs.readFileSync(0, 'utf8');
+vm.runInContext(source, context);
+// 新键损坏 -> 读旧键的主题
+assert.equal(dataset.theme, 'dark');
+// 两个键都只读：损坏的新键原样保留，旧键不动
+assert.equal(storage.v2k_prefs, '{corrupt json');
+assert.ok(storage.vtn_prefs.includes('dark'));
+// 新键缺席、旧键解析出非对象 -> 落到更老的散装 theme 键
+delete storage.v2k_prefs;
+storage.vtn_prefs = '42';
+storage.theme = 'light';
+vm.runInContext(source, context);
+assert.equal(dataset.theme, 'light');
+// 全部不可用 -> system
+delete storage.vtn_prefs;
+delete storage.theme;
+vm.runInContext(source, context);
+assert.equal(dataset.theme, 'system');
+"""
+    bootstrap = (FRONTEND / "theme-bootstrap.js").read_text(encoding="utf-8")
+    result = subprocess.run(
+        [node, "-e", harness], input=bootstrap, text=True, encoding="utf-8",
+        capture_output=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_console_prefixes_use_the_new_brand() -> None:
+    """用户/开发者可见的 console 前缀一律 [Video2Knowledge]；
+    兼容变量名（__videoToNoReady 等）与归属说明里的旧名不在此列。"""
+    assert "[VideoToNo]" not in SCRIPT
+    assert "[Video2Knowledge]" in SCRIPT
+    bootstrap = (FRONTEND / "theme-bootstrap.js").read_text(encoding="utf-8")
+    assert "[VideoToNo]" not in bootstrap
+
+
+def test_vtn_prefs_migrate_to_v2k_without_losing_or_leaking() -> None:
+    """在 DOM/存储桩里真跑迁移：vtn_prefs 的偏好进 v2k_prefs，旧键原样保留，敏感字段不进新键。"""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node is unavailable")
+    harness = r"""
+const vm = require('node:vm');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const storage = {
+    vtn_prefs: JSON.stringify({
+        provider: 'qwen',
+        global: { summary_style: 'concise' },
+        ui: { theme: 'dark' },
+        api_key: 'sk-legacysecret123456'
+    })
+};
+const context = vm.createContext({
+    console, setTimeout, clearTimeout, AbortController,
+    window: { confirm: () => true, addEventListener() {}, setTimeout, clearTimeout },
+    document: {
+        addEventListener() {},
+        querySelector: () => null,
+        getElementById: () => null
+    },
+    localStorage: {
+        getItem: key => (key in storage ? storage[key] : null),
+        setItem: (key, value) => { storage[key] = value; },
+        removeItem: key => { delete storage[key]; }
+    },
+    assert, storage
+});
+vm.runInContext(fs.readFileSync(0, 'utf8'), context);
+vm.runInContext(`
+    // 新键缺席：读到的是旧键内容
+    assert.equal(readStoredPrefs().provider, 'qwen');
+    prefs = mergePrefs(readStoredPrefs());
+    assert.equal(prefs.global.summary_style, 'concise');
+    assert.equal(prefs.ui.theme, 'dark');
+    persistPrefs();
+    // 迁移结果落进新键，且不带任何敏感字段
+    const migratedRaw = storage['v2k_prefs'];
+    assert.ok(migratedRaw, 'v2k_prefs 应被写入');
+    const migrated = JSON.parse(migratedRaw);
+    assert.equal(migrated.provider, 'qwen');
+    assert.equal(migrated.ui.theme, 'dark');
+    assert.ok(!migratedRaw.includes('sk-legacysecret123456'));
+    // 旧键原样保留（不删不改）
+    assert.ok(storage['vtn_prefs'].includes('sk-legacysecret123456'));
+    // 新键存在后优先于旧键
+    storage['v2k_prefs'] = JSON.stringify({ provider: 'glm' });
+    assert.equal(readStoredPrefs().provider, 'glm');
+`, context);
+"""
+    result = subprocess.run(
+        [node, "-e", harness], input=SCRIPT, text=True, encoding="utf-8",
+        capture_output=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_script_tag_carries_a_cache_version() -> None:
     assert SCRIPT_TAG.search(PAGE), "script.js 必须带 ?v=YYYYMMDD-N（DEVELOPMENT.md 前端约定）"
 

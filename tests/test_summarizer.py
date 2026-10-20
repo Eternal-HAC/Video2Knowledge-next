@@ -16,6 +16,7 @@ from backend.llm_summarizer import (
     TAIL_PATCH_MAX_INPUT_CHARACTERS,
     LLMSummarizer,
     PROVIDER_DEFAULTS,
+    _rejected_params_from_env,
 )
 from backend.transcript import TranscriptSegment, segments_to_prompt
 
@@ -1124,6 +1125,7 @@ def test_is_official_deepseek_only_matches_deepseek_endpoints() -> None:
 
 def test_env_declared_rejected_params_skip_injection(monkeypatch: pytest.MonkeyPatch) -> None:
     """逃生口：用环境变量声明通道不支持的思考参数（对齐 pi/pivi 的 compat 能力声明）。"""
+    monkeypatch.delenv("VIDEO2KNOWLEDGE_REJECTED_LLM_PARAMS", raising=False)
     monkeypatch.setenv("VIDEOTONOTES_REJECTED_LLM_PARAMS", "thinking, reasoning_effort, reasoning , bogus")
     summarizer = object.__new__(LLMSummarizer)
     summarizer.model_type = "deepseek"
@@ -1141,6 +1143,17 @@ def test_env_declared_rejected_params_skip_injection(monkeypatch: pytest.MonkeyP
     assert off_request == {}
     assert any("不支持思考强度参数" in warning for warning in summarizer.warnings)
     assert summarizer._can_disable_thinking() is False
+
+
+def test_rejected_params_env_new_name_overrides_legacy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """环境变量改名后：VIDEO2KNOWLEDGE_* 优先，旧名 VIDEOTONOTES_* 继续生效。"""
+    monkeypatch.setenv("VIDEOTONOTES_REJECTED_LLM_PARAMS", "thinking")
+    monkeypatch.setenv("VIDEO2KNOWLEDGE_REJECTED_LLM_PARAMS", "reasoning_effort")
+    assert _rejected_params_from_env() == {"reasoning_effort"}
+    monkeypatch.delenv("VIDEO2KNOWLEDGE_REJECTED_LLM_PARAMS")
+    assert _rejected_params_from_env() == {"thinking"}
 
 
 @pytest.mark.asyncio

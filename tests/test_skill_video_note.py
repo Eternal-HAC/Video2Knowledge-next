@@ -43,6 +43,7 @@ def test_skill_redacts_every_credential_shape() -> None:
 
 def test_skill_reads_key_from_stdin_and_env(monkeypatch: pytest.MonkeyPatch) -> None:
     env_name = video_note.API_KEY_ENV
+    monkeypatch.delenv(video_note.LEGACY_API_KEY_ENV, raising=False)
     monkeypatch.setenv(env_name, "envkey-9f8e7d6c")
     from_argv = SimpleNamespace(api_key="argvkey-1a2b3c4d")
     from_env = SimpleNamespace(api_key="")
@@ -54,3 +55,54 @@ def test_skill_reads_key_from_stdin_and_env(monkeypatch: pytest.MonkeyPatch) -> 
     assert video_note.resolve_api_key(from_argv) == "argvkey-1a2b3c4d"
     monkeypatch.delenv(env_name)
     assert video_note.resolve_api_key(from_env) == ""
+
+
+def test_skill_env_alias_prefers_new_name_over_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert video_note.API_KEY_ENV == "VIDEO2KNOWLEDGE_LLM_API_KEY"
+    assert video_note.LEGACY_API_KEY_ENV == "VIDEOTONOTES_LLM_API_KEY"
+    from_env = SimpleNamespace(api_key="")
+    monkeypatch.setenv("VIDEOTONOTES_LLM_API_KEY", "legacy-key-00112233")
+    monkeypatch.setenv("VIDEO2KNOWLEDGE_LLM_API_KEY", "new-key-44556677")
+    assert video_note.resolve_api_key(from_env) == "new-key-44556677"
+    monkeypatch.delenv("VIDEO2KNOWLEDGE_LLM_API_KEY")
+    assert video_note.resolve_api_key(from_env) == "legacy-key-00112233"
+
+
+def test_skill_discovery_accepts_new_product_and_legacy_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeResponse:
+        def __init__(self, payload: bytes):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return self.payload
+
+    def fake_urlopen_factory(payload: bytes):
+        def fake_urlopen(url, timeout):
+            port = int(str(url).rsplit(":", 1)[1].split("/")[0])
+            if port == 8002:
+                return FakeResponse(payload)
+            raise OSError("refused")
+
+        return fake_urlopen
+
+    monkeypatch.setattr(
+        video_note.urllib.request,
+        "urlopen",
+        fake_urlopen_factory(b'{"status":"ok","product":"Video2Knowledge"}'),
+    )
+    assert video_note.find_service() == "http://127.0.0.1:8002"
+
+    monkeypatch.setattr(
+        video_note.urllib.request,
+        "urlopen",
+        fake_urlopen_factory(b'{"status":"ok","service":"VideoToNo"}'),
+    )
+    assert video_note.find_service() == "http://127.0.0.1:8002"

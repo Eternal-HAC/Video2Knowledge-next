@@ -1,13 +1,28 @@
 (function () {
     let theme = 'system';
-    try {
-        // 主题现在存在 vtn_prefs.ui.theme 里；散装 'theme' 键只在迁移前还可能读到。
-        const stored = JSON.parse(localStorage.getItem('vtn_prefs') || 'null');
-        const candidate = (stored && stored.ui && stored.ui.theme) || localStorage.getItem('theme');
-        if (candidate === 'light' || candidate === 'dark' || candidate === 'system') theme = candidate;
-    } catch (_error) {
-        // Private browsing can disable localStorage.
-    }
+    // 主题现在存在 v2k_prefs.ui.theme 里（旧版在 vtn_prefs.ui.theme，新键优先、旧键只读）；
+    // 散装 'theme' 键只在更老的迁移前还可能读到。与 script.js 的 readStoredPrefs 同口径：
+    // 逐个键尝试，缺席或损坏（非法 JSON / 不是对象）就落到下一个，而不是整体放弃。
+    const candidate = (function () {
+        for (const key of ['v2k_prefs', 'vtn_prefs']) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) continue;
+                const stored = JSON.parse(raw);
+                if (stored && typeof stored === 'object' && stored.ui && stored.ui.theme) {
+                    return stored.ui.theme;
+                }
+            } catch (_error) {
+                // 单个键损坏不挡后面的键；Private browsing can disable localStorage.
+            }
+        }
+        try {
+            return localStorage.getItem('theme');
+        } catch (_error) {
+            return null;
+        }
+    })();
+    if (candidate === 'light' || candidate === 'dark' || candidate === 'system') theme = candidate;
     document.documentElement.dataset.theme = theme;
 
     // 脚本健康看门狗：script.js 完成初始化后会设置 __videoToNoReady。

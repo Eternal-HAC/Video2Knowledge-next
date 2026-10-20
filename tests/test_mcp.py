@@ -351,7 +351,7 @@ def test_backend_client_falls_back_to_scanned_port(monkeypatch) -> None:
         if parsed.path == "/api/health":
             if parsed.port == 8005:
                 healthy_port["port"] = parsed.port
-                return httpx.Response(200, json={"status": "ok"})
+                return httpx.Response(200, json={"status": "ok", "service": "VideoToNo"})
             raise httpx.ConnectError("refused")
         if parsed.port == 8005:
             return httpx.Response(200, json={"task_id": "found"})
@@ -364,6 +364,43 @@ def test_backend_client_falls_back_to_scanned_port(monkeypatch) -> None:
     assert result["task_id"] == "found"
     assert healthy_port["port"] == 8005
     assert client.base_url == "http://127.0.0.1:8005"
+
+
+def test_discover_backend_accepts_new_product_identity(monkeypatch) -> None:
+    """改名后的服务只发 product=Video2Knowledge 也能被找到。"""
+    def fake_get(url, timeout, trust_env):
+        if httpx.URL(str(url)).port == 8001:
+            return httpx.Response(
+                200, json={"status": "ok", "product": "Video2Knowledge"}
+            )
+        raise httpx.ConnectError("refused")
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    assert (
+        mcp_server._discover_backend_url("http://127.0.0.1:8000")
+        == "http://127.0.0.1:8001"
+    )
+
+
+def test_discover_backend_rejects_unrelated_services(monkeypatch) -> None:
+    """同端口段上别的服务（哪怕也回 status ok）不会被误认成本服务。"""
+    def fake_get(url, timeout, trust_env):
+        return httpx.Response(200, json={"status": "ok", "service": "OtherApp"})
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    current = "http://127.0.0.1:8000"
+    assert mcp_server._discover_backend_url(current) == current
+
+
+def test_http_backend_url_env_alias_prefers_new_name(monkeypatch) -> None:
+    monkeypatch.setenv("VIDEOTONOTES_BACKEND_URL", "http://127.0.0.1:8010")
+    monkeypatch.setenv("VIDEO2KNOWLEDGE_BACKEND_URL", "http://127.0.0.1:8011")
+    mcp_server.use_http_backend()
+    assert mcp_server._backend.base_url == "http://127.0.0.1:8011"
+    monkeypatch.delenv("VIDEO2KNOWLEDGE_BACKEND_URL")
+    mcp_server.use_http_backend()
+    assert mcp_server._backend.base_url == "http://127.0.0.1:8010"
+    mcp_server._backend = None
 
 
 def test_backend_client_raises_friendly_error_when_unreachable(monkeypatch) -> None:
