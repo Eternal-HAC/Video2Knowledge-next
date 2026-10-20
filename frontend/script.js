@@ -228,6 +228,8 @@ function applyMcpAccess(mcpSse) {
 function revealMcpAccess() {
     const card = byId('mcpSection');
     if (!card) return;
+    // MCP 卡片收纳在设置面板里：先开面板再滚动定位
+    openSettingsPanel();
     card.open = true;
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     const copyButton = byId('copyMcpUrlBtn');
@@ -355,6 +357,8 @@ function bindEvents() {
         updateFileInfo();
         resetSubmitLabel();
     });
+    bindSettingsPanel();
+    bindPlanSummary();
     initThemeControl();
     window.addEventListener('beforeunload', () => {
         stopPolling();
@@ -375,6 +379,112 @@ function bindListener(id, event, handler) {
 
 function byId(id) {
     return document.getElementById(id);
+}
+
+// ---- 设置面板（抽屉）与当前方案摘要 ----
+// 这两个模块只做布局交互：开合面板、同步一行摘要。
+// 不触碰提交、轮询、导出、模板、凭据、留存、飞书等业务逻辑。
+
+function isSettingsPanelOpen() {
+    const panel = byId('settingsPanel');
+    return Boolean(panel) && !panel.hidden;
+}
+
+function openSettingsPanel() {
+    const panel = byId('settingsPanel');
+    if (!panel || !panel.hidden) return;
+    panel.hidden = false;
+    const backdrop = byId('settingsBackdrop');
+    if (backdrop) backdrop.hidden = false;
+    const toggle = byId('settingsToggleBtn');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    const closeButton = byId('settingsCloseBtn');
+    if (closeButton && typeof closeButton.focus === 'function') closeButton.focus();
+}
+
+function closeSettingsPanel() {
+    const panel = byId('settingsPanel');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    const backdrop = byId('settingsBackdrop');
+    if (backdrop) backdrop.hidden = true;
+    const toggle = byId('settingsToggleBtn');
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        // 焦点还给触发按钮：面板（连同其中的关闭按钮）隐藏后，焦点必须有处可去
+        if (typeof toggle.focus === 'function') toggle.focus();
+    }
+}
+
+function bindSettingsPanel() {
+    bindListener('settingsToggleBtn', 'click', () => {
+        if (isSettingsPanelOpen()) {
+            closeSettingsPanel();
+        } else {
+            openSettingsPanel();
+        }
+    });
+    bindListener('settingsCloseBtn', 'click', closeSettingsPanel);
+    bindListener('settingsBackdrop', 'click', closeSettingsPanel);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeSettingsPanel();
+    });
+}
+
+function selectedOptionLabel(id) {
+    const select = byId(id);
+    if (!select) return '';
+    const options = select.options;
+    const option = options && options[select.selectedIndex];
+    return (option && (option.textContent || option.text)) || select.value || '';
+}
+
+function planModelLabel() {
+    const providerConfig = PROVIDER_CONFIG[prefs.provider] || PROVIDER_CONFIG[defaultProvider()];
+    const modelSelect = byId('llmModel');
+    let modelLabel = selectedOptionLabel('llmModel');
+    if (modelSelect && modelSelect.value === CUSTOM_MODEL_ID) {
+        const manual = byId('customModelName');
+        modelLabel = (manual && manual.value.trim()) || '手动输入模型';
+    }
+    return `${providerConfig.name} · ${modelLabel}`;
+}
+
+// 一行说清「按当前设置会出什么、存到哪」：跟随输出类型、档案/模型、模板、目的地实时更新
+function updatePlanSummary() {
+    const summary = byId('planSummary');
+    if (!summary) return;
+    const parts = [];
+    if (isTranscriptMode()) {
+        parts.push('仅转录字幕');
+        const whisper = selectedOptionLabel('whisperModel');
+        if (whisper) parts.push(`本地识别：${whisper}`);
+    } else {
+        parts.push('生成笔记');
+        parts.push(planModelLabel());
+        const template = selectedNoteTemplate();
+        parts.push(`模板：${(template && template.name) || '默认模板'}`);
+        const destinationInput = byId('noteDestination');
+        const destination = destinationInput ? destinationInput.value.trim() : '';
+        parts.push(`保存到：${destination || 'workspace/notes'}`);
+        const feishu = byId('feishuUploadEnabled');
+        if (feishu && feishu.checked) parts.push('完成后上传飞书');
+    }
+    summary.textContent = parts.join(' · ');
+}
+
+function bindPlanSummary() {
+    ['llmProfile', 'llmModel', 'noteTemplate', 'whisperModel', 'feishuUploadEnabled',
+        'obsidianVaultSelect', 'obsidianSubfolder']
+        .forEach((id) => bindListener(id, 'change', updatePlanSummary));
+    ['noteDestination', 'customModelName'].forEach((id) => {
+        bindListener(id, 'change', updatePlanSummary);
+        bindListener(id, 'input', updatePlanSummary);
+    });
+    document.querySelectorAll('input[name="outputMode"]').forEach((input) => {
+        input.addEventListener('change', updatePlanSummary);
+    });
+    updatePlanSummary();
 }
 
 const TASK_STATUS_LABELS = {
@@ -1793,6 +1903,8 @@ function updateBiliHint(forceShow = false) {
 function revealBiliCredentials() {
     updateBiliHint(true);
     const section = byId('credentialsSection');
+    // 凭据表单收纳在设置面板里：先开面板再滚动定位
+    openSettingsPanel();
     section.open = true;
     section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     byId('sessdata').focus();
@@ -2822,6 +2934,8 @@ function resetTaskView() {
     byId('progressArea').hidden = false;
     byId('resultArea').hidden = true;
     byId('taskError').hidden = true;
+    // 新任务开始：运行记录回到默认折叠（失败时 failTask 会再自动展开）
+    byId('taskLogDetails').open = false;
     byId('downloadMdBtn').disabled = true;
     byId('copyNoteBtn').disabled = true;
     byId('regenerateBtn').disabled = true;
@@ -2874,6 +2988,8 @@ function failTask(message, elapsedSeconds = null) {
     setTaskState('failed', '失败');
     byId('taskError').hidden = false;
     byId('taskErrorMessage').textContent = message;
+    // 失败时自动展开运行记录：失败原因与最后一段日志直接可见（DESIGN.md 交互状态合同）
+    byId('taskLogDetails').open = true;
     byId('networkState').textContent = '任务已停止';
     addLog(`任务失败：${message}`, 'error');
     setSubmitButton(false, '重新提交');

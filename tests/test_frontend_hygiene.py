@@ -6,16 +6,22 @@
 """
 from __future__ import annotations
 
+import importlib.util
+import json
 import re
 import shutil
 import subprocess
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 
-FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+FRONTEND = REPO_ROOT / "frontend"
 SCRIPT = (FRONTEND / "script.js").read_text(encoding="utf-8")
 PAGE = (FRONTEND / "index.html").read_text(encoding="utf-8")
+CSS = (FRONTEND / "style.css").read_text(encoding="utf-8")
+DESIGN_DOC = (REPO_ROOT / "DESIGN.md").read_text(encoding="utf-8")
 
 BOUND_ID = re.compile(r"bindListener\('([A-Za-z][A-Za-z0-9]*)'")
 DECLARED_ID = re.compile(r'id="([A-Za-z][A-Za-z0-9]*)"')
@@ -517,3 +523,421 @@ def test_builtin_provider_defaults_agree_between_front_and_back() -> None:
             f"{provider} 默认模型两边不一致：前端 {fields['defaultModel']} "
             f"≠ 后端 {model}"
         )
+
+
+# ---- Knowledge Studio 布局交互（DESIGN.md 合同） ----
+# 下面三组行为测试共用一个 DOM 桩：只实现设置抽屉、方案摘要、运行记录真正
+# 触到的那一小面 DOM（hidden/aria/focus/事件分发/select options）。
+# window 上的定时器是 no-op，否则 showToast 的 4.2s 定时器会拖住进程退出。
+
+_DOM_STUB_PRELUDE = r"""
+const vm = require('node:vm');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+
+const __focusLog = [];
+const __documentListeners = {};
+function __makeElement(id) {
+    return {
+        id: id || '',
+        hidden: false,
+        value: '',
+        textContent: '',
+        className: '',
+        checked: false,
+        disabled: false,
+        open: false,
+        selectedIndex: 0,
+        options: [],
+        style: {},
+        dataset: {},
+        attrs: {},
+        listeners: {},
+        scrollTop: 0,
+        scrollHeight: 0,
+        setAttribute(name, value) { this.attrs[name] = String(value); },
+        getAttribute(name) {
+            return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null;
+        },
+        addEventListener(type, handler) { (this.listeners[type] ||= []).push(handler); },
+        dispatch(type, event = {}) {
+            (this.listeners[type] || []).slice().forEach((handler) => handler(event));
+        },
+        focus() { __focusLog.push(this.id || '(anonymous)'); },
+        remove() {},
+        appendChild() {},
+        replaceChildren() {},
+        scrollIntoView() {},
+        querySelector() { return __makeElement(); },
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } }
+    };
+}
+const __elements = {};
+const __el = (id) => (__elements[id] ||= __makeElement(id));
+const document = {
+    documentElement: { dataset: {} },
+    getElementById: (id) => __el(id),
+    addEventListener(type, handler) { (__documentListeners[type] ||= []).push(handler); },
+    dispatch(type, event = {}) {
+        (__documentListeners[type] || []).slice().forEach((handler) => handler(event));
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: () => __makeElement(),
+    body: __makeElement('body')
+};
+const __storage = {};
+const context = vm.createContext({
+    console, setTimeout, clearTimeout, AbortController,
+    window: {
+        addEventListener() {},
+        confirm: () => true,
+        setTimeout: () => 1,
+        clearTimeout() {},
+        setInterval: () => 1,
+        clearInterval() {}
+    },
+    document,
+    localStorage: {
+        getItem: (key) => (key in __storage ? __storage[key] : null),
+        setItem: (key, value) => { __storage[key] = String(value); },
+        removeItem: (key) => { delete __storage[key]; }
+    },
+    fetch: async () => { throw new Error('network disabled in test'); },
+    assert, __el, __elements, __focusLog
+});
+vm.runInContext(fs.readFileSync(0, 'utf8'), context);
+"""
+
+
+def _run_script_with_dom_stub(scenario: str) -> None:
+    """在 DOM/存储桩里真跑整份 script.js，然后执行 scenario 片段做断言。"""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node is unavailable")
+    harness = (
+        _DOM_STUB_PRELUDE
+        + "\nvm.runInContext("
+        + json.dumps(scenario)
+        + ", context);\n"
+    )
+    result = subprocess.run(
+        [node, "-e", harness], input=SCRIPT, text=True, encoding="utf-8",
+        capture_output=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_settings_drawer_open_close_escape_and_focus_return() -> None:
+    """设置抽屉合同（DESIGN.md「Components / Accessibility」）：
+    settingsToggleBtn 开合；关闭按钮、遮罩、Escape 都能关；aria-expanded 同步；
+    打开时焦点进面板（关闭按钮），关闭后焦点回到触发按钮。"""
+    _run_script_with_dom_stub(r"""
+const panel = __el('settingsPanel');
+const backdrop = __el('settingsBackdrop');
+const toggle = __el('settingsToggleBtn');
+const closeButton = __el('settingsCloseBtn');
+// 镜像 index.html 初始状态：面板与遮罩隐藏，aria-expanded=false
+panel.hidden = true;
+backdrop.hidden = true;
+toggle.setAttribute('aria-expanded', 'false');
+bindSettingsPanel();
+assert.equal(isSettingsPanelOpen(), false);
+
+// 设置按钮打开：面板 + 遮罩显示、aria-expanded 同步、焦点进入面板
+toggle.dispatch('click');
+assert.equal(isSettingsPanelOpen(), true);
+assert.equal(panel.hidden, false);
+assert.equal(backdrop.hidden, false);
+assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+assert.equal(__focusLog.at(-1), 'settingsCloseBtn');
+
+// Escape 关闭：焦点回到触发按钮
+document.dispatch('keydown', { key: 'Escape' });
+assert.equal(isSettingsPanelOpen(), false);
+assert.equal(panel.hidden, true);
+assert.equal(backdrop.hidden, true);
+assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+assert.equal(__focusLog.at(-1), 'settingsToggleBtn');
+
+// 关闭按钮关闭
+toggle.dispatch('click');
+assert.equal(isSettingsPanelOpen(), true);
+closeButton.dispatch('click');
+assert.equal(isSettingsPanelOpen(), false);
+assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+assert.equal(__focusLog.at(-1), 'settingsToggleBtn');
+
+// 遮罩点击关闭
+toggle.dispatch('click');
+backdrop.dispatch('click');
+assert.equal(isSettingsPanelOpen(), false);
+assert.equal(__focusLog.at(-1), 'settingsToggleBtn');
+
+// 打开状态下再点设置按钮 = 关闭（开关语义）
+toggle.dispatch('click');
+assert.equal(isSettingsPanelOpen(), true);
+toggle.dispatch('click');
+assert.equal(isSettingsPanelOpen(), false);
+
+// 已关闭时按 Escape 不应再抢焦点（early return）
+const focusCount = __focusLog.length;
+document.dispatch('keydown', { key: 'Escape' });
+assert.equal(__focusLog.length, focusCount);
+""")
+
+
+def test_plan_summary_follows_mode_model_template_destination_and_feishu() -> None:
+    """方案摘要合同：一行实时跟随输出类型、档案/模型、模板、目的地与飞书开关。"""
+    _run_script_with_dom_stub(r"""
+const outputRadios = [__el('outputModeNote'), __el('outputModeTranscript')];
+outputRadios[0].value = 'note';
+outputRadios[0].checked = true;
+outputRadios[1].value = 'transcript';
+document.querySelector = (selector) =>
+    selector === 'input[name="outputMode"]:checked'
+        ? outputRadios.find((radio) => radio.checked) || null
+        : null;
+document.querySelectorAll = (selector) =>
+    selector === 'input[name="outputMode"]' ? outputRadios : [];
+
+const llmModel = __el('llmModel');
+llmModel.options = [
+    { value: 'deepseek-flash', textContent: 'DeepSeek V4.1 Flash' },
+    { value: 'deepseek-v4-pro', textContent: 'DeepSeek V4 Pro' },
+    { value: '__custom__', textContent: '手动输入' }
+];
+llmModel.value = 'deepseek-flash';
+llmModel.selectedIndex = 0;
+const whisperModel = __el('whisperModel');
+whisperModel.options = [
+    { value: 'base', textContent: 'base（默认，下载较小）' },
+    { value: 'small', textContent: 'small（中文更准确）' }
+];
+whisperModel.value = 'base';
+whisperModel.selectedIndex = 0;
+
+// 绑定前建好所有被监听的元素（bindListener 只在绑定时取一次元素）
+['llmProfile', 'noteTemplate', 'feishuUploadEnabled', 'obsidianVaultSelect',
+    'obsidianSubfolder', 'noteDestination', 'customModelName', 'planSummary']
+    .forEach((id) => __el(id));
+bindPlanSummary();
+const summary = __el('planSummary');
+// 默认（笔记模式）：产物 + 档案/模型 + 模板 + 默认目的地，不提飞书
+assert.ok(summary.textContent.includes('生成笔记'));
+assert.ok(summary.textContent.includes('DeepSeek · DeepSeek V4.1 Flash'));
+assert.ok(summary.textContent.includes('模板：默认模板'));
+assert.ok(summary.textContent.includes('保存到：workspace/notes'));
+assert.ok(!summary.textContent.includes('飞书'));
+
+// 飞书开关
+__el('feishuUploadEnabled').checked = true;
+__el('feishuUploadEnabled').dispatch('change');
+assert.ok(summary.textContent.includes('完成后上传飞书'));
+__el('feishuUploadEnabled').checked = false;
+__el('feishuUploadEnabled').dispatch('change');
+assert.ok(!summary.textContent.includes('飞书'));
+
+// 目的地输入（input 即时更新）
+__el('noteDestination').value = 'D:/vault/inbox';
+__el('noteDestination').dispatch('input');
+assert.ok(summary.textContent.includes('保存到：D:/vault/inbox'));
+
+// 模板切换
+noteTemplates.push({ id: 'tpl-weekly', name: '周报模板', description: '', built_in: false });
+const noteTemplate = __el('noteTemplate');
+noteTemplate.value = 'tpl-weekly';
+noteTemplate.dispatch('change');
+assert.ok(summary.textContent.includes('模板：周报模板'));
+
+// 模型切换
+llmModel.selectedIndex = 1;
+llmModel.value = 'deepseek-v4-pro';
+llmModel.dispatch('change');
+assert.ok(summary.textContent.includes('DeepSeek · DeepSeek V4 Pro'));
+
+// 手动模型 ID
+llmModel.selectedIndex = 2;
+llmModel.value = '__custom__';
+__el('customModelName').value = 'proxy-model-x';
+__el('customModelName').dispatch('input');
+assert.ok(summary.textContent.includes('proxy-model-x'));
+
+// 切到仅转录：摘要换成转写路线，跟 Whisper 档位走
+outputRadios[0].checked = false;
+outputRadios[1].checked = true;
+outputRadios[1].dispatch('change');
+assert.ok(summary.textContent.includes('仅转录字幕'));
+assert.ok(summary.textContent.includes('本地识别：base（默认，下载较小）'));
+assert.ok(!summary.textContent.includes('生成笔记'));
+whisperModel.selectedIndex = 1;
+whisperModel.value = 'small';
+whisperModel.dispatch('change');
+assert.ok(summary.textContent.includes('本地识别：small（中文更准确）'));
+""")
+
+
+def test_task_log_details_collapsed_by_default_open_on_failure_recollapse_on_new_task() -> None:
+    """运行记录合同（DESIGN.md「Interaction states」）：默认折叠；任务失败自动展开；
+    新任务开始（resetTaskView 是提交/重开任务的公共入口）回到折叠。"""
+    _run_script_with_dom_stub(r"""
+document.querySelector = (selector) =>
+    selector === '[role="progressbar"]' ? __el('progressBar') : null;
+const details = __el('taskLogDetails');
+assert.equal(details.open, false);
+
+// 失败：自动展开运行记录，失败原因与最后一段日志直接可见
+failTask('网络中断');
+assert.equal(details.open, true);
+assert.equal(__el('taskError').hidden, false);
+
+// 新任务开始：重新折叠，失败面板同时收起
+resetTaskView();
+assert.equal(details.open, false);
+assert.equal(__el('taskError').hidden, true);
+
+// 再次失败再次展开
+failTask('转写失败');
+assert.equal(details.open, true);
+""")
+
+
+def test_settings_panel_keeps_four_named_groups_in_fixed_order() -> None:
+    """设置面板四组、顺序固定（DESIGN.md「Information architecture」）。"""
+    assert PAGE.count('class="settings-group"') == 4
+    groups = [
+        ("settingsGroupNoteTitle", "笔记生成"),
+        ("settingsGroupTranscribeTitle", "本地转录"),
+        ("settingsGroupDestinationTitle", "输出目的地"),
+        ("settingsGroupStorageTitle", "存储与接入"),
+    ]
+    positions = []
+    for group_id, title in groups:
+        tag = re.search(
+            rf'<h2 id="{group_id}" class="settings-group-title">{title}</h2>', PAGE
+        )
+        assert tag, f"设置分组缺失或标题被改：{group_id} {title}"
+        positions.append(tag.start())
+    assert positions == sorted(positions), "四个设置分组的顺序被改动"
+
+
+def test_main_reading_axis_order_and_drawer_placement() -> None:
+    """主阅读轴顺序：composer（输出类型单选 → 方案摘要）→ 最近任务 → 进度 → 结果；
+    设置抽屉与遮罩在 </main> 之外，首屏不常驻。"""
+    assert PAGE.index('name="outputMode"') < PAGE.index('id="planSummary"'), (
+        "方案摘要必须紧跟输出类型单选"
+    )
+    axis = [
+        'class="source-panel"',
+        'id="planSummary"',
+        'id="recentTasksPanel"',
+        'id="progressArea"',
+        'id="resultArea"',
+    ]
+    positions = [PAGE.index(marker) for marker in axis]
+    assert positions == sorted(positions), "主阅读轴顺序被改动"
+    main_end = PAGE.index("</main>")
+    assert main_end < PAGE.index('id="settingsBackdrop"') < PAGE.index('id="settingsPanel"')
+
+
+def test_drawer_summary_and_log_accessibility_hooks() -> None:
+    toggle = re.search(r'<button id="settingsToggleBtn"[^>]*>', PAGE)
+    assert toggle, "设置入口按钮缺失"
+    assert 'aria-expanded="false"' in toggle.group(0)
+    assert 'aria-controls="settingsPanel"' in toggle.group(0)
+    panel = re.search(r'<aside id="settingsPanel"[^>]*>', PAGE)
+    assert panel, "设置抽屉缺失"
+    assert "aria-label" in panel.group(0) and "hidden" in panel.group(0)
+    assert 'id="settingsCloseBtn"' in PAGE, "抽屉内必须有关闭按钮"
+    backdrop = re.search(r'<div id="settingsBackdrop"[^>]*>', PAGE)
+    assert backdrop and "hidden" in backdrop.group(0), "遮罩必须默认隐藏"
+    summary = re.search(r'<p id="planSummary"[^>]*>', PAGE)
+    assert summary and 'aria-live="polite"' in summary.group(0), "方案摘要必须 aria-live"
+    details = re.search(r'<details id="taskLogDetails"[^>]*>', PAGE)
+    assert details, "运行记录必须是语义化 <details>"
+    assert "open" not in details.group(0), "运行记录默认折叠，不得带 open 属性"
+    assert re.search(r'<details id="taskLogDetails"[\s\S]*?<summary', PAGE), (
+        "运行记录必须配 <summary>"
+    )
+
+
+def test_css_keeps_responsive_focus_motion_and_overflow_contracts() -> None:
+    """CSS 合同：1024/680 两档响应式、focus-visible 描边、reduced-motion、
+    页面级 overflow-x 兜底、移动端设置面板全宽覆盖。"""
+    assert "@media (max-width: 1024px)" in CSS
+    assert "@media (max-width: 680px)" in CSS
+    mobile = CSS.split("@media (max-width: 680px)", 1)[1]
+    panel_rule = re.search(r"\.settings-panel \{[^}]*\}", mobile)
+    assert panel_rule and "100vw" in panel_rule.group(0), (
+        "移动端设置面板必须是全宽覆盖层"
+    )
+    assert re.search(r"html, body \{[^}]*overflow-x: clip", CSS), (
+        "页面级横向滚动兜底被移除"
+    )
+    assert "button:focus-visible" in CSS
+    assert "outline: 2px solid var(--primary)" in CSS
+    assert "outline-offset: 2px" in CSS
+    motion = CSS.split("@media (prefers-reduced-motion: reduce)", 1)[1]
+    assert "animation-duration" in motion and "transition-duration" in motion
+    # 主阅读轴居中上限（>1024px 档）
+    assert re.search(r"\.workspace \{[^}]*max-width: 880px", CSS)
+
+
+def test_brand_assets_regenerate_byte_identical() -> None:
+    """品牌资产可重复生成：用仓库脚本在内存里重渲染，必须与 Git 里的
+    sources/icon.png / sources/icon.ico 逐字节一致（禁止手工编辑图片）。"""
+    pytest.importorskip("PIL")
+    spec = importlib.util.spec_from_file_location(
+        "make_brand_assets", REPO_ROOT / "scripts" / "make_brand_assets.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    image = module.render_mark(module.FINAL_SIZE)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    assert buffer.getvalue() == (REPO_ROOT / "sources" / "icon.png").read_bytes(), (
+        "sources/icon.png 与脚本输出不一致：请用 scripts/make_brand_assets.py 重新生成"
+    )
+
+    frames = [
+        (size, image.resize((size, size), module.Image.Resampling.LANCZOS))
+        for size in module.make_icon.SIZES
+    ]
+    assert module.make_icon.build_ico(frames) == (
+        REPO_ROOT / "sources" / "icon.ico"
+    ).read_bytes(), "sources/icon.ico 与脚本输出不一致"
+
+
+def test_brand_tokens_and_geometry_agree_across_design_script_and_css() -> None:
+    """DESIGN.md 是设计基线：标志取色、几何与关键 token 必须和
+    scripts/make_brand_assets.py、frontend/style.css 说的是同一组值。"""
+    source = (REPO_ROOT / "scripts" / "make_brand_assets.py").read_text(encoding="utf-8")
+    icon_script = (REPO_ROOT / "scripts" / "make_icon.py").read_text(encoding="utf-8")
+    css = CSS.lower()
+
+    # 渐变取色与节点色：脚本常量、DESIGN.md、CSS token 三处一致
+    assert "INDIGO = (79, 70, 229)" in source  # #4F46E5
+    assert "CYAN = (8, 145, 178)" in source    # #0891B2
+    assert "NODE = (165, 243, 252)" in source  # #A5F3FC
+    for hex_token in ("#4F46E5", "#0891B2", "#A5F3FC"):
+        assert hex_token in DESIGN_DOC, f"DESIGN.md 丢了品牌色 {hex_token}"
+    assert "--primary: #4f46e5" in css
+    assert "--accent: #0891b2" in css
+
+    # 主色三档（DESIGN.md 表格与 style.css 实际 token 对齐）
+    assert "--primary-hover" in DESIGN_DOC
+    assert "--primary-hover: #4338ca" in css and "#4338CA" in DESIGN_DOC
+    assert "--primary-hover: #6366f1" in css and "#6366F1" in DESIGN_DOC
+
+    # 几何与构造：圆角 22%、1024 PNG、4 倍超采样、ICO 七档尺寸
+    assert "CORNER_RADIUS = 0.22" in source
+    assert "22%" in DESIGN_DOC
+    assert "FINAL_SIZE = 1024" in source
+    assert "1024×1024" in DESIGN_DOC
+    assert "SUPERSAMPLE = 4" in source
+    sizes = re.search(r"SIZES = \[([\d, ]+)\]", icon_script)
+    assert sizes, "make_icon.py 的 ICO 尺寸表被改动"
+    for size in ("16", "24", "32", "48", "64", "128", "256"):
+        assert size in sizes.group(1).split(", ")
+    assert "16/24/32/48/64/128/256" in DESIGN_DOC
