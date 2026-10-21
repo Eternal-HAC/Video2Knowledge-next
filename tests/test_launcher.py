@@ -299,6 +299,19 @@ def test_build_script_rewrites_checksum_for_the_versioned_artifact() -> None:
     assert "[System.Text.Encoding]::ASCII" in build_script
 
 
+def test_beta3_portable_smoke_covers_local_history_favorites_and_source_inspection() -> None:
+    smoke = (PROJECT_ROOT / "scripts" / "smoke_portable_beta3.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "/api/note-templates" in smoke
+    assert "/api/tasks?offset=0&limit=1" in smoke
+    assert "/api/task/seed-note/favorite" in smoke
+    assert "/api/source-inspect" in smoke
+    assert "Favorite did not survive a portable restart" in smoke
+    assert "Stop-SmokeProcessTree" in smoke
+    assert "v2k-beta3-smoke-" in smoke
+
+
 def test_version_info_keeps_numeric_file_and_full_product_version() -> None:
     """PE 规范里 filevers/FileVersion 必须是纯数字四段（1.0.0.0），
     而 ProductVersion 字符串要保留完整语义化版本（1.0.0-beta.3）——

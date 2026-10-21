@@ -32,7 +32,7 @@ This file holds only the active gap-verification queue. For every item: close it
   3. [x] Add offline URL platform labels and reusable-transcript hints without network, cookies, download, or ASR.
   4. [x] Focused tests and the first complete regression passed with `712 passed, 3 skipped`; no skip was added.
   5. [x] Finish 1440/1024/390 system/light/dark and keyboard-contract acceptance; regenerate synthetic home, history, and template-preview screenshots without page-level horizontal scrolling.
-  6. [ ] Build and inspect `Video2Knowledge-1.0.0-beta.3-portable.exe`; pass isolated packaged history/favorite/source inspection and cached-Whisper `small` ASR smoke.
+  6. [x] Build and inspect `Video2Knowledge-1.0.0-beta.3-portable.exe`; pass isolated packaged template/history/favorite/source inspection and cached-Whisper `small` ASR smoke.
   7. [ ] Push `main`, publish the annotated tag and Pre-release, verify the downloaded assets and rerun packaged smoke checks.
   8. [ ] Record remote evidence in a post-release documentation commit without moving the release tag.
 
