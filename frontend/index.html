@@ -88,6 +88,80 @@
                 </fieldset>
             </div>
 
+            <div id="noteWorkflowOptions" class="note-workflow-options">
+                <section id="templateChooserSection" class="workflow-choice" aria-labelledby="templateChooserTitle">
+                    <div class="workflow-choice-head">
+                        <div>
+                            <span class="section-kicker">模板</span>
+                            <h3 id="templateChooserTitle">选择笔记结构</h3>
+                        </div>
+                        <button id="manageTemplatesBtn" class="button ghost compact-button" type="button">管理模板</button>
+                    </div>
+                    <p id="templateCardsStatus" class="choice-status" role="status" aria-live="polite">正在加载模板…</p>
+                    <div id="templateCards" class="template-card-grid" role="radiogroup" aria-label="笔记模板"></div>
+                </section>
+
+                <section id="destinationChooserSection" class="workflow-choice" aria-labelledby="destinationChooserTitle">
+                    <div class="workflow-choice-head">
+                        <div>
+                            <span class="section-kicker">保存到</span>
+                            <h3 id="destinationChooserTitle">选择本地 Markdown 位置</h3>
+                        </div>
+                    </div>
+                    <div class="destination-card-grid" role="radiogroup" aria-label="笔记保存位置">
+                        <label class="destination-card">
+                            <input type="radio" name="noteDestinationMode" value="default" checked>
+                            <span><strong>默认 Markdown</strong><small>保存到 workspace/notes</small></span>
+                        </label>
+                        <label class="destination-card">
+                            <input type="radio" name="noteDestinationMode" value="custom">
+                            <span><strong>自定义目录</strong><small>保存到指定的绝对路径</small></span>
+                        </label>
+                        <label class="destination-card">
+                            <input type="radio" name="noteDestinationMode" value="obsidian">
+                            <span><strong>Obsidian Vault</strong><small>选择 Vault 和子目录</small></span>
+                        </label>
+                    </div>
+                    <div id="customDestinationFields" class="destination-fields" hidden>
+                        <label class="field">
+                            <span>自定义绝对路径</span>
+                            <input type="text" id="noteDestination" placeholder="例如 D:\\Notes\\Video2Knowledge" autocomplete="off">
+                            <small>只导出最终 Markdown 与正文引用的附件，任务中间文件仍留在工作区。</small>
+                        </label>
+                    </div>
+                    <div id="obsidianDestinationFields" class="destination-fields" hidden>
+                        <div class="field">
+                            <span>Obsidian Vault</span>
+                            <div class="obsidian-row">
+                                <select id="obsidianVaultSelect">
+                                    <option value="">请选择 Vault</option>
+                                </select>
+                                <button id="obsidianRefreshBtn" class="button ghost compact-button" type="button">刷新检测</button>
+                            </div>
+                            <label class="field">
+                                <span>Vault 内子目录</span>
+                                <input type="text" id="obsidianSubfolder" value="Video2Knowledge" autocomplete="off">
+                            </label>
+                            <small id="obsidianStatus">正在检测本机 Obsidian Vault…</small>
+                        </div>
+                    </div>
+                    <div class="feishu-addon" id="feishuUploadField">
+                        <label class="check-field">
+                            <input type="checkbox" id="feishuUploadEnabled">
+                            <span><strong>同时发布到飞书</strong><small>本地 Markdown 始终保留，发布失败也不影响本地结果。</small></span>
+                        </label>
+                        <div id="feishuUploadFields" class="destination-fields" hidden>
+                            <label class="field">
+                                <span>飞书目标文件夹（文件夹 token 或 /drive/folder/ 链接）</span>
+                                <input type="text" id="feishuFolder" placeholder="开启发布后必填" autocomplete="off">
+                            </label>
+                            <small id="feishuStatus">正在检测飞书 lark-cli…</small>
+                            <small>上传走本机 lark-cli 的 user 身份：创建飞书在线文档，并把笔记引用的截图作为原生图片嵌入正文。</small>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
             <div class="source-controls">
                 <label class="field source-type-field">
                     <span class="sr-only">来源类型</span>
@@ -111,6 +185,7 @@
                 </button>
             </div>
             <p id="planSummary" class="plan-summary" aria-live="polite"></p>
+            <p id="exportHint" class="output-mode-hint">完成后可导出 Markdown、HTML、JSON、纯文本和 PNG；带时间轴的任务还可导出 SRT。</p>
             <p id="localImportHint" class="output-mode-hint" hidden>小鹅通等课程平台：请先用平台官方允许的下载/导出方式取得媒体文件，再在这里上传。本工具不支持绕过付费、登录或内容保护机制。</p>
             <div id="biliPagesPanel" class="bili-pages-panel" hidden>
                 <div class="bili-pages-head">
@@ -224,15 +299,17 @@
                 <div class="result-actions">
                     <button id="regenerateBtn" class="button ghost" type="button" disabled>基于转录重新生成</button>
                     <button id="copyNoteBtn" class="button ghost" type="button" disabled>复制笔记</button>
-                    <label class="sr-only" for="formatSelect">下载格式</label>
-                    <select id="formatSelect">
-                        <option value="markdown">Markdown 文件</option>
-                        <option value="srt">字幕 (.srt)</option>
-                        <option value="html">HTML</option>
-                        <option value="json">JSON</option>
-                        <option value="txt">纯文本</option>
-                        <option value="png">PNG 图片</option>
-                    </select>
+                    <label class="export-format-field" for="formatSelect">
+                        <span class="export-format-label">更多导出格式</span>
+                        <select id="formatSelect">
+                            <option value="markdown">Markdown 文件</option>
+                            <option value="srt">字幕 (.srt)</option>
+                            <option value="html">HTML</option>
+                            <option value="json">JSON</option>
+                            <option value="txt">纯文本</option>
+                            <option value="png">PNG 图片</option>
+                        </select>
+                    </label>
                     <label class="sr-only" for="imageLayoutSelect">图片版式</label>
                     <select id="imageLayoutSelect" hidden>
                         <option value="long">长图</option>
@@ -240,7 +317,7 @@
                     </select>
                     <button id="downloadMdBtn" class="button secondary" type="button" disabled>
                         <span class="button-spinner" aria-hidden="true"></span>
-                        <span class="btn-text">下载</span>
+                        <span class="btn-text">导出 Markdown</span>
                     </button>
                 </div>
             </div>
@@ -410,44 +487,6 @@
             </section>
         </section>
 
-        <section class="settings-group" aria-labelledby="settingsGroupDestinationTitle">
-            <h2 id="settingsGroupDestinationTitle" class="settings-group-title">输出目的地</h2>
-            <section class="config-section" aria-labelledby="destinationTitle">
-                <h3 id="destinationTitle">笔记目的地</h3>
-                <label class="field">
-                    <span>普通目录或 Obsidian Vault 子目录（可选）</span>
-                    <input type="text" id="noteDestination" placeholder="绝对路径；留空使用 workspace/notes" autocomplete="off">
-                    <small>只导出最终 Markdown 与正文引用的附件，任务中间文件仍留在工作区。</small>
-                </label>
-                <div class="field">
-                    <span>从 Obsidian Vault 选择（可选）</span>
-                    <div class="obsidian-row">
-                        <select id="obsidianVaultSelect">
-                            <option value="">不使用 Vault（手动填写上方路径）</option>
-                        </select>
-                        <button id="obsidianRefreshBtn" class="button ghost compact-button" type="button">刷新检测</button>
-                    </div>
-                    <label class="field">
-                        <span>Vault 内子目录</span>
-                        <input type="text" id="obsidianSubfolder" value="Video2Knowledge" autocomplete="off">
-                    </label>
-                    <small id="obsidianStatus">正在检测本机 Obsidian Vault…</small>
-                </div>
-                <div class="field" id="feishuUploadField">
-                    <label class="check-field">
-                        <input type="checkbox" id="feishuUploadEnabled">
-                        <span>笔记完成后上传到飞书云盘（可选）</span>
-                    </label>
-                    <label class="field">
-                        <span>飞书目标文件夹（文件夹 token 或 /drive/folder/ 链接）</span>
-                        <input type="text" id="feishuFolder" placeholder="勾选上传后必填" autocomplete="off">
-                    </label>
-                    <small id="feishuStatus">正在检测飞书 lark-cli…</small>
-                    <small>上传走本机 lark-cli 的 user 身份：创建飞书在线文档，并把笔记引用的截图作为原生图片嵌入正文。失败不影响本地笔记，可在结果区重试。</small>
-                </div>
-            </section>
-        </section>
-
         <section class="settings-group" aria-labelledby="settingsGroupStorageTitle">
             <h2 id="settingsGroupStorageTitle" class="settings-group-title">存储与接入</h2>
             <section class="config-section" aria-labelledby="mediaRetentionTitle">
@@ -514,6 +553,6 @@
 </aside>
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-<script src="script.js?v=20261021-3"></script>
+<script src="script.js?v=20261021-4"></script>
 </body>
 </html>

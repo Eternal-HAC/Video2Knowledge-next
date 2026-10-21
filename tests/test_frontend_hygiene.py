@@ -195,11 +195,78 @@ def test_script_tag_carries_a_cache_version() -> None:
 def test_note_destination_is_persisted_and_only_sent_for_note_tasks() -> None:
     assert 'id="noteDestination"' in PAGE
     assert "'note_destination'" in SCRIPT.split("const GLOBAL_PREF_KEYS =", 1)[1].split("];", 1)[0]
+    assert "'note_destination_mode'" in SCRIPT.split("const GLOBAL_PREF_KEYS =", 1)[1].split("];", 1)[0]
     assert "values.note_destination = byId('noteDestination').value.trim()" in SCRIPT
     builder = SCRIPT.split("function buildSummarizeConfig(", 1)[1].split("\n}\n", 1)[0]
     transcript_branch, note_branch = builder.split("} else {", 1)
     assert "note_destination" not in transcript_branch
     assert "config.note_destination = noteDestination" in note_branch
+    assert "selectedDestinationMode() !== 'default'" in note_branch
+
+
+def test_main_workflow_surfaces_templates_destinations_and_export_hint() -> None:
+    """任务前核心选择必须留在首屏，不依赖打开设置抽屉。"""
+    source_start = PAGE.index('class="source-panel"')
+    source_end = PAGE.index('id="recentTasksPanel"')
+    source_panel = PAGE[source_start:source_end]
+    for marker in (
+        'id="noteWorkflowOptions"',
+        'id="templateChooserSection"',
+        'id="templateCards"',
+        'id="manageTemplatesBtn"',
+        'name="noteDestinationMode" value="default"',
+        'name="noteDestinationMode" value="custom"',
+        'name="noteDestinationMode" value="obsidian"',
+        'id="feishuUploadEnabled"',
+        'id="exportHint"',
+    ):
+        assert marker in source_panel, f"首屏缺少核心选择：{marker}"
+    assert source_panel.index('id="templateChooserSection"') < source_panel.index('class="source-controls"')
+    assert source_panel.index('id="destinationChooserSection"') < source_panel.index('class="source-controls"')
+
+
+def test_destination_mode_migration_preserves_legacy_custom_path() -> None:
+    """旧偏好没模式字段时，有路径迁到 custom；空路径迁到 default，路径不被清空。"""
+    _run_script_with_dom_stub(r"""
+const legacyCustom = mergePrefs({ global: { note_destination: 'D:/notes/archive' } });
+assert.equal(legacyCustom.global.note_destination_mode, 'custom');
+assert.equal(legacyCustom.global.note_destination, 'D:/notes/archive');
+const legacyDefault = mergePrefs({ global: { note_destination: '' } });
+assert.equal(legacyDefault.global.note_destination_mode, 'default');
+assert.equal(legacyDefault.global.note_destination, '');
+const explicitObsidian = mergePrefs({
+    global: { note_destination_mode: 'obsidian', note_destination: 'D:/Vault/Video2Knowledge' }
+});
+assert.equal(explicitObsidian.global.note_destination_mode, 'obsidian');
+assert.equal(explicitObsidian.global.note_destination, 'D:/Vault/Video2Knowledge');
+""")
+
+
+def test_explicit_destination_modes_require_their_visible_inputs() -> None:
+    validator = SCRIPT.split("function validateAndBuildRequestBase(", 1)[1].split("\n}\n", 1)[0]
+    assert "destinationMode === 'custom'" in validator
+    assert "请输入自定义保存目录" in validator
+    assert "destinationMode === 'obsidian'" in validator
+    assert "请选择 Obsidian Vault" in validator
+
+
+def test_export_button_label_follows_selected_format() -> None:
+    assert '<span class="export-format-label">更多导出格式</span>' in PAGE
+    assert '<span class="btn-text">导出 Markdown</span>' in PAGE
+    _run_script_with_dom_stub(r"""
+const select = __el('formatSelect');
+const button = __el('downloadMdBtn');
+const label = __el('downloadLabel');
+button.querySelector = () => label;
+for (const [format, expected] of [
+    ['markdown', '导出 Markdown'], ['srt', '导出 SRT'], ['html', '导出 HTML'],
+    ['json', '导出 JSON'], ['txt', '导出纯文本'], ['png', '导出 PNG']
+]) {
+    select.value = format;
+    toggleImageLayout();
+    assert.equal(label.textContent, expected);
+}
+""")
 
 
 def test_note_template_is_persisted_and_only_sent_for_note_tasks() -> None:
@@ -553,6 +620,7 @@ function __makeElement(id) {
         dataset: {},
         attrs: {},
         listeners: {},
+        children: [],
         scrollTop: 0,
         scrollHeight: 0,
         setAttribute(name, value) { this.attrs[name] = String(value); },
@@ -565,8 +633,8 @@ function __makeElement(id) {
         },
         focus() { __focusLog.push(this.id || '(anonymous)'); },
         remove() {},
-        appendChild() {},
-        replaceChildren() {},
+        appendChild(child) { this.children.push(child); return child; },
+        replaceChildren(...children) { this.children = children; },
         scrollIntoView() {},
         querySelector() { return __makeElement(); },
         classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } }
@@ -691,15 +759,25 @@ def test_plan_summary_follows_mode_model_template_destination_and_feishu() -> No
     """方案摘要合同：一行实时跟随输出类型、档案/模型、模板、目的地与飞书开关。"""
     _run_script_with_dom_stub(r"""
 const outputRadios = [__el('outputModeNote'), __el('outputModeTranscript')];
+const destinationRadios = [__el('destinationDefault'), __el('destinationCustom'), __el('destinationObsidian')];
 outputRadios[0].value = 'note';
 outputRadios[0].checked = true;
 outputRadios[1].value = 'transcript';
+destinationRadios[0].value = 'default';
+destinationRadios[0].checked = true;
+destinationRadios[1].value = 'custom';
+destinationRadios[2].value = 'obsidian';
 document.querySelector = (selector) =>
     selector === 'input[name="outputMode"]:checked'
         ? outputRadios.find((radio) => radio.checked) || null
+        : selector === 'input[name="noteDestinationMode"]:checked'
+            ? destinationRadios.find((radio) => radio.checked) || null
         : null;
-document.querySelectorAll = (selector) =>
-    selector === 'input[name="outputMode"]' ? outputRadios : [];
+document.querySelectorAll = (selector) => {
+    if (selector === 'input[name="outputMode"]') return outputRadios;
+    if (selector === 'input[name="noteDestinationMode"]') return destinationRadios;
+    return [];
+};
 
 const llmModel = __el('llmModel');
 llmModel.options = [
@@ -733,12 +811,15 @@ assert.ok(!summary.textContent.includes('飞书'));
 // 飞书开关
 __el('feishuUploadEnabled').checked = true;
 __el('feishuUploadEnabled').dispatch('change');
-assert.ok(summary.textContent.includes('完成后上传飞书'));
+assert.ok(summary.textContent.includes('同时发布飞书'));
 __el('feishuUploadEnabled').checked = false;
 __el('feishuUploadEnabled').dispatch('change');
 assert.ok(!summary.textContent.includes('飞书'));
 
 // 目的地输入（input 即时更新）
+destinationRadios[0].checked = false;
+destinationRadios[1].checked = true;
+destinationRadios[1].dispatch('change');
 __el('noteDestination').value = 'D:/vault/inbox';
 __el('noteDestination').dispatch('input');
 assert.ok(summary.textContent.includes('保存到：D:/vault/inbox'));
@@ -777,6 +858,30 @@ assert.ok(summary.textContent.includes('本地识别：small（中文更准确�
 """)
 
 
+def test_template_cards_include_custom_templates_and_sync_the_existing_select() -> None:
+    """首屏卡片复用原 select：自定义模板也展示，点击后只改现有模板 ID。"""
+    _run_script_with_dom_stub(r"""
+prefs = defaultPrefs();
+noteTemplatesStatus = 'ready';
+noteTemplates = [
+    { id: 'builtin-general-structured', name: '通用结构化笔记', description: '默认', built_in: true },
+    { id: 'custom-review', name: '我的复盘', description: '自定义', built_in: false }
+];
+const select = __el('noteTemplate');
+select.value = 'builtin-general-structured';
+const cards = __el('templateCards');
+const status = __el('templateCardsStatus');
+renderNoteTemplateCards();
+assert.equal(status.hidden, true);
+assert.equal(cards.children.length, 2);
+assert.equal(cards.children[0].getAttribute('aria-checked'), 'true');
+cards.children[1].dispatch('click');
+assert.equal(select.value, 'custom-review');
+assert.equal(prefs.global.note_template_id, 'custom-review');
+assert.equal(cards.children[1].getAttribute('aria-checked'), 'true');
+""")
+
+
 def test_task_log_details_collapsed_by_default_open_on_failure_recollapse_on_new_task() -> None:
     """运行记录合同（DESIGN.md「Interaction states」）：默认折叠；任务失败自动展开；
     新任务开始（resetTaskView 是提交/重开任务的公共入口）回到折叠。"""
@@ -802,13 +907,12 @@ assert.equal(details.open, true);
 """)
 
 
-def test_settings_panel_keeps_four_named_groups_in_fixed_order() -> None:
-    """设置面板四组、顺序固定（DESIGN.md「Information architecture」）。"""
-    assert PAGE.count('class="settings-group"') == 4
+def test_settings_panel_keeps_three_named_groups_in_fixed_order() -> None:
+    """模板和目的地前移后，设置面板保留三个高级设置分组。"""
+    assert PAGE.count('class="settings-group"') == 3
     groups = [
         ("settingsGroupNoteTitle", "笔记生成"),
         ("settingsGroupTranscribeTitle", "本地转录"),
-        ("settingsGroupDestinationTitle", "输出目的地"),
         ("settingsGroupStorageTitle", "存储与接入"),
     ]
     positions = []
@@ -818,7 +922,7 @@ def test_settings_panel_keeps_four_named_groups_in_fixed_order() -> None:
         )
         assert tag, f"设置分组缺失或标题被改：{group_id} {title}"
         positions.append(tag.start())
-    assert positions == sorted(positions), "四个设置分组的顺序被改动"
+    assert positions == sorted(positions), "三个设置分组的顺序被改动"
 
 
 def test_main_reading_axis_order_and_drawer_placement() -> None:

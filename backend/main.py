@@ -1643,7 +1643,7 @@ async def preview_bilibili_pages(request: BiliPagesRequest) -> dict[str, Any]:
 
 @app.get("/api/note-templates")
 async def list_note_templates() -> dict[str, Any]:
-    """列出全部模板：四个内置在前，自定义按名称排序。"""
+    """列出全部模板：内置模板在前，自定义模板按名称排序。"""
     return {
         "templates": [
             template.to_dict() for template in get_template_store().list_templates()

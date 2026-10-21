@@ -320,6 +320,7 @@ function bindEvents() {
     bindListener('deleteTemplateBtn', 'click', deleteSelectedTemplate);
     bindListener('saveTemplateBtn', 'click', saveTemplate);
     bindListener('cancelTemplateBtn', 'click', closeTemplateEditor);
+    bindListener('manageTemplatesBtn', 'click', revealTemplateManager);
     bindListener('manualModelBtn', 'click', manualImportWhisperModel);
     bindListener('copyMcpUrlBtn', 'click', () => copyTextToClipboard(mcpSseUrl(), 'MCP 地址已复制'));
     bindListener('copyMcpConfigBtn', 'click', () =>
@@ -450,6 +451,39 @@ function planModelLabel() {
     return `${providerConfig.name} · ${modelLabel}`;
 }
 
+function selectedDestinationMode() {
+    return document.querySelector('input[name="noteDestinationMode"]:checked')?.value
+        || prefs.global.note_destination_mode
+        || 'default';
+}
+
+function destinationSummaryLabel() {
+    const mode = selectedDestinationMode();
+    if (mode === 'default') return 'workspace/notes';
+    if (mode === 'obsidian') {
+        const vault = selectedOptionLabel('obsidianVaultSelect');
+        const subfolder = byId('obsidianSubfolder')?.value.trim() || 'Video2Knowledge';
+        return vault && byId('obsidianVaultSelect')?.value
+            ? `Obsidian/${subfolder}`
+            : 'Obsidian（待选择 Vault）';
+    }
+    return byId('noteDestination')?.value.trim() || '待填写自定义目录';
+}
+
+function applyDestinationMode() {
+    const mode = selectedDestinationMode();
+    const customFields = byId('customDestinationFields');
+    const obsidianFields = byId('obsidianDestinationFields');
+    if (customFields) customFields.hidden = mode !== 'custom';
+    if (obsidianFields) obsidianFields.hidden = mode !== 'obsidian';
+}
+
+function updateFeishuFields() {
+    const fields = byId('feishuUploadFields');
+    const enabled = byId('feishuUploadEnabled');
+    if (fields && enabled) fields.hidden = !enabled.checked;
+}
+
 // 一行说清「按当前设置会出什么、存到哪」：跟随输出类型、档案/模型、模板、目的地实时更新
 function updatePlanSummary() {
     const summary = byId('planSummary');
@@ -464,11 +498,9 @@ function updatePlanSummary() {
         parts.push(planModelLabel());
         const template = selectedNoteTemplate();
         parts.push(`模板：${(template && template.name) || '默认模板'}`);
-        const destinationInput = byId('noteDestination');
-        const destination = destinationInput ? destinationInput.value.trim() : '';
-        parts.push(`保存到：${destination || 'workspace/notes'}`);
+        parts.push(`保存到：${destinationSummaryLabel()}`);
         const feishu = byId('feishuUploadEnabled');
-        if (feishu && feishu.checked) parts.push('完成后上传飞书');
+        if (feishu && feishu.checked) parts.push('同时发布飞书');
     }
     summary.textContent = parts.join(' · ');
 }
@@ -482,6 +514,9 @@ function bindPlanSummary() {
         bindListener(id, 'input', updatePlanSummary);
     });
     document.querySelectorAll('input[name="outputMode"]').forEach((input) => {
+        input.addEventListener('change', updatePlanSummary);
+    });
+    document.querySelectorAll('input[name="noteDestinationMode"]').forEach((input) => {
         input.addEventListener('change', updatePlanSummary);
     });
     updatePlanSummary();
@@ -718,6 +753,7 @@ const GLOBAL_PREF_KEYS = [
     'processing_mode',
     'output_mode',
     'note_destination',
+    'note_destination_mode',
     'note_template_id'
     ,
     'feishu_upload_enabled',
@@ -747,6 +783,7 @@ function defaultPrefs() {
             processing_mode: 'restart',
             output_mode: 'note',
             note_destination: '',
+            note_destination_mode: 'default',
             note_template_id: DEFAULT_NOTE_TEMPLATE_ID
             ,
             feishu_upload_enabled: false,
@@ -874,10 +911,17 @@ function migrateLegacyPrefs() {
     }
     // 其余情况（llm_model_id 属于别的 Provider，即旧版共用单键造成的串写）直接丢弃：
     // 宁可让用户重选一次，也不会把 A 档案的模型 ID 变成 B 档案输入框里的内容。
+    const legacyDestinationMode = localStorage.getItem('note_destination_mode');
     GLOBAL_PREF_KEYS.forEach((key) => {
         const value = localStorage.getItem(key);
         if (value !== null) next.global[key] = value;
     });
+    if (!legacyDestinationMode
+        || !['default', 'custom', 'obsidian'].includes(next.global.note_destination_mode)) {
+        next.global.note_destination_mode = String(next.global.note_destination || '').trim()
+            ? 'custom'
+            : 'default';
+    }
     next.global.include_screenshots = next.global.include_screenshots === 'true';
     next.global.use_gpu = next.global.use_gpu === 'true';
     if (!['auto', 'off', 'high', 'max'].includes(next.global.reasoning_effort)) {
@@ -920,6 +964,11 @@ function mergePrefs(stored) {
             const value = stored.global[key];
             if (value !== undefined && value !== null) next.global[key] = value;
         });
+        if (!Object.prototype.hasOwnProperty.call(stored.global, 'note_destination_mode')) {
+            next.global.note_destination_mode = String(stored.global.note_destination || '').trim()
+                ? 'custom'
+                : 'default';
+        }
     }
     if (stored.confirmations && typeof stored.confirmations === 'object') {
         const confirmed = stored.confirmations.whisper_download;
@@ -945,6 +994,9 @@ function initPreferences() {
     prefs = stored || defaultPrefs();
     if (!['forever', '1', '7', '30'].includes(prefs.global.media_retention_days)) {
         prefs.global.media_retention_days = 'forever';
+    }
+    if (!['default', 'custom', 'obsidian'].includes(prefs.global.note_destination_mode)) {
+        prefs.global.note_destination_mode = prefs.global.note_destination ? 'custom' : 'default';
     }
     if (!PROVIDER_CONFIG[prefs.provider]) prefs.provider = defaultProvider();
     applyPreferencesToForm();
@@ -1038,6 +1090,13 @@ function applyPreferencesToForm() {
     byId('reasoningEffort').value = ['auto', 'off', 'high', 'max'].includes(prefs.global.reasoning_effort)
         ? prefs.global.reasoning_effort : 'auto';
     byId('noteDestination').value = prefs.global.note_destination || '';
+    const destinationMode = ['default', 'custom', 'obsidian'].includes(prefs.global.note_destination_mode)
+        ? prefs.global.note_destination_mode
+        : (prefs.global.note_destination ? 'custom' : 'default');
+    const destinationModeInput = document.querySelector(
+        `input[name="noteDestinationMode"][value="${destinationMode}"]`
+    );
+    if (destinationModeInput) destinationModeInput.checked = true;
     byId('feishuUploadEnabled').checked = prefs.global.feishu_upload_enabled === true;
     byId('feishuFolder').value = prefs.global.feishu_folder || '';
     byId('mediaRetentionDays').value = prefs.global.media_retention_days;
@@ -1051,6 +1110,8 @@ function applyPreferencesToForm() {
         `input[name="outputMode"][value="${prefs.global.output_mode}"]`
     );
     if (outputModeInput) outputModeInput.checked = true;
+    applyDestinationMode();
+    updateFeishuFields();
     applyOutputMode();
     toggleScreenshotSettings();
     applyTheme(prefs.ui.theme);
@@ -1090,6 +1151,7 @@ function persistGlobals() {
     values.output_mode = document.querySelector('input[name="outputMode"]:checked')?.value
         || values.output_mode;
     values.note_destination = byId('noteDestination').value.trim();
+    values.note_destination_mode = selectedDestinationMode();
     const templateSelect = byId('noteTemplate');
     if (templateSelect) values.note_template_id = templateSelect.value;
     values.feishu_upload_enabled = byId('feishuUploadEnabled').checked;
@@ -1177,7 +1239,10 @@ function bindPreferenceAutoSave() {
     bindListener('screenshotInterval', 'input', () => schedulePersist(persistGlobals));
     bindListener('noteDestination', 'change', persistGlobals);
     bindListener('noteDestination', 'input', () => schedulePersist(persistGlobals));
-    bindListener('feishuUploadEnabled', 'change', persistGlobals);
+    bindListener('feishuUploadEnabled', 'change', () => {
+        updateFeishuFields();
+        persistGlobals();
+    });
     bindListener('feishuFolder', 'change', persistGlobals);
     bindListener('feishuFolder', 'input', () => schedulePersist(persistGlobals));
     bindListener('mediaRetentionDays', 'change', () => {
@@ -1189,9 +1254,18 @@ function bindPreferenceAutoSave() {
     bindListener('obsidianSubfolder', 'change', applyVaultDestination);
     bindListener('obsidianSubfolder', 'input', applyVaultDestination);
     bindListener('obsidianRefreshBtn', 'click', () => loadNoteDestinations());
+    document.querySelectorAll('input[name="noteDestinationMode"]').forEach((input) => {
+        input.addEventListener('change', () => {
+            applyDestinationMode();
+            persistGlobals();
+            updatePlanSummary();
+        });
+    });
     bindListener('noteTemplate', 'change', () => {
         updateNoteTemplateDetails();
+        renderNoteTemplateCards();
         persistGlobals();
+        updatePlanSummary();
     });
     ['customBaseUrl', 'customModelName'].forEach((id) => {
         const element = byId(id);
@@ -1634,6 +1708,14 @@ function applyOutputMode() {
             const element = byId(id);
             if (element) element.hidden = transcript;
         });
+    const workflow = byId('noteWorkflowOptions');
+    if (workflow) workflow.hidden = transcript;
+    const exportHint = byId('exportHint');
+    if (exportHint) {
+        exportHint.textContent = transcript
+            ? '完成后可导出 Markdown、SRT、HTML、JSON、纯文本和 PNG。'
+            : '完成后可导出 Markdown、HTML、JSON、纯文本和 PNG；带时间轴的任务还可导出 SRT。';
+    }
     if (transcript) closeTemplateEditor();
     const hint = byId('outputModeHint');
     if (hint) {
@@ -1658,6 +1740,7 @@ let noteTemplatesStatus = 'loading';
 
 async function loadNoteTemplates(preferredId = null) {
     noteTemplatesStatus = 'loading';
+    renderNoteTemplateCards();
     try {
         const response = await fetch(`${API_BASE}/note-templates`, { cache: 'no-store' });
         const data = await readResponse(response, '读取笔记模板失败');
@@ -1680,6 +1763,7 @@ function renderNoteTemplateOptions(preferredId = null) {
         updateNoteTemplateDetails();
         // updateNoteTemplateDetails 会把说明清空，错误提示必须在它之后写入
         if (desc) desc.textContent = '模板列表加载失败，点击「开始生成」会自动重试';
+        renderNoteTemplateCards();
         return;
     }
     noteTemplates.forEach((template) => {
@@ -1687,6 +1771,7 @@ function renderNoteTemplateOptions(preferredId = null) {
     });
     if (!select.options.length) {
         updateNoteTemplateDetails();
+        renderNoteTemplateCards();
         return;
     }
     const ids = noteTemplates.map((template) => template.id);
@@ -1697,6 +1782,61 @@ function renderNoteTemplateOptions(preferredId = null) {
     prefs.global.note_template_id = select.value;
     persistPrefs();
     updateNoteTemplateDetails();
+    renderNoteTemplateCards();
+    updatePlanSummary();
+}
+
+function renderNoteTemplateCards() {
+    const container = byId('templateCards');
+    const status = byId('templateCardsStatus');
+    if (!container || !status) return;
+    container.replaceChildren();
+    if (noteTemplatesStatus === 'loading') {
+        status.hidden = false;
+        status.textContent = '正在加载模板…';
+        return;
+    }
+    if (noteTemplatesStatus === 'error') {
+        status.hidden = false;
+        status.textContent = '模板加载失败。开始生成时会自动重试，也可稍后刷新页面。';
+        return;
+    }
+    status.hidden = true;
+    const selectedId = byId('noteTemplate')?.value || DEFAULT_NOTE_TEMPLATE_ID;
+    noteTemplates.forEach((template) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'template-card';
+        button.setAttribute('role', 'radio');
+        button.setAttribute('aria-checked', String(template.id === selectedId));
+        button.dataset.templateId = template.id;
+        const name = document.createElement('strong');
+        name.textContent = template.name;
+        const description = document.createElement('span');
+        description.textContent = template.description || '自定义笔记结构';
+        button.appendChild(name);
+        button.appendChild(description);
+        button.addEventListener('click', () => {
+            const select = byId('noteTemplate');
+            if (!select) return;
+            select.value = template.id;
+            updateNoteTemplateDetails();
+            renderNoteTemplateCards();
+            persistGlobals();
+            updatePlanSummary();
+        });
+        container.appendChild(button);
+    });
+}
+
+function revealTemplateManager() {
+    openSettingsPanel();
+    const field = byId('noteTemplateField');
+    if (field && typeof field.scrollIntoView === 'function') {
+        field.scrollIntoView({ block: 'center' });
+    }
+    const select = byId('noteTemplate');
+    if (select && typeof select.focus === 'function') select.focus();
 }
 
 function selectedNoteTemplate() {
@@ -2536,6 +2676,13 @@ function validateAndBuildRequestBase(resumeTaskId = null) {
         if (!apiKey && !hasReusableKey()) {
             return validationError(`请输入「${modelConfig.profileLabel}」的 API Key，或点「保存到本机」后复用`);
         }
+        const destinationMode = selectedDestinationMode();
+        if (destinationMode === 'custom' && !byId('noteDestination').value.trim()) {
+            return validationError('请输入自定义保存目录');
+        }
+        if (destinationMode === 'obsidian' && !byId('obsidianVaultSelect').value) {
+            return validationError('请选择 Obsidian Vault');
+        }
     }
 
     if (sourceType === 'local' || sourceType === 'subtitle') {
@@ -2618,13 +2765,28 @@ function renderObsidianVaults(result) {
     const previous = select.value;
     obsidianVaults = Array.isArray(result.vaults) ? result.vaults : [];
     select.replaceChildren();
-    select.add(new Option('不使用 Vault（手动填写上方路径）', ''));
+    select.add(new Option('请选择 Vault', ''));
     obsidianVaults.forEach((vault) => {
         const option = new Option(vault.label || vault.path, vault.path);
         if (vault.open) option.textContent += '（当前打开）';
         select.add(option);
     });
-    if (obsidianVaults.some((vault) => vault.path === previous)) select.value = previous;
+    if (obsidianVaults.some((vault) => vault.path === previous)) {
+        select.value = previous;
+    } else if (selectedDestinationMode() === 'obsidian') {
+        const savedPath = byId('noteDestination').value.trim();
+        const matchingVault = obsidianVaults
+            .filter((vault) => savedPath === vault.path
+                || savedPath.startsWith(`${vault.path.replace(/[\/\\]+$/, '')}\\`)
+                || savedPath.startsWith(`${vault.path.replace(/[\/\\]+$/, '')}/`))
+            .sort((left, right) => right.path.length - left.path.length)[0];
+        if (matchingVault) {
+            select.value = matchingVault.path;
+            const relative = savedPath.slice(matchingVault.path.replace(/[\/\\]+$/, '').length)
+                .replace(/^[\/\\]+/, '');
+            if (relative) byId('obsidianSubfolder').value = relative;
+        }
+    }
     const messages = {
         ok: `检测到 ${obsidianVaults.length} 个 Vault，选中后自动填充上方路径`,
         missing: '未检测到 Obsidian 配置，可手动填写上方路径',
@@ -2642,7 +2804,11 @@ function applyVaultDestination() {
         .replace(/^[\/\\]+|[\/\\]+$/g, '');
     const base = select.value.replace(/[\/\\]+$/, '');
     byId('noteDestination').value = subfolder ? `${base}\\${subfolder}` : base;
+    const obsidianMode = document.querySelector('input[name="noteDestinationMode"][value="obsidian"]');
+    if (obsidianMode) obsidianMode.checked = true;
+    applyDestinationMode();
     persistGlobals();
+    updatePlanSummary();
 }
 
 function renderFeishuReadiness(readiness) {
@@ -2778,7 +2944,9 @@ function buildSummarizeConfig(
         config.summary_style = byId('summaryStyle').value;
         config.reasoning_effort = byId('reasoningEffort').value;
         const noteDestination = byId('noteDestination').value.trim();
-        if (noteDestination) config.note_destination = noteDestination;
+        if (selectedDestinationMode() !== 'default' && noteDestination) {
+            config.note_destination = noteDestination;
+        }
         const noteTemplateId = byId('noteTemplate')?.value;
         if (noteTemplateId) config.note_template_id = noteTemplateId;
         if (byId('feishuUploadEnabled').checked) {
@@ -3373,6 +3541,23 @@ async function downloadSummary() {
 
 function toggleImageLayout() {
     byId('imageLayoutSelect').hidden = byId('formatSelect').value !== 'png';
+    updateExportButtonLabel();
+}
+
+function exportButtonLabel() {
+    return ({
+        markdown: '导出 Markdown',
+        srt: '导出 SRT',
+        html: '导出 HTML',
+        json: '导出 JSON',
+        txt: '导出纯文本',
+        png: '导出 PNG'
+    })[byId('formatSelect')?.value] || '导出 Markdown';
+}
+
+function updateExportButtonLabel() {
+    const label = byId('downloadMdBtn')?.querySelector('.btn-text');
+    if (label) label.textContent = exportButtonLabel();
 }
 
 async function copyFullNote() {
@@ -3592,7 +3777,7 @@ function setDownloading(active) {
     const button = byId('downloadMdBtn');
     button.disabled = active;
     button.classList.toggle('is-loading', active);
-    button.querySelector('.btn-text').textContent = active ? '准备下载' : '下载';
+    button.querySelector('.btn-text').textContent = active ? '准备导出' : exportButtonLabel();
 }
 
 // 网页端自己拼的文件名（txt / html / json / png）。后端清洗过分 P 与非法字符，
