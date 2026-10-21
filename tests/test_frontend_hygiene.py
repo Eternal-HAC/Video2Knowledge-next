@@ -225,6 +225,31 @@ def test_main_workflow_surfaces_templates_destinations_and_export_hint() -> None
     assert source_panel.index('id="destinationChooserSection"') < source_panel.index('class="source-controls"')
 
 
+def test_beta3_surfaces_template_preview_history_and_source_inspection() -> None:
+    """Beta.3 的核心入口必须直接可见，不能退回设置抽屉或隐藏历史区。"""
+    for marker in (
+        'id="templatePreviewPanel"',
+        'id="templatePreviewRenderedBtn"',
+        'id="templatePreviewSourceBtn"',
+        'id="sourceInspectPanel"',
+        'id="sourceOpenHistoryBtn"',
+        'id="sourceReuseBtn"',
+        'id="sourceRestartBtn"',
+        'id="historyQuery"',
+        'id="historyStatus"',
+        'id="historyOutput"',
+        'id="historyPlatform"',
+        'id="historyFavorite"',
+        'id="historyLoadMoreBtn"',
+    ):
+        assert marker in PAGE, f"Beta.3 首屏缺少入口：{marker}"
+    recent = re.search(r'<section id="recentTasksPanel"[^>]*>', PAGE)
+    assert recent and "hidden" not in recent.group(0), "历史记录必须始终可见"
+    assert "/source-inspect" in SCRIPT
+    assert "/favorite" in SCRIPT
+    assert "offset" in SCRIPT and "has_more" in SCRIPT
+
+
 def test_destination_mode_migration_preserves_legacy_custom_path() -> None:
     """旧偏好没模式字段时，有路径迁到 custom；空路径迁到 default，路径不被清空。"""
     _run_script_with_dom_stub(r"""
@@ -864,8 +889,10 @@ def test_template_cards_include_custom_templates_and_sync_the_existing_select() 
 prefs = defaultPrefs();
 noteTemplatesStatus = 'ready';
 noteTemplates = [
-    { id: 'builtin-general-structured', name: '通用结构化笔记', description: '默认', built_in: true },
-    { id: 'custom-review', name: '我的复盘', description: '自定义', built_in: false }
+    { id: 'builtin-general-structured', name: '通用结构化笔记', description: '默认', built_in: true,
+      preview_markdown: '# 示例\n\n- 核心观点' },
+    { id: 'custom-review', name: '我的复盘', description: '自定义', built_in: false,
+      preview_markdown: '# 自定义示例\n\n复盘内容' }
 ];
 const select = __el('noteTemplate');
 select.value = 'builtin-general-structured';
@@ -875,10 +902,17 @@ renderNoteTemplateCards();
 assert.equal(status.hidden, true);
 assert.equal(cards.children.length, 2);
 assert.equal(cards.children[0].getAttribute('aria-checked'), 'true');
+assert.equal(__el('templatePreviewPanel').hidden, false);
+assert.ok(__el('templatePreviewRendered').innerHTML.startsWith('<pre>'));
+assert.ok(__el('templatePreviewSource').textContent.includes('# 示例'));
+setTemplatePreviewMode('source');
+assert.equal(__el('templatePreviewRendered').hidden, true);
+assert.equal(__el('templatePreviewSource').hidden, false);
 cards.children[1].dispatch('click');
 assert.equal(select.value, 'custom-review');
 assert.equal(prefs.global.note_template_id, 'custom-review');
 assert.equal(cards.children[1].getAttribute('aria-checked'), 'true');
+assert.ok(__el('templatePreviewSource').textContent.includes('自定义示例'));
 """)
 
 

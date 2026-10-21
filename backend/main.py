@@ -22,7 +22,7 @@ from urllib.parse import quote, unquote, urlsplit, urlunsplit
 import aiofiles
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -516,6 +516,14 @@ class NoteTemplateUpdatePayload(BaseModel):
     layout: str | None = None
 
 
+class FavoritePayload(BaseModel):
+    favorite: bool
+
+
+class SourceInspectPayload(BaseModel):
+    video_url: str
+
+
 def new_task(status: str = "pending", task_id: str | None = None) -> dict[str, Any]:
     return {
         "status": status,
@@ -753,6 +761,216 @@ def normalize_source_url(value: str) -> str:
     return urlunsplit((parsed.scheme.lower(), netloc, path, query, ""))
 
 
+def classify_source_url(value: str) -> dict[str, str]:
+    """Classify a URL for UI guidance without contacting the platform."""
+    parsed = urlsplit(value.strip())
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("视频链接必须使用 http 或 https")
+    host = parsed.hostname.lower().rstrip(".")
+
+    def matches(domain: str) -> bool:
+        return host == domain or host.endswith(f".{domain}")
+
+    if matches("bilibili.com") or host == "b23.tv":
+        platform, label, support = "bilibili", "B站", "focused"
+    elif matches("douyin.com") or matches("iesdouyin.com"):
+        platform, label, support = "douyin", "抖音", "focused"
+    elif matches("youtube.com") or host == "youtu.be":
+        platform, label, support = "youtube", "YouTube", "focused"
+    elif matches("tiktok.com"):
+        platform, label, support = "tiktok", "TikTok", "generic"
+    elif matches("xiaohongshu.com") or matches("xhslink.com"):
+        platform, label, support = "xiaohongshu", "小红书", "generic"
+    else:
+        platform, label, support = "other", "其他平台", "generic"
+    return {
+        "platform": platform,
+        "platform_label": label,
+        "support_level": support,
+    }
+
+
+def _history_platform(manifest: dict[str, Any], task: dict[str, Any] | None) -> str:
+    if manifest.get("subtitle_import"):
+        return "subtitle"
+    source_url = str(manifest.get("source_url") or "").strip()
+    if source_url:
+        try:
+            platform = classify_source_url(source_url)["platform"]
+        except ValueError:
+            platform = "other"
+        return platform if platform in {"bilibili", "douyin", "youtube"} else "other"
+    source = str(manifest.get("source") or "").strip().lower()
+    if not source and isinstance(task, dict):
+        result = task.get("result")
+        if isinstance(result, dict):
+            source = str(result.get("source") or "").strip().lower()
+    if source in {"bilibili", "douyin", "youtube", "local", "subtitle"}:
+        return source
+    if manifest.get("uploaded_filename"):
+        return "local"
+    return "other"
+
+
+def _read_history_manifest(task_id: str) -> tuple[Path | None, dict[str, Any]]:
+    if not is_safe_task_id(task_id):
+        return None, {}
+    try:
+        directory = task_directory(task_id)
+    except ValueError:
+        return None, {}
+    path = directory / "task.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return directory, {}
+    return directory, payload if isinstance(payload, dict) else {}
+
+
+def history_task_summary(task_id: str) -> dict[str, Any] | None:
+    directory, manifest = _read_history_manifest(task_id)
+    task = tasks.get(task_id)
+    if not manifest and not isinstance(task, dict):
+        return None
+    runtime = manifest.get("runtime") if isinstance(manifest.get("runtime"), dict) else {}
+    result = task.get("result") if isinstance(task, dict) else None
+    if not isinstance(result, dict):
+        result = runtime.get("result") if isinstance(runtime.get("result"), dict) else {}
+    status = str((task or {}).get("status") or runtime.get("status") or "failed")
+    output = str((task or {}).get("output") or manifest.get("output") or "note")
+    title = str(
+        result.get("title")
+        or manifest.get("title")
+        or manifest.get("uploaded_filename")
+        or "未命名任务"
+    )
+    snapshot = manifest.get("note_template_snapshot")
+    template_name = (
+        str(snapshot.get("name") or "") if isinstance(snapshot, dict) else ""
+    )
+    created_at = str((task or {}).get("created_at") or runtime.get("created_at") or manifest.get("created_at") or "")
+    finished_at = (task or {}).get("finished_at") or runtime.get("finished_at")
+    elapsed = (
+        task_elapsed_seconds(task)
+        if isinstance(task, dict)
+        else float(runtime.get("elapsed_seconds") or 0)
+    )
+    return {
+        "task_id": task_id,
+        "status": status,
+        "step_name": (task or {}).get("step_name") or runtime.get("step_name"),
+        "progress": (task or {}).get("progress", runtime.get("progress", 0)),
+        "output": output,
+        "title": title,
+        "created_at": created_at,
+        "finished_at": finished_at,
+        "elapsed_seconds": elapsed,
+        "platform": _history_platform(manifest, task),
+        "template_name": template_name,
+        "favorite": manifest.get("favorite") is True,
+        "has_transcript": bool(directory and (directory / "transcript.json").is_file()),
+    }
+
+
+def iter_history_task_ids() -> list[str]:
+    identifiers = set(tasks)
+    try:
+        for directory in WORKSPACE_DIR.iterdir():
+            if (
+                directory.is_dir()
+                and is_safe_task_id(directory.name)
+                and (directory / "task.json").is_file()
+            ):
+                identifiers.add(directory.name)
+    except OSError:
+        pass
+    return list(identifiers)
+
+
+def restore_task_on_demand(task_id: str) -> dict[str, Any] | None:
+    """Restore one manifest-backed task without eagerly loading all history notes."""
+    directory, manifest = _read_history_manifest(task_id)
+    if directory is None or not manifest:
+        return None
+    runtime = manifest.get("runtime") if isinstance(manifest.get("runtime"), dict) else {}
+    transcript_only = manifest.get("output") == "transcript"
+    notes_path = directory / "notes.md"
+    uploaded_media = next(
+        (path for path in directory.glob("input.*") if path.is_file()), None
+    )
+    status = str(runtime.get("status") or "")
+    interrupted = status in {"pending", "queued", "processing", "cancelling"}
+    if notes_path.is_file() or (
+        transcript_only and (directory / "transcript.json").is_file()
+    ):
+        status = "completed"
+    elif interrupted:
+        status = "failed"
+    elif status not in {"failed", "cancelled", "uploaded"}:
+        status = "uploaded" if uploaded_media else "failed"
+
+    task = new_task(status=status, task_id=task_id)
+    task["_started_monotonic"] = None
+    task.update(
+        step=int(runtime.get("step") or 0),
+        step_name=str(runtime.get("step_name") or "已恢复"),
+        progress=int(runtime.get("progress") or (100 if status == "completed" else 0)),
+        logs=list(runtime.get("logs") or []),
+        error=runtime.get("error"),
+        created_at=runtime.get("created_at") or manifest.get("created_at"),
+        finished_at=runtime.get("finished_at"),
+        elapsed_seconds=float(runtime.get("elapsed_seconds") or 0),
+        output=str(manifest.get("output") or "note"),
+        _origin=str(manifest.get("origin") or "agent"),
+    )
+    for key in ("feishu_upload", "feishu_publication"):
+        value = manifest.get(key)
+        if isinstance(value, dict):
+            task[key] = value
+    if interrupted:
+        task.update(
+            step_name="服务已重启",
+            error="任务因服务重启而中断；已有转录和音频仍可复用",
+            finished_at=datetime.now(timezone.utc).isoformat(),
+        )
+        task["logs"].append("服务重启时任务尚未结束，已标记为中断")
+    if status == "uploaded":
+        if uploaded_media:
+            task["uploaded_file_path"] = str(uploaded_media)
+            task["uploaded_filename"] = manifest.get("uploaded_filename") or uploaded_media.name
+        elif manifest.get("subtitle_import"):
+            task["subtitle_import"] = True
+            task["uploaded_filename"] = manifest.get("uploaded_filename")
+    if status == "completed" and transcript_only:
+        result = dict(runtime.get("result") or {})
+        result.update(
+            title=result.get("title") or manifest.get("title") or "",
+            output="transcript",
+            output_directory=str(directory),
+            processing_seconds=task["elapsed_seconds"],
+        )
+        task["result"] = result
+        task["finished_at"] = task["finished_at"] or datetime.now(timezone.utc).isoformat()
+    elif status == "completed":
+        try:
+            markdown = notes_path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        result = dict(runtime.get("result") or {})
+        result.update(
+            title=result.get("title") or manifest.get("title") or "video-notes",
+            markdown=markdown,
+            output_directory=str(directory),
+            processing_seconds=task["elapsed_seconds"],
+        )
+        task["result"] = result
+        task["finished_at"] = task["finished_at"] or datetime.now(timezone.utc).isoformat()
+    tasks[task_id] = task
+    if interrupted:
+        persist_task_runtime(task_id)
+    return task
+
+
 def source_url_from_task(task_dir: Path) -> str | None:
     manifest_path = task_dir / "task.json"
     if manifest_path.is_file():
@@ -776,12 +994,22 @@ def source_url_from_task(task_dir: Path) -> str | None:
 
 def find_reusable_task(source_url: str) -> str | None:
     normalized_source = normalize_source_url(source_url)
-    candidates = sorted(
-        (path for path in WORKSPACE_DIR.iterdir() if path.is_dir()),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
-    for candidate in candidates:
+    candidates: list[tuple[float, Path]] = []
+    try:
+        entries = list(WORKSPACE_DIR.iterdir())
+    except OSError:
+        return None
+    for entry in entries:
+        if not is_safe_task_id(entry.name):
+            continue
+        try:
+            candidate = task_directory(entry.name)
+            if not candidate.is_dir():
+                continue
+            candidates.append((candidate.stat().st_mtime, candidate))
+        except (OSError, ValueError, RuntimeError):
+            continue
+    for _mtime, candidate in sorted(candidates, key=lambda item: item[0], reverse=True):
         if not (candidate / "transcript.json").is_file():
             continue
         existing_source = source_url_from_task(candidate)
@@ -1153,43 +1381,110 @@ def task_status_payload(task_id: str, task: dict[str, Any]) -> dict[str, Any]:
 
 
 @app.get("/api/tasks")
-async def list_recent_tasks() -> dict[str, list[dict[str, Any]]]:
-    # agent 经 /api/transcribe 提交的纯转录任务不进网页端历史：它没有 result.markdown，
-    # 而且批量取原料不应该把用户的笔记历史挤出这 20 条（过滤在截断之前）。
-    # 网页端自己点的「仅转录」是用户要回看的成品，照常进历史（origin=web）。
-    def is_visible(task: dict[str, Any]) -> bool:
-        if task.get("output") != "transcript":
-            return True
-        return task.get("_origin") == "web"
+async def list_recent_tasks(
+    query: str = "",
+    status: Literal["all", "active", "completed", "failed", "cancelled"] = "all",
+    output: Literal["all", "note", "transcript"] = "all",
+    platform: Literal[
+        "all", "bilibili", "douyin", "youtube", "local", "subtitle", "other"
+    ] = "all",
+    favorite: bool | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=50),
+) -> dict[str, Any]:
+    """Return manifest-backed local history without loading note bodies."""
+    summaries = [
+        summary
+        for task_id in iter_history_task_ids()
+        if (summary := history_task_summary(task_id)) is not None
+    ]
+
+    # Agent-only transcript material remains hidden from the web history.
+    visible: list[dict[str, Any]] = []
+    for summary in summaries:
+        manifest = read_task_manifest(summary["task_id"])
+        live_task = tasks.get(summary["task_id"])
+        origin = manifest.get("origin") or (
+            live_task.get("_origin") if isinstance(live_task, dict) else None
+        )
+        if summary["output"] == "transcript" and str(origin or "agent") != "web":
+            continue
+        visible.append(summary)
+
+    needle = query.strip().casefold()
+    active_statuses = {"pending", "uploaded", "queued", "processing", "cancelling"}
+
+    def matches(summary: dict[str, Any]) -> bool:
+        current_status = str(summary.get("status") or "")
+        if status == "active" and current_status not in active_statuses:
+            return False
+        if status not in {"all", "active"} and current_status != status:
+            return False
+        if output != "all" and summary.get("output") != output:
+            return False
+        if platform != "all" and summary.get("platform") != platform:
+            return False
+        if favorite is not None and bool(summary.get("favorite")) is not favorite:
+            return False
+        if needle and needle not in str(summary.get("title") or "").casefold():
+            return False
+        return True
 
     ordered = sorted(
-        (item for item in tasks.items() if is_visible(item[1])),
-        key=lambda item: str(item[1].get("created_at") or ""),
+        (summary for summary in visible if matches(summary)),
+        key=lambda summary: (str(summary.get("created_at") or ""), summary["task_id"]),
         reverse=True,
-    )[:20]
-    summaries: list[dict[str, Any]] = []
-    for task_id, task in ordered:
-        manifest = read_task_manifest(task_id)
-        result = task.get("result") if isinstance(task.get("result"), dict) else {}
-        summaries.append(
-            {
-                "task_id": task_id,
-                "status": task.get("status"),
-                "step_name": task.get("step_name"),
-                "progress": task.get("progress", 0),
-                "output": task.get("output") or manifest.get("output") or "note",
-                "title": result.get("title") or manifest.get("title") or manifest.get("uploaded_filename") or "未命名任务",
-                "created_at": task.get("created_at"),
-                "finished_at": task.get("finished_at"),
-                "elapsed_seconds": task_elapsed_seconds(task),
-            }
-        )
-    return {"tasks": summaries}
+    )
+    page = ordered[offset : offset + limit]
+    return {
+        "tasks": page,
+        "total": len(ordered),
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(page) < len(ordered),
+    }
+
+
+@app.patch("/api/task/{task_id}/favorite")
+async def set_task_favorite(task_id: str, payload: FavoritePayload) -> dict[str, Any]:
+    summary = history_task_summary(task_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="任务不存在或已被清理")
+    if summary["status"] != "completed" or summary["output"] != "note":
+        raise HTTPException(status_code=409, detail="只能收藏已完成的笔记任务")
+    try:
+        _merge_task_manifest(task_id, "favorite", payload.favorite)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="收藏状态保存失败") from exc
+    return {"task_id": task_id, "favorite": payload.favorite}
+
+
+@app.post("/api/source-inspect")
+async def inspect_source(payload: SourceInspectPayload) -> dict[str, Any]:
+    try:
+        classification = classify_source_url(payload.video_url)
+        reusable_task = find_reusable_task(payload.video_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    summary = history_task_summary(reusable_task) if reusable_task else None
+    if summary is not None:
+        summary = {
+            key: summary.get(key)
+            for key in (
+                "task_id",
+                "title",
+                "created_at",
+                "platform",
+                "template_name",
+                "favorite",
+            )
+        }
+    return {**classification, "reusable_task": summary}
 
 
 @app.get("/api/task/{task_id}")
 async def get_task_status(task_id: str) -> dict[str, Any]:
-    task = tasks.get(task_id)
+    task = tasks.get(task_id) or restore_task_on_demand(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在或已被清理")
     return task_status_payload(task_id, task)
@@ -1644,9 +1939,11 @@ async def preview_bilibili_pages(request: BiliPagesRequest) -> dict[str, Any]:
 @app.get("/api/note-templates")
 async def list_note_templates() -> dict[str, Any]:
     """列出全部模板：内置模板在前，自定义模板按名称排序。"""
+    templates = get_template_store().list_templates()
     return {
         "templates": [
-            template.to_dict() for template in get_template_store().list_templates()
+            {**template.to_dict(), "preview_markdown": note_templates.preview_markdown(template)}
+            for template in templates
         ]
     }
 
@@ -3421,95 +3718,8 @@ def restore_tasks_from_workspace() -> None:
         return
 
     for task_dir in candidates:
-        try:
-            manifest = json.loads((task_dir / "task.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError):
-            continue
-        task_id = task_dir.name
-        runtime = manifest.get("runtime") if isinstance(manifest.get("runtime"), dict) else {}
-        # 纯转录任务按设计不产出 notes.md，完成与否只能看 transcript.json
-        transcript_only = manifest.get("output") == "transcript"
-        notes_path = task_dir / "notes.md"
-        uploaded_media = next(
-            (path for path in task_dir.glob("input.*") if path.is_file()), None
-        )
-        status = str(runtime.get("status") or "")
-        interrupted = status in {"pending", "queued", "processing", "cancelling"}
-        if notes_path.is_file() or (
-            transcript_only and (task_dir / "transcript.json").is_file()
-        ):
-            status = "completed"
-        elif interrupted:
-            status = "failed"
-        elif status not in {"failed", "cancelled", "uploaded"}:
-            status = "uploaded" if uploaded_media else "failed"
-
-        task = new_task(status=status, task_id=task_id)
-        task["_started_monotonic"] = None
-        task.update(
-            step=int(runtime.get("step") or 0),
-            step_name=str(runtime.get("step_name") or "已恢复"),
-            progress=int(runtime.get("progress") or (100 if status == "completed" else 0)),
-            logs=list(runtime.get("logs") or []),
-            error=runtime.get("error"),
-            created_at=runtime.get("created_at") or manifest.get("created_at"),
-            finished_at=runtime.get("finished_at"),
-            elapsed_seconds=float(runtime.get("elapsed_seconds") or 0),
-            output=str(manifest.get("output") or "note"),
-            # 旧版 manifest 没有 origin：按 agent 处理，维持这类任务此前不进历史的表现
-            _origin=str(manifest.get("origin") or "agent"),
-        )
-        feishu_target = manifest.get("feishu_upload")
-        if isinstance(feishu_target, dict):
-            task["feishu_upload"] = feishu_target
-        feishu_publication = manifest.get("feishu_publication")
-        if isinstance(feishu_publication, dict):
-            task["feishu_publication"] = feishu_publication
-        if interrupted:
-            task.update(
-                step_name="服务已重启",
-                error="任务因服务重启而中断；已有转录和音频仍可复用",
-                finished_at=datetime.now(timezone.utc).isoformat(),
-            )
-            task["logs"].append("服务重启时任务尚未结束，已标记为中断")
-        if status == "uploaded":
-            if uploaded_media:
-                task["uploaded_file_path"] = str(uploaded_media)
-                task["uploaded_filename"] = (
-                    manifest.get("uploaded_filename") or uploaded_media.name
-                )
-            elif manifest.get("subtitle_import"):
-                # 字幕任务没有 input.*，体积也很小：靠 manifest 标记恢复，不能当媒体
-                task["subtitle_import"] = True
-                task["uploaded_filename"] = manifest.get("uploaded_filename")
-        if status == "completed" and transcript_only:
-            # 纯转录任务没有 notes.md，正文留在 transcript.json 里
-            result = dict(runtime.get("result") or {})
-            result.update(
-                title=result.get("title") or manifest.get("title") or "",
-                output="transcript",
-                output_directory=str(task_dir),
-                processing_seconds=task["elapsed_seconds"],
-            )
-            task["result"] = result
-            task["finished_at"] = task["finished_at"] or datetime.now(timezone.utc).isoformat()
-        elif status == "completed":
-            try:
-                markdown = notes_path.read_text(encoding="utf-8")
-            except OSError:
-                continue
-            result = dict(runtime.get("result") or {})
-            result.update(
-                title=result.get("title") or manifest.get("title") or "video-notes",
-                markdown=markdown,
-                output_directory=str(task_dir),
-                processing_seconds=task["elapsed_seconds"],
-            )
-            task["result"] = result
-            task["finished_at"] = task["finished_at"] or datetime.now(timezone.utc).isoformat()
-        tasks[task_id] = task
-        if interrupted:
-            persist_task_runtime(task_id)
+        # 启动时仍只预加载最近 TASK_HISTORY_LIMIT 条；更旧任务由详情接口按需恢复。
+        restore_task_on_demand(task_dir.name)
 
 
 restore_tasks_from_workspace()

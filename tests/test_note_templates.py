@@ -77,6 +77,43 @@ def test_new_builtin_templates_use_the_safe_shell_layout(tmp_path: Path) -> None
     assert store.get(DEFAULT_TEMPLATE_ID).id == GENERAL_TEMPLATE_ID
 
 
+def test_builtin_previews_are_deterministic_distinct_and_offline(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    previews = {
+        template.id: note_templates.preview_markdown(template)
+        for template in store.list_templates()
+    }
+
+    assert len(previews) == 6
+    assert len(set(previews.values())) == 6
+    assert previews[GENERAL_TEMPLATE_ID].startswith("# 视频笔记：《示例：建立个人知识系统》")
+    assert "## 线索区" in previews[CORNELL_TEMPLATE_ID]
+    assert "## 操作步骤" in previews[TUTORIAL_TEMPLATE_ID]
+    assert "## 主要观点" in previews[INTERVIEW_TEMPLATE_ID]
+    assert "## 核心观点" in previews[KNOWLEDGE_TEMPLATE_ID]
+    assert "## 学习目标" in previews[STUDY_TEMPLATE_ID]
+    assert all("api_key" not in preview.lower() for preview in previews.values())
+
+
+def test_custom_preview_uses_safe_layout_without_reinterpreting_inserted_tokens(
+    tmp_path: Path,
+) -> None:
+    template = _store(tmp_path).create(
+        name="自定义预览",
+        description="",
+        instructions="",
+        layout="# {{title}}\n\n{{content}}\n\n来源占位：{{source_url}}",
+    )
+
+    preview = note_templates.preview_markdown(
+        template,
+        content="正文中的 {{source_url}} 必须保持字面量。",
+    )
+
+    assert "正文中的 {{source_url}} 必须保持字面量。" in preview
+    assert "来源占位：https://www.example.com/watch/demo" in preview
+
+
 def test_knowledge_essentials_instructions_cover_the_planned_sections(
     tmp_path: Path,
 ) -> None:

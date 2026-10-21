@@ -442,6 +442,68 @@ def apply_layout(layout: str, values: dict[str, Any], content: str) -> str:
     return _PLACEHOLDER_RE.sub(substitute, layout)
 
 
+_PREVIEW_VALUES: dict[str, str] = {
+    "title": "示例：建立个人知识系统",
+    "source_url": "https://www.example.com/watch/demo",
+    "platform": "示例平台",
+    "author": "示例作者",
+    "published_at": "2026-10-22",
+    "duration": "12:34",
+    "created_at": "2026-10-22T09:00:00+08:00",
+    "transcript_source": "platform_subtitle",
+    "template_name": "示例模板",
+}
+
+_PREVIEW_CONTENT: dict[str, str] = {
+    GENERAL_TEMPLATE_ID: (
+        "## 内容概览\n\n这段示例展示通用模板如何按内容自然组织主题。\n\n"
+        "## 关键要点\n\n- 先收集可靠材料。\n- 再按主题整理并保留时间点。"
+    ),
+    CORNELL_TEMPLATE_ID: (
+        "## 笔记区\n\n- 知识系统需要稳定的输入、整理和回顾流程。\n\n"
+        "## 线索区\n\n- 为什么需要定期回顾？\n\n"
+        "## 总结区\n\n用固定流程把零散信息转成可复用知识。"
+    ),
+    TUTORIAL_TEMPLATE_ID: (
+        "## 目标\n\n建立一个可持续维护的个人知识库。\n\n"
+        "## 操作步骤\n\n1. 选择统一的收集入口。\n2. 为内容补充来源。\n3. 定期复习并更新。\n\n"
+        "## 注意事项\n\n避免一次引入过多分类。"
+    ),
+    INTERVIEW_TEMPLATE_ID: (
+        "## 访谈主题\n\n如何让知识管理真正服务于行动。\n\n"
+        "## 主要观点\n\n- 嘉宾认为检索能力比分类数量更重要。\n\n"
+        "## 分歧与启发\n\n工具选择应服从长期使用习惯。"
+    ),
+    KNOWLEDGE_TEMPLATE_ID: (
+        "## 一句话概览\n\n知识系统的价值在于持续复用。\n\n"
+        "## 核心观点\n\n- 记录来源。\n- 保留可执行结论。\n\n"
+        "## 可执行建议\n\n从一条固定的每周回顾流程开始。"
+    ),
+    STUDY_TEMPLATE_ID: (
+        "## 学习目标\n\n理解输入、加工、输出三个环节。\n\n"
+        "## 核心概念与定义\n\n**渐进式整理**：在使用中逐步补充结构。\n\n"
+        "## 示例\n\n把一段课程转录整理成带来源的复习笔记。\n\n"
+        "## 复习问题\n\n1. 什么情况下应该新增分类？"
+    ),
+}
+
+_CUSTOM_PREVIEW_CONTENT = (
+    "## 示例主题\n\n这是用于检查自定义布局的合成内容。\n\n"
+    "- 实际正文由所选视频与整理指令决定。\n"
+    "- 预览不会调用大模型。"
+)
+
+
+def preview_markdown(template: NoteTemplate, *, content: str | None = None) -> str:
+    """用固定合成数据预览布局；不读取任务、凭据或调用模型。"""
+    values = dict(_PREVIEW_VALUES)
+    values["template_name"] = template.name
+    sample = content if content is not None else _PREVIEW_CONTENT.get(
+        template.id, _CUSTOM_PREVIEW_CONTENT
+    )
+    return apply_layout(template.layout, values, sample).strip() + "\n"
+
+
 def render_frontmatter(values: dict[str, Any]) -> str:
     """只输出可用的 Frontmatter 字段，顺序固定，值一律安全加引号。"""
     lines = ["---"]

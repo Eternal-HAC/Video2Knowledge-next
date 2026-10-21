@@ -154,6 +154,9 @@ let persistJob = null;
 let mediaRetentionConnected = false;
 let mediaRetentionStartupAttempted = false;
 let mediaRetentionBusy = false;
+let sourceInspectTimer = null;
+let sourceInspectController = null;
+let inspectedReusableTask = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     window.__videoToNoReady = false;
@@ -293,9 +296,22 @@ function bindEvents() {
     bindListener('feishuRetryBtn', 'click', retryFeishuUpload);
     bindListener('formatSelect', 'change', toggleImageLayout);
     bindListener('refreshRecentTasksBtn', 'click', () => loadRecentTasks());
+    bindListener('historyLoadMoreBtn', 'click', () => loadRecentTasks(false, true));
+    bindListener('historyQuery', 'input', scheduleHistoryReload);
+    ['historyStatus', 'historyOutput', 'historyPlatform', 'historyFavorite'].forEach((id) => {
+        bindListener(id, 'change', () => loadRecentTasks(true));
+    });
     const recentTaskList = byId('recentTaskList');
     if (recentTaskList) {
         recentTaskList.addEventListener('click', (event) => {
+            const favoriteButton = event.target.closest('[data-favorite-task-id]');
+            if (favoriteButton) {
+                setTaskFavorite(
+                    favoriteButton.dataset.favoriteTaskId,
+                    favoriteButton.dataset.favorite !== 'true'
+                );
+                return;
+            }
             const deleteButton = event.target.closest('[data-delete-task-id]');
             if (deleteButton) {
                 deleteStoppedTask(deleteButton.dataset.deleteTaskId);
@@ -321,6 +337,8 @@ function bindEvents() {
     bindListener('saveTemplateBtn', 'click', saveTemplate);
     bindListener('cancelTemplateBtn', 'click', closeTemplateEditor);
     bindListener('manageTemplatesBtn', 'click', revealTemplateManager);
+    bindListener('templatePreviewRenderedBtn', 'click', () => setTemplatePreviewMode('rendered'));
+    bindListener('templatePreviewSourceBtn', 'click', () => setTemplatePreviewMode('source'));
     bindListener('manualModelBtn', 'click', manualImportWhisperModel);
     bindListener('copyMcpUrlBtn', 'click', () => copyTextToClipboard(mcpSseUrl(), 'MCP 地址已复制'));
     bindListener('copyMcpConfigBtn', 'click', () =>
@@ -340,6 +358,7 @@ function bindEvents() {
             window.clearTimeout(biliHintDebounce);
             biliHintDebounce = window.setTimeout(() => updateBiliHint(), 300);
             scheduleBiliPagesPreview();
+            scheduleSourceInspect();
         });
         videoUrl.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && !event.isComposing) startSummary();
@@ -352,6 +371,11 @@ function bindEvents() {
     bindListener('biliPagesAllBtn', 'click', () => setBiliPagesSelection('all'));
     bindListener('biliPagesNoneBtn', 'click', () => setBiliPagesSelection('none'));
     bindListener('biliPagesInvertBtn', 'click', () => setBiliPagesSelection('invert'));
+    bindListener('sourceOpenHistoryBtn', 'click', () => {
+        if (inspectedReusableTask) openRecentTask(inspectedReusableTask.task_id);
+    });
+    bindListener('sourceReuseBtn', 'click', () => chooseProcessingMode('reuse'));
+    bindListener('sourceRestartBtn', 'click', () => chooseProcessingMode('restart'));
     initBiliLogin();
     bindListener('includeScreenshots', 'change', toggleScreenshotSettings);
     bindListener('localFile', 'change', () => {
@@ -366,6 +390,7 @@ function bindEvents() {
         stopElapsedTimer();
         stopDouyinLoginPolling();
         stopManualImportPolling();
+        if (sourceInspectController) sourceInspectController.abort();
     });
 }
 
@@ -544,6 +569,9 @@ const NO_ELAPSED_TASK_STATUSES = ['uploaded'];
 let recentTaskRows = new Map();
 let recentTasksSyncedAt = 0;
 let recentTasksElapsedTimer = null;
+let historyOffset = 0;
+let historyHasMore = false;
+let historyReloadTimer = null;
 
 function recentTaskMetaText(task, nowSeconds) {
     const created = formatTaskDate(task.created_at);
@@ -568,32 +596,75 @@ function armRecentTasksElapsedTicker() {
     recentTasksElapsedTimer = window.setInterval(() => {
         const now = Date.now() / 1000;
         recentTaskRows.forEach((row) => {
-            row.meta.textContent = recentTaskMetaText(row.task, now);
+            row.meta.textContent = [row.details, recentTaskMetaText(row.task, now)]
+                .filter(Boolean).join(' · ');
         });
     }, 1000);
 }
 
-async function loadRecentTasks(silent = false) {
+function scheduleHistoryReload() {
+    window.clearTimeout(historyReloadTimer);
+    historyReloadTimer = window.setTimeout(() => loadRecentTasks(true), 250);
+}
+
+function historyQueryString(offset) {
+    const params = new URLSearchParams({
+        offset: String(offset),
+        limit: '20',
+        query: byId('historyQuery')?.value.trim() || '',
+        status: byId('historyStatus')?.value || 'all',
+        output: byId('historyOutput')?.value || 'all',
+        platform: byId('historyPlatform')?.value || 'all'
+    });
+    if (byId('historyFavorite')?.checked) params.set('favorite', 'true');
+    return params.toString();
+}
+
+function historyFiltersActive() {
+    return Boolean(
+        byId('historyQuery')?.value.trim()
+        || (byId('historyStatus')?.value || 'all') !== 'all'
+        || (byId('historyOutput')?.value || 'all') !== 'all'
+        || (byId('historyPlatform')?.value || 'all') !== 'all'
+        || byId('historyFavorite')?.checked
+    );
+}
+
+async function loadRecentTasks(silent = false, append = false) {
     const refreshButton = byId('refreshRecentTasksBtn');
-    refreshButton.disabled = true;
+    if (refreshButton) refreshButton.disabled = true;
+    const offset = append ? historyOffset : 0;
     try {
-        const response = await fetch(`${API_BASE}/tasks`, { cache: 'no-store' });
-        const data = await readResponse(response, '读取最近任务失败');
-        renderRecentTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        const response = await fetch(`${API_BASE}/tasks?${historyQueryString(offset)}`, {
+            cache: 'no-store'
+        });
+        const data = await readResponse(response, '读取历史记录失败');
+        const page = Array.isArray(data.tasks) ? data.tasks : [];
+        renderRecentTasks(page, append);
+        historyOffset = offset + page.length;
+        historyHasMore = Boolean(data.has_more);
+        const more = byId('historyLoadMoreBtn');
+        if (more) more.hidden = !historyHasMore;
+        const empty = byId('historyEmpty');
+        if (empty) {
+            empty.hidden = Number(data.total) > 0;
+            empty.textContent = historyFiltersActive()
+                ? '没有符合当前筛选条件的历史任务。'
+                : '还没有历史任务。完成一次转录或笔记后会显示在这里。';
+        }
     } catch (error) {
         if (!silent) showToast(error.message, 'error');
     } finally {
-        refreshButton.disabled = false;
+        if (refreshButton) refreshButton.disabled = false;
     }
 }
 
-function renderRecentTasks(tasks) {
-    const panel = byId('recentTasksPanel');
+function renderRecentTasks(tasks, append = false) {
     const list = byId('recentTaskList');
-    list.replaceChildren();
-    panel.hidden = tasks.length === 0;
+    if (!list) return;
+    if (!append) list.replaceChildren();
     recentTasksSyncedAt = Date.now() / 1000;
-    recentTaskRows = new Map();
+    if (!append) recentTaskRows = new Map();
     tasks.forEach((task) => {
         const row = document.createElement('div');
         row.className = 'recent-task-row';
@@ -612,8 +683,10 @@ function renderRecentTasks(tasks) {
         }
         title.append(task.title || '未命名任务');
         const meta = document.createElement('span');
-        meta.textContent = recentTaskMetaText(task, recentTasksSyncedAt);
-        recentTaskRows.set(task.task_id, { meta, task });
+        const details = [platformLabel(task.platform), task.template_name].filter(Boolean).join(' · ');
+        meta.textContent = [details, recentTaskMetaText(task, recentTasksSyncedAt)]
+            .filter(Boolean).join(' · ');
+        recentTaskRows.set(task.task_id, { meta, task, details });
         const status = document.createElement('em');
         status.className = `recent-task-status ${task.status || ''}`;
         status.textContent = TASK_STATUS_LABELS[task.status] || task.step_name || '未知';
@@ -623,6 +696,21 @@ function renderRecentTasks(tasks) {
         text.append(title, meta);
         button.append(text, status);
         row.append(button);
+        if (task.status === 'completed' && task.output === 'note') {
+            const favoriteButton = document.createElement('button');
+            favoriteButton.type = 'button';
+            favoriteButton.className = `recent-task-favorite${task.favorite ? ' is-favorite' : ''}`;
+            favoriteButton.dataset.favoriteTaskId = task.task_id;
+            favoriteButton.dataset.favorite = String(Boolean(task.favorite));
+            favoriteButton.textContent = task.favorite ? '★' : '☆';
+            favoriteButton.title = task.favorite ? '取消收藏' : '收藏笔记';
+            favoriteButton.setAttribute(
+                'aria-label',
+                `${task.favorite ? '取消收藏' : '收藏笔记'}：${task.title || '未命名任务'}`
+            );
+            favoriteButton.setAttribute('aria-pressed', String(Boolean(task.favorite)));
+            row.append(favoriteButton);
+        }
         // 排队中/处理中只能取消（后端拒绝删除运行中的任务）；未开始的任务可以直接删掉，
         // 否则上传后放弃的孤儿任务会永久占着最近任务列表
         if (DELETABLE_TASK_STATUSES.includes(task.status)) {
@@ -639,6 +727,31 @@ function renderRecentTasks(tasks) {
         list.append(row);
     });
     armRecentTasksElapsedTicker();
+}
+
+function platformLabel(platform) {
+    return {
+        bilibili: 'B站', douyin: '抖音', youtube: 'YouTube', local: '本地文件',
+        subtitle: '字幕导入', other: '其他平台'
+    }[platform] || '';
+}
+
+async function setTaskFavorite(taskId, favorite) {
+    try {
+        const response = await fetch(
+            `${API_BASE}/task/${encodeURIComponent(taskId)}/favorite`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ favorite })
+            }
+        );
+        await readResponse(response, '更新收藏失败');
+        await loadRecentTasks(true);
+        showToast(favorite ? '已收藏笔记' : '已取消收藏', 'success');
+    } catch (error) {
+        showToast(error.message || '更新收藏失败', 'error');
+    }
 }
 
 async function deleteStoppedTask(taskId) {
@@ -1669,8 +1782,10 @@ function toggleSourceType() {
     updateBiliHint();
     if (hasFile) {
         hideBiliPagesPanel();
+        hideSourceInspect();
     } else {
         scheduleBiliPagesPreview();
+        scheduleSourceInspect();
     }
 }
 
@@ -1734,6 +1849,7 @@ function applyOutputMode() {
 let noteTemplates = [];
 let templateEditorMode = null;
 let templateEditorId = null;
+let templatePreviewMode = 'rendered';
 // 模板列表的加载状态：loading / ready / error。笔记提交只在 ready 时放行，
 // 避免加载失败时静默按默认模板提交，覆盖用户保存过的自定义选择。
 let noteTemplatesStatus = 'loading';
@@ -1794,11 +1910,13 @@ function renderNoteTemplateCards() {
     if (noteTemplatesStatus === 'loading') {
         status.hidden = false;
         status.textContent = '正在加载模板…';
+        renderNoteTemplatePreview();
         return;
     }
     if (noteTemplatesStatus === 'error') {
         status.hidden = false;
         status.textContent = '模板加载失败。开始生成时会自动重试，也可稍后刷新页面。';
+        renderNoteTemplatePreview();
         return;
     }
     status.hidden = true;
@@ -1827,6 +1945,51 @@ function renderNoteTemplateCards() {
         });
         container.appendChild(button);
     });
+    renderNoteTemplatePreview();
+}
+
+function setTemplatePreviewMode(mode) {
+    templatePreviewMode = mode === 'source' ? 'source' : 'rendered';
+    renderNoteTemplatePreview();
+}
+
+function renderNoteTemplatePreview() {
+    const panel = byId('templatePreviewPanel');
+    const rendered = byId('templatePreviewRendered');
+    const source = byId('templatePreviewSource');
+    if (!panel || !rendered || !source) return;
+    const template = selectedNoteTemplate();
+    const markdown = template && typeof template.preview_markdown === 'string'
+        ? template.preview_markdown
+        : '';
+    panel.hidden = noteTemplatesStatus !== 'ready' || !template || !markdown;
+    if (panel.hidden) {
+        rendered.replaceChildren();
+        source.textContent = '';
+        return;
+    }
+    const title = byId('templatePreviewTitle');
+    if (title) title.textContent = `${template.name}示例`;
+    const meta = byId('templatePreviewMeta');
+    if (meta) {
+        meta.textContent = `${template.built_in ? '内置模板' : '自定义模板'} · `
+            + '预览使用合成内容，不调用大模型';
+    }
+    rendered.innerHTML = renderMarkdown(markdown);
+    source.textContent = markdown;
+    const showSource = templatePreviewMode === 'source';
+    rendered.hidden = showSource;
+    source.hidden = !showSource;
+    const renderedButton = byId('templatePreviewRenderedBtn');
+    const sourceButton = byId('templatePreviewSourceBtn');
+    if (renderedButton) {
+        renderedButton.classList.toggle('is-active', !showSource);
+        renderedButton.setAttribute('aria-selected', String(!showSource));
+    }
+    if (sourceButton) {
+        sourceButton.classList.toggle('is-active', showSource);
+        sourceButton.setAttribute('aria-selected', String(showSource));
+    }
 }
 
 function revealTemplateManager() {
@@ -1857,6 +2020,7 @@ function updateNoteTemplateDetails() {
         button.disabled = readonly;
         button.title = readonly ? '内置模板不可修改或删除' : '';
     });
+    renderNoteTemplatePreview();
 }
 
 function openTemplateEditor(mode) {
@@ -2053,6 +2217,71 @@ function revealBiliCredentials() {
 function dismissBiliHint() {
     biliPromptDismissed = true;
     updateBiliHint();
+}
+
+function scheduleSourceInspect() {
+    window.clearTimeout(sourceInspectTimer);
+    sourceInspectTimer = window.setTimeout(inspectCurrentSource, 500);
+}
+
+function hideSourceInspect() {
+    if (sourceInspectController) sourceInspectController.abort();
+    sourceInspectController = null;
+    inspectedReusableTask = null;
+    const panel = byId('sourceInspectPanel');
+    if (panel) panel.hidden = true;
+}
+
+async function inspectCurrentSource() {
+    const normalized = fileSourceSelected()
+        ? null
+        : normalizeVideoInput(byId('videoUrl')?.value || '');
+    if (!normalized) {
+        hideSourceInspect();
+        return;
+    }
+    if (sourceInspectController) sourceInspectController.abort();
+    const controller = new AbortController();
+    sourceInspectController = controller;
+    try {
+        const response = await fetch(`${API_BASE}/source-inspect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video_url: normalized }),
+            signal: controller.signal
+        });
+        const data = await readResponse(response, '识别视频来源失败');
+        inspectedReusableTask = data.reusable_task || null;
+        const panel = byId('sourceInspectPanel');
+        const label = byId('sourceInspectLabel');
+        const support = byId('sourceInspectSupport');
+        const actions = byId('sourceInspectActions');
+        if (!panel || !label || !support || !actions) return;
+        label.textContent = `识别为：${data.platform_label || '其他平台'}`;
+        const focused = data.support_level === 'focused';
+        support.textContent = focused
+            ? '重点支持：使用现有字幕优先与本地 ASR 流程。'
+            : '通用兼容：能否处理取决于当前 yt-dlp、网络与平台访问条件。';
+        if (inspectedReusableTask) {
+            support.textContent += ` 已找到历史结果「${inspectedReusableTask.title || '未命名任务'}」。`;
+        }
+        actions.hidden = !inspectedReusableTask;
+        panel.dataset.supportLevel = focused ? 'focused' : 'generic';
+        panel.hidden = false;
+    } catch (error) {
+        if (error.name !== 'AbortError') hideSourceInspect();
+    } finally {
+        if (sourceInspectController === controller) sourceInspectController = null;
+    }
+}
+
+function chooseProcessingMode(mode) {
+    const input = document.querySelector(`input[name="processingMode"][value="${mode}"]`);
+    if (!input) return;
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    updatePlanSummary();
+    showToast(mode === 'reuse' ? '已选择复用历史转录' : '已选择从头处理', 'success');
 }
 
 // ---- B 站分 P 勾选面板 ----

@@ -126,7 +126,7 @@ def test_health_and_frontend_are_served() -> None:
     client = TestClient(main.app)
     health = client.get("/api/health")
     assert health.status_code == 200
-    assert health.json()["version"] == "1.0.0-beta.2"
+    assert health.json()["version"] == "1.0.0-beta.3"
     assert health.json()["version"] == launcher.VERSION
     # 旧发现逻辑按 service 认服务；product/api_compat 是改名后新增的兼容契约
     assert health.json()["service"] == "VideoToNo"
@@ -387,12 +387,15 @@ def test_note_metadata_removes_model_duplicate_block() -> None:
     assert body.endswith("正文内容")
 
 
-def test_recent_tasks_are_compact_and_do_not_include_markdown(monkeypatch) -> None:
+def test_recent_tasks_are_compact_and_do_not_include_markdown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     task = main.new_task(status="completed", task_id="recent-task")
     task.update(
         created_at="2026-08-09T12:00:00+00:00",
         result={"title": "示例笔记", "markdown": "# private body"},
     )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
     monkeypatch.setattr(main, "tasks", {"recent-task": task})
 
     response = TestClient(main.app).get("/api/tasks")
@@ -403,6 +406,200 @@ def test_recent_tasks_are_compact_and_do_not_include_markdown(monkeypatch) -> No
     assert item["title"] == "示例笔记"
     assert "result" not in item
     assert "markdown" not in json.dumps(item)
+
+
+def _write_history_task(
+    workspace: Path,
+    task_id: str,
+    *,
+    title: str,
+    created_at: str,
+    status: str = "completed",
+    output: str = "note",
+    source_url: str | None = None,
+    source: str | None = None,
+    favorite: bool = False,
+    transcript: bool = True,
+) -> None:
+    directory = workspace / task_id
+    directory.mkdir()
+    manifest = {
+        "task_id": task_id,
+        "created_at": created_at,
+        "source_url": source_url,
+        "normalized_source_url": source_url,
+        "output": output,
+        "title": title,
+        "source": source,
+        "favorite": favorite,
+        "note_template_snapshot": {"id": "custom-demo", "name": "演示模板"},
+        "runtime": {
+            "status": status,
+            "created_at": created_at,
+            "finished_at": created_at,
+            "elapsed_seconds": 3,
+            "result": {"title": title},
+        },
+    }
+    (directory / "task.json").write_text(
+        json.dumps(manifest, ensure_ascii=False), encoding="utf-8"
+    )
+    if output == "note" and status == "completed":
+        (directory / "notes.md").write_text(f"# {title}", encoding="utf-8")
+    if transcript:
+        (directory / "transcript.json").write_text(
+            '{"language":"zh","source":"test","segments":[{"start":0,"end":1,"text":"x"}]}',
+            encoding="utf-8",
+        )
+
+
+def test_history_scans_manifests_filters_and_paginates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_history_task(
+        tmp_path,
+        "history-youtube",
+        title="Python 入门",
+        created_at="2026-10-22T03:00:00+00:00",
+        source_url="https://www.youtube.com/watch?v=abc",
+        favorite=True,
+    )
+    _write_history_task(
+        tmp_path,
+        "history-local",
+        title="本地课程",
+        created_at="2026-10-22T02:00:00+00:00",
+        source="local",
+    )
+    _write_history_task(
+        tmp_path,
+        "history-failed",
+        title="失败任务",
+        created_at="2026-10-22T01:00:00+00:00",
+        status="failed",
+        source_url="https://example.com/video",
+        transcript=False,
+    )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    client = TestClient(main.app)
+
+    first = client.get("/api/tasks?offset=0&limit=2").json()
+    assert first["total"] == 3
+    assert first["has_more"] is True
+    assert [item["task_id"] for item in first["tasks"]] == [
+        "history-youtube",
+        "history-local",
+    ]
+    assert first["tasks"][0]["favorite"] is True
+    assert first["tasks"][0]["platform"] == "youtube"
+    assert first["tasks"][0]["template_name"] == "演示模板"
+
+    opened = client.get("/api/task/history-youtube")
+    assert opened.status_code == 200
+    assert opened.json()["status"] == "completed"
+    assert opened.json()["result"]["markdown"] == "# Python 入门"
+
+    filtered = client.get(
+        "/api/tasks?query=python&status=completed&output=note&platform=youtube&favorite=true"
+    ).json()
+    assert filtered["total"] == 1
+    assert filtered["tasks"][0]["task_id"] == "history-youtube"
+    assert client.get("/api/tasks?status=unknown").status_code == 422
+    assert client.get("/api/tasks?limit=51").status_code == 422
+
+
+def test_favorite_endpoint_is_atomic_persistent_and_note_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_history_task(
+        tmp_path,
+        "favorite-note",
+        title="可收藏笔记",
+        created_at="2026-10-22T03:00:00+00:00",
+    )
+    _write_history_task(
+        tmp_path,
+        "favorite-transcript",
+        title="字幕稿",
+        created_at="2026-10-22T02:00:00+00:00",
+        output="transcript",
+    )
+    _write_history_task(
+        tmp_path,
+        "favorite-failed",
+        title="失败笔记",
+        created_at="2026-10-22T01:00:00+00:00",
+        status="failed",
+        transcript=False,
+    )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    client = TestClient(main.app)
+
+    response = client.patch(
+        "/api/task/favorite-note/favorite", json={"favorite": True}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"task_id": "favorite-note", "favorite": True}
+    manifest = json.loads((tmp_path / "favorite-note" / "task.json").read_text("utf-8"))
+    assert manifest["favorite"] is True
+    assert not (tmp_path / "favorite-note" / "task.json.tmp").exists()
+    assert (tmp_path / "favorite-note" / "notes.md").read_text("utf-8") == "# 可收藏笔记"
+
+    rejected = client.patch(
+        "/api/task/favorite-transcript/favorite", json={"favorite": True}
+    )
+    assert rejected.status_code == 409
+    assert client.patch(
+        "/api/task/favorite-failed/favorite", json={"favorite": True}
+    ).status_code == 409
+
+    main.tasks.clear()
+    restored = client.get("/api/tasks?favorite=true").json()
+    assert [item["task_id"] for item in restored["tasks"]] == ["favorite-note"]
+
+
+def test_source_inspect_is_offline_and_reports_reusable_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_history_task(
+        tmp_path,
+        "source-existing",
+        title="已有视频笔记",
+        created_at="2026-10-22T03:00:00+00:00",
+        source_url="https://www.youtube.com/watch?v=abc",
+    )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    broken = tmp_path / "broken-manifest"
+    broken.mkdir()
+    (broken / "task.json").write_text("{not json", encoding="utf-8")
+    (broken / "transcript.json").write_text("{}", encoding="utf-8")
+    client = TestClient(main.app)
+
+    youtube = client.post(
+        "/api/source-inspect",
+        json={"video_url": "https://www.youtube.com/watch?v=abc"},
+    ).json()
+    assert youtube["platform"] == "youtube"
+    assert youtube["support_level"] == "focused"
+    assert youtube["reusable_task"]["task_id"] == "source-existing"
+    assert "markdown" not in json.dumps(youtube)
+
+    for url, expected in (
+        ("https://www.tiktok.com/@demo/video/1", "tiktok"),
+        ("https://www.xiaohongshu.com/explore/1", "xiaohongshu"),
+        ("https://www.youtube.com.evil.example/watch?v=abc", "other"),
+    ):
+        body = client.post("/api/source-inspect", json={"video_url": url}).json()
+        assert body["platform"] == expected
+        assert body["support_level"] == "generic" if expected != "youtube" else "focused"
+
+    assert client.post("/api/source-inspect", json={"video_url": "file:///x"}).status_code == 422
+    assert client.post(
+        "/api/source-inspect", json={"video_url": "https://example.com:bad/video"}
+    ).status_code == 422
 
 
 @pytest.mark.parametrize(
@@ -840,6 +1037,9 @@ def test_note_templates_api_returns_six_builtins_in_stable_order(
         assert item["version"] == 1
         assert item["layout"] == "# {{title}}\n\n{{content}}"
         assert "不补充外部知识" in item["instructions"]
+    previews = [item["preview_markdown"] for item in templates]
+    assert len(set(previews)) == 6
+    assert all(preview.startswith("# ") for preview in previews)
 
 
 @pytest.mark.asyncio
@@ -3633,7 +3833,9 @@ async def test_transcript_only_task_finishes_before_any_llm_use(
     main.tasks.pop(task_id, None)
 
 
-def test_agent_transcript_tasks_stay_out_of_the_web_history(monkeypatch) -> None:
+def test_agent_transcript_tasks_stay_out_of_the_web_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """agent 批量取原料不得挤掉用户的笔记历史；网页端自己点的「仅转录」要能回看。"""
     note_task = main.new_task(status="completed", task_id="note-task")
     note_task.update(
@@ -3654,6 +3856,7 @@ def test_agent_transcript_tasks_stay_out_of_the_web_history(monkeypatch) -> None
         _origin="web",
         result={"title": "网页端字幕稿", "output": "transcript"},
     )
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
     monkeypatch.setattr(
         main,
         "tasks",

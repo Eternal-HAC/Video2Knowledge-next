@@ -23,7 +23,7 @@
         <div class="brand">
             <img class="brand-mark" src="/icon.png" alt="" aria-hidden="true" width="40" height="40">
             <div class="brand-text">
-                <h1>Video2Knowledge <span id="appVersion" class="app-version">v1.0.0-beta.2</span></h1>
+                <h1>Video2Knowledge <span id="appVersion" class="app-version">v1.0.0-beta.3</span></h1>
                 <p>本地知识工作台 · 把视频沉淀为可复用的笔记</p>
             </div>
         </div>
@@ -99,6 +99,22 @@
                     </div>
                     <p id="templateCardsStatus" class="choice-status" role="status" aria-live="polite">正在加载模板…</p>
                     <div id="templateCards" class="template-card-grid" role="radiogroup" aria-label="笔记模板"></div>
+                    <section id="templatePreviewPanel" class="template-preview" aria-labelledby="templatePreviewTitle" hidden>
+                        <div class="template-preview-head">
+                            <div>
+                                <span class="section-kicker">格式预览</span>
+                                <h4 id="templatePreviewTitle">模板示例</h4>
+                            </div>
+                            <div class="template-preview-tabs" role="tablist" aria-label="模板预览方式">
+                                <button id="templatePreviewRenderedBtn" class="button ghost compact-button is-active" type="button" role="tab" aria-selected="true">成品预览</button>
+                                <button id="templatePreviewSourceBtn" class="button ghost compact-button" type="button" role="tab" aria-selected="false">Markdown 示例</button>
+                            </div>
+                        </div>
+                        <p id="templatePreviewMeta" class="template-preview-meta"></p>
+                        <article id="templatePreviewRendered" class="markdown-body template-preview-body"></article>
+                        <pre id="templatePreviewSource" class="template-preview-source" tabindex="0" hidden></pre>
+                        <small>示例内容仅用于展示格式；实际章节和详略由视频内容决定，所有笔记仍会包含 YAML Frontmatter。</small>
+                    </section>
                 </section>
 
                 <section id="destinationChooserSection" class="workflow-choice" aria-labelledby="destinationChooserTitle">
@@ -184,6 +200,17 @@
                     <span class="btn-text">开始生成</span>
                 </button>
             </div>
+            <div id="sourceInspectPanel" class="source-inspect" role="status" aria-live="polite" hidden>
+                <div class="source-inspect-copy">
+                    <strong id="sourceInspectLabel"></strong>
+                    <span id="sourceInspectSupport"></span>
+                </div>
+                <div id="sourceInspectActions" class="source-inspect-actions" hidden>
+                    <button id="sourceOpenHistoryBtn" class="button ghost compact-button" type="button">打开历史结果</button>
+                    <button id="sourceReuseBtn" class="button secondary compact-button" type="button">复用转录</button>
+                    <button id="sourceRestartBtn" class="button ghost compact-button" type="button">重新处理</button>
+                </div>
+            </div>
             <p id="planSummary" class="plan-summary" aria-live="polite"></p>
             <p id="exportHint" class="output-mode-hint">完成后可导出 Markdown、HTML、JSON、纯文本和 PNG；带时间轴的任务还可导出 SRT。</p>
             <p id="localImportHint" class="output-mode-hint" hidden>小鹅通等课程平台：请先用平台官方允许的下载/导出方式取得媒体文件，再在这里上传。本工具不支持绕过付费、登录或内容保护机制。</p>
@@ -231,15 +258,24 @@
             </div>
         </section>
 
-        <section id="recentTasksPanel" class="recent-panel" aria-labelledby="recentTasksTitle" hidden>
+        <section id="recentTasksPanel" class="recent-panel" aria-labelledby="recentTasksTitle">
             <div class="section-heading recent-heading">
                 <div>
                     <span class="section-kicker">历史</span>
-                    <h2 id="recentTasksTitle">最近任务</h2>
+                    <h2 id="recentTasksTitle">历史记录</h2>
                 </div>
                 <button id="refreshRecentTasksBtn" class="button ghost compact-button" type="button">刷新</button>
             </div>
+            <div class="history-filters" aria-label="筛选历史任务">
+                <label class="field history-search"><span class="sr-only">搜索标题</span><input id="historyQuery" type="search" placeholder="搜索笔记标题"></label>
+                <label class="field"><span class="sr-only">任务状态</span><select id="historyStatus"><option value="all">全部状态</option><option value="active">进行中</option><option value="completed">已完成</option><option value="failed">失败</option><option value="cancelled">已取消</option></select></label>
+                <label class="field"><span class="sr-only">产物类型</span><select id="historyOutput"><option value="all">全部产物</option><option value="note">笔记</option><option value="transcript">字幕稿</option></select></label>
+                <label class="field"><span class="sr-only">来源平台</span><select id="historyPlatform"><option value="all">全部平台</option><option value="bilibili">B站</option><option value="douyin">抖音</option><option value="youtube">YouTube</option><option value="local">本地文件</option><option value="subtitle">字幕导入</option><option value="other">其他平台</option></select></label>
+                <label class="history-favorite-filter"><input id="historyFavorite" type="checkbox"><span>仅看收藏</span></label>
+            </div>
+            <p id="historyEmpty" class="history-empty">还没有历史任务。完成一次转录或笔记后会显示在这里。</p>
             <div id="recentTaskList" class="recent-task-list"></div>
+            <button id="historyLoadMoreBtn" class="button ghost history-load-more" type="button" hidden>加载更多</button>
         </section>
 
         <section id="progressArea" class="task-panel" aria-labelledby="progressTitle" hidden>
@@ -553,6 +589,6 @@
 </aside>
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-<script src="script.js?v=20261021-4"></script>
+<script src="script.js?v=20261022-1"></script>
 </body>
 </html>

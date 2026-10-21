@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def test_version_metadata_has_single_canonical_source() -> None:
     assert product_info.PRODUCT_NAME == "Video2Knowledge"
     assert product_info.LEGACY_SERVICE_ID == "VideoToNo"
-    assert product_info.VERSION == "1.0.0-beta.2"
+    assert product_info.VERSION == "1.0.0-beta.3"
     assert product_info.GITHUB_REPO == "Eternal-HAC/Video2Knowledge-next"
     assert launcher.VERSION == product_info.VERSION
     assert launcher.APP_NAME == f"Video2Knowledge v{product_info.VERSION}"
@@ -26,7 +26,7 @@ def test_version_key_orders_transition_line_below_independent_line() -> None:
 
 
 def test_version_key_orders_beta_rc_stable_and_numbers() -> None:
-    assert launcher.version_tuple("1.0.0-beta.1") < launcher.version_tuple("1.0.0-beta.2")
+    assert launcher.version_tuple("1.0.0-beta.2") < launcher.version_tuple("1.0.0-beta.3")
     assert launcher.version_tuple("v1.0.0-beta.9") < launcher.version_tuple("1.0.0-rc.1")
     assert launcher.version_tuple("1.0.0-rc.1") < launcher.version_tuple("v1.0.0")
     assert launcher.version_tuple("v1.9.0") < launcher.version_tuple("1.10.0")
@@ -40,7 +40,7 @@ def test_invalid_versions_never_count_as_updates() -> None:
     # 无法识别的远端 tag 不会触发更新提示；过渡线版本对当前 beta 也不算更新
     assert not product_info.is_update("garbage", product_info.VERSION)
     assert not product_info.is_update("v1.4.2-v2k.9", product_info.VERSION)
-    assert product_info.is_update("v1.0.0-beta.2", "1.0.0-beta.1")
+    assert product_info.is_update("v1.0.0-beta.3", "1.0.0-beta.2")
     assert product_info.is_update("v1.0.0-rc.1", "1.0.0-beta.9")
     assert not product_info.is_update("1.0.0-beta.1", "1.0.0")
 
@@ -301,7 +301,7 @@ def test_build_script_rewrites_checksum_for_the_versioned_artifact() -> None:
 
 def test_version_info_keeps_numeric_file_and_full_product_version() -> None:
     """PE 规范里 filevers/FileVersion 必须是纯数字四段（1.0.0.0），
-    而 ProductVersion 字符串要保留完整语义化版本（1.0.0-beta.2）——
+    而 ProductVersion 字符串要保留完整语义化版本（1.0.0-beta.3）——
     模板用两套占位符，构建脚本做两套替换。"""
     template = (PROJECT_ROOT / "scripts" / "version_info.txt.template").read_text(
         encoding="utf-8"
@@ -328,7 +328,7 @@ def test_version_info_keeps_numeric_file_and_full_product_version() -> None:
     )
     assert "filevers=(1, 0, 0, 0)" in rendered
     assert "StringStruct(u'FileVersion', u'1.0.0.0')" in rendered
-    assert "StringStruct(u'ProductVersion', u'1.0.0-beta.2')" in rendered
+    assert "StringStruct(u'ProductVersion', u'1.0.0-beta.3')" in rendered
     assert "__" not in rendered, "模板渲染后不得残留占位符"
 
 
