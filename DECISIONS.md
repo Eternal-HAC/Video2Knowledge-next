@@ -158,6 +158,14 @@ Review condition: Revisit if the compatibility shims (legacy service id, environ
 
 Decision: Starting with `v1.0.0-beta.2`, show all six built-in templates and saved custom templates before submission, followed by an explicit local Markdown destination choice: default `workspace/notes`, custom absolute directory, or Obsidian Vault. Feishu remains a separate opt-in additional publication. The result area names the current export action and exposes the other existing formats under a visible label. One input still produces one Markdown note.
 
+## 2026-10-22: Keep beta.3 history, favorites, previews, and source guidance local
+
+Decision: Build template previews from fixed synthetic content through the existing one-pass layout renderer. Query history directly from compact `task.json` summaries with filters and pagination, restore an older task only when it is opened, and store a completed note's optional `favorite` flag atomically in that task manifest. Inspect a pasted URL by hostname plus existing local manifests only; use the result to label support and expose the existing transcript reuse choice.
+
+Reason: These changes make existing local capabilities discoverable without adding a database, a second template format, another LLM call, a platform network probe, or an account synchronization service.
+
+Impact: Local favorites are unrelated to Bilibili, Douyin, YouTube, TikTok, or Xiaohongshu account collections. TikTok and Xiaohongshu remain generic `yt-dlp` compatibility claims. Source inspection never validates live availability and never replaces the downloader's final decision.
+
 Reason: The template, Obsidian, Feishu and export pipelines already existed, but placing their controls only in the settings drawer made working features look absent. Improving discoverability reuses the mature storage and publication paths and avoids a second template system or destination API.
 
 Alternatives considered: keep every control in Settings (rejected because users could not discover core product choices); add a second frontend-only template or export pipeline (rejected because it would duplicate validated backend behavior); split notes into multiple linked files or build an automatic knowledge graph (deferred as a separate product scope).

@@ -2,7 +2,7 @@
   <img src="sources/icon.png" width="96" alt="Video2Knowledge icon">
 </p>
 
-<h1 align="center">Video2Knowledge v1.0.0-beta.2</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.3</h1>
 
 <p align="center"><em>A local knowledge studio: turn videos into Markdown notes you can revisit</em></p>
 
@@ -14,7 +14,7 @@ Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.2)</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.3)</strong></a></p>
 
 ## Product positioning
 
@@ -32,13 +32,13 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 
 <p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio home: templates, destinations, source, and task submission" width="100%"></p>
 
-### Progress
+### Local history and favorites
 
-<p align="center"><img src="sources/knowledge-studio-progress.png" alt="Video2Knowledge task progress and runtime log" width="100%"></p>
+<p align="center"><img src="sources/knowledge-studio-history.png" alt="Video2Knowledge local task history, filters, and note favorites" width="100%"></p>
 
-### Result
+### Note-template preview
 
-<p align="center"><img src="sources/knowledge-studio-result.png" alt="Markdown note produced by Video2Knowledge" width="100%"></p>
+<p align="center"><img src="sources/knowledge-studio-template-preview.png" alt="Deterministic preview of the Study Lecture note template" width="100%"></p>
 
 ## ✨ Highlights
 
@@ -48,15 +48,18 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 - 🧾 **Real timestamps**: keeps segment start and end times from captions or Whisper instead of asking the model to invent them; any transcript exports as a standard SubRip `.srt`.
 - 🧠 **Long-transcript handling**: chunks, merges and reduces long material while keeping context pressure under control, and checks that the note reaches the end of the material.
 - 📝 **Templates and destinations**: six read-only built-in templates and saved custom templates are selectable in the main workflow. Local Markdown always lands in the default folder, a custom directory, or an Obsidian Vault; Feishu is an optional additional publication.
+- 👁️ **No-cost template previews**: selecting a template shows a rendered result and Markdown sample made from fixed synthetic content; previews never call an LLM or read an existing note.
+- 🗂️ **Local history and favorites**: search and filter all local task manifests, load them in pages, and star completed notes locally. Older Markdown bodies are read only when opened.
+- 🔎 **Platform and reuse guidance**: a pasted URL is classified locally; when a reusable transcript exists, the UI offers explicit open, reuse, or restart actions without automatic submission.
 - 🖼️ **Discoverable exports**: the result panel leads with Export Markdown and visibly offers SRT, HTML, JSON, plain text, and PNG, with optional video screenshots as note attachments.
 - 🤖 **Raw material for agents**: a connected agent can stop at the timestamped transcript — no LLM call and no API key for this machine, and it writes the notes in its own structure and style.
 - 🛡️ **Local-first**: media downloads, transcription, and file generation happen locally; the service listens on `127.0.0.1` by default.
 
 ## 🚀 Install (Windows portable build)
 
-> **Release status**: `v1.0.0-beta.2` focuses on discoverable templates, destinations, and exports. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for acceptance evidence.
+> **Release status**: `v1.0.0-beta.3` focuses on template previews, local history/favorites, platform labels, and transcript-reuse guidance. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for acceptance evidence.
 
-No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.2-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2):
+No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.3-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3):
 
 1. Download and double-click the exe;
 2. Wait for the local page to open in your browser;
@@ -70,11 +73,11 @@ The portable build starts the local service and stays in the system tray. The fi
 After starting the app:
 
 1. Choose **Note** (needs an API key) or **Transcript only** (no LLM call and **no API key**; note templates and note destinations collapse automatically);
-2. For a note, choose one of the six built-in templates or a saved custom template in the main workflow;
+2. For a note, choose one of the six built-in templates or a saved custom template in the main workflow, then inspect the rendered or Markdown example below it;
 3. Choose the default Markdown folder, a custom directory, or an Obsidian Vault. Enable Feishu only as an additional publication; local Markdown is always retained;
 4. In Settings, choose the model profile, note style, transcription options, and API key;
-5. Paste a video URL or upload a local / subtitle file;
-6. Preview and copy the result, use the explicit **Export Markdown** action, or choose SRT, HTML, JSON, plain text, or PNG under **More export formats**. Existing transcripts can be reused to write a new note without re-running transcription.
+5. Paste a video URL or upload a local / subtitle file. URL classification happens locally, and an existing transcript produces explicit open, reuse, and restart choices;
+6. Preview and copy the result, use the explicit **Export Markdown** action, or choose SRT, HTML, JSON, plain text, or PNG under **More export formats**. Web tasks stay available in searchable, paginated local history, and completed notes can be starred locally.
 
 ## 🔁 Processing pipeline
 
@@ -93,7 +96,7 @@ LLM-generated timestamped Markdown note → chosen directory / Obsidian Vault / 
 ## 🌍 Supported inputs and compatibility boundaries
 
 - **Focused support**: Bilibili, Douyin, YouTube, and local media use the subtitle-first, local-ASR-fallback pipeline, with targeted regression tests and actionable errors.
-- **Generic compatibility**: other `http` / `https` video URLs the installed `yt-dlp` can parse are handled on a best-effort basis, without platform-specific guarantees.
+- **Generic compatibility**: TikTok, Xiaohongshu, and other `http` / `https` video URLs the installed `yt-dlp` can parse are handled on a best-effort basis, without platform-specific guarantees. The beta.3 badge is offline URL classification, not a live availability check.
 - **Pending adaptation**: platforms without dedicated adaptation (such as iQiyi or Tencent Video) depend on access permissions, caption availability, and `yt-dlp` behavior.
 - The project does not bypass payment, login, verification, membership, or region restrictions; platform interface changes can temporarily break parsing.
 
@@ -280,7 +283,7 @@ Publicly accessible videos normally do not need one. Some visible Chinese AI cap
 
 ### What happens to tasks after restarting the service?
 
-Video2Knowledge restores recent tasks from `workspace/<task-id>/task.json`. Completed tasks remain available for preview and download, and uploaded tasks that have not started can be submitted again. A task that was running during restart is marked failed because external downloads, ASR, and LLM requests cannot continue across processes; already generated captions, transcripts, and audio can still be reused on a later submission.
+Video2Knowledge queries complete local history from `workspace/<task-id>/task.json` while preloading only the newest batch; an older note body is read only when that item is opened. Completed tasks remain available for preview and download, and uploaded tasks that have not started can be submitted again. A task that was running during restart is marked failed because external downloads, ASR, and LLM requests cannot continue across processes; already generated captions, transcripts, and audio can still be reused on a later submission.
 
 ### Why can a particular URL not be processed?
 

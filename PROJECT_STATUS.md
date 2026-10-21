@@ -1,16 +1,18 @@
 # Project Status
 
-Updated: 2026-10-21
+Updated: 2026-10-22
 
 ## Current stage
 
-`Video2Knowledge v1.0.0-beta.2 published and remotely re-verified`
+`Video2Knowledge v1.0.0-beta.3 implemented locally; release acceptance in progress`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
 The product is now branded **Video2Knowledge** with an independent version line starting at `1.0.0-beta.1` (driven solely by `product_info.py`), an original script-generated logo, and a redesigned Knowledge Studio workspace per `DESIGN.md`. Local UI automation, visual acceptance, Windows candidate acceptance, remote publication, asset read-back and downloaded-release offline ASR have passed.
 
 The beta.2 release adds two safe built-in templates (Knowledge Essentials and Study Lecture), surfaces all built-in and custom templates in the main workflow, makes default/custom/Obsidian Markdown destinations explicit, keeps Feishu as an optional additional publication, and gives every result format an explicit export label. Existing request fields, task manifests, one-video-to-one-Markdown behavior, saved custom templates, Obsidian handling and Feishu publication logic remain compatible. The local candidate, published assets and downloaded Release executable have all passed the acceptance recorded below.
+
+The beta.3 implementation now adds deterministic synthetic template previews, manifest-backed history search/filter/pagination, lazy opening of older tasks, local favorites for completed notes, and offline URL support/reuse guidance. The first complete regression passed with `712 passed, 3 skipped`; visual, packaged, release, and downloaded-asset gates are still pending and must not be inferred from that result.
 
 The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
@@ -38,7 +40,7 @@ Current code and tests show that the upstream-derived implementation already pro
 The successor customizations now provide:
 
 - dedicated output to a selected normal directory or Obsidian Vault, covered by automated tests.
-- four immutable built-in note templates and backend-managed custom templates;
+- six immutable built-in note templates and backend-managed custom templates;
 - safe single-pass Markdown layouts with immutable task snapshots and deterministic YAML Frontmatter;
 - template-aware short and long summarization without a second full-document LLM pass;
 - frontend template loading, creation, editing, cloning, deletion, and note-mode visibility behavior.
@@ -132,7 +134,17 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync and first Windows successor prerelease validation are complete. The brand-migration direction listed below has since been decided and implemented locally (see "Implemented independent brand and Knowledge Studio UI milestone"); remaining product directions still require separate decisions: proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, and new platform or Feishu extensions.
+The beta.3 candidate is the active milestone. Remaining gates are visual/accessibility acceptance, Windows packaging, cached-model offline ASR, exact remote publication, downloaded-asset revalidation, and a post-release evidence commit. Separate future product decisions remain proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, and new platform or Feishu extensions.
+
+## Implemented beta.3 history and template preview milestone
+
+- `/api/note-templates` adds a read-only `preview_markdown` to the existing template payload. Six built-ins use distinct fixed Chinese examples; custom templates use one fixed synthetic body through the existing one-pass layout renderer. The path does not call the summarizer, read user notes, create tasks, or persist preview data.
+- `GET /api/tasks` keeps the existing `tasks` field and adds compact manifest-backed search, status/output/platform/favorite filters, offset/limit pagination and `total`/`has_more`. Startup still preloads only `TASK_HISTORY_LIMIT`; opening an older item restores exactly that task and reads its Markdown only then.
+- `PATCH /api/task/{task_id}/favorite` atomically stores one optional boolean in `task.json` and accepts only completed note tasks. It does not rewrite the note, transcript, template snapshot, or task status. Favorites are local metadata and are unrelated to platform-account collections.
+- `POST /api/source-inspect` validates/classifies the URL host and reuses the existing transcript lookup. It performs no external request, cookie read, media/model download, ASR, or login. Bilibili, Douyin, and YouTube are shown as focused; TikTok, Xiaohongshu, and all other URLs remain generic compatibility only.
+- Frontend behavior: template cards update a rendered/Markdown preview; history is always visible with filters, load-more and accessible star controls; pasted links show non-blocking support and reuse/restart actions after a cancellable debounce. Existing task submission, polling, download, Obsidian, Feishu, and one-video-to-one-Markdown behavior remain in place.
+- Current automated evidence: focused backend/frontend/template suite `264 passed, 1 skipped`; first complete suite `712 passed, 3 skipped`; both JavaScript syntax checks and `git diff --check` passed. The three skips remain the existing Windows link/reparse permission cases. Build and release evidence is pending.
+- Visual evidence: the real page passed 1440×900 system-theme, 1024×768 light-theme, and 390×844 dark-theme capture checks with `scrollWidth == clientWidth`. The mobile template row scrolls inside its component, history filters form two columns, and visible focus/keyboard contracts remain covered by frontend tests. README home/history/template-preview images use only synthetic titles and an isolated empty workspace.
 
 ## Implemented beta.2 template and export discoverability milestone
 

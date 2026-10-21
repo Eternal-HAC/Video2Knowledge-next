@@ -24,6 +24,18 @@ This file holds only the active gap-verification queue. For every item: close it
    - Unicode UTF-8 output, Chinese filenames, and Unicode custom destination paths are covered.
    - Closed by deterministic YAML Frontmatter that omits unavailable values and safely escapes YAML-sensitive Unicode code points.
 
+## Active release task
+
+- [ ] `v1.0.0-beta.3` history and template preview release:
+  1. [x] Add deterministic previews for six built-ins and custom layouts without an LLM call or user-note read.
+  2. [x] Upgrade local history with manifest-backed search, filters, pagination, lazy task opening, and completed-note favorites.
+  3. [x] Add offline URL platform labels and reusable-transcript hints without network, cookies, download, or ASR.
+  4. [x] Focused tests and the first complete regression passed with `712 passed, 3 skipped`; no skip was added.
+  5. [x] Finish 1440/1024/390 system/light/dark and keyboard-contract acceptance; regenerate synthetic home, history, and template-preview screenshots without page-level horizontal scrolling.
+  6. [ ] Build and inspect `Video2Knowledge-1.0.0-beta.3-portable.exe`; pass isolated packaged history/favorite/source inspection and cached-Whisper `small` ASR smoke.
+  7. [ ] Push `main`, publish the annotated tag and Pre-release, verify the downloaded assets and rerun packaged smoke checks.
+  8. [ ] Record remote evidence in a post-release documentation commit without moving the release tag.
+
 ## Later roadmap
 
 1. [x] Optional age-based cleanup of failed/cancelled-task media: implemented locally.

@@ -43,8 +43,8 @@ const OUTPUT_DIR = process.env.V2K_CAPTURE_OUTPUT_DIR
 
 const SHOTS = [
     { name: 'home', file: path.join(OUTPUT_DIR, 'knowledge-studio-home.png') },
-    { name: 'progress', file: path.join(OUTPUT_DIR, 'knowledge-studio-progress.png') },
-    { name: 'result', file: path.join(OUTPUT_DIR, 'knowledge-studio-result.png') },
+    { name: 'history', file: path.join(OUTPUT_DIR, 'knowledge-studio-history.png') },
+    { name: 'template', file: path.join(OUTPUT_DIR, 'knowledge-studio-template-preview.png') },
 ];
 
 // ---------------------------------------------------------------------------
@@ -186,115 +186,59 @@ const PAGE_PREPARE_JS = `
     return true;
 })()`;
 
-// progress：显示进度区，合成标题/进度/状态/步骤/日志，全部无隐私文字。
-const PROGRESS_STATE_JS = `
+// history：使用页面自己的历史渲染函数合成任务摘要，不读取本机真实任务。
+const HISTORY_STATE_JS = `
 (() => {
     const byId = (id) => document.getElementById(id);
     const recent = byId('recentTasksPanel');
-    if (recent) recent.hidden = true;
+    if (recent) recent.hidden = false;
     const source = document.querySelector('.source-panel');
     if (source) source.hidden = true;
+    byId('progressArea').hidden = true;
     byId('resultArea').hidden = true;
-    const area = byId('progressArea');
-    area.hidden = false;
-    area.classList.add('llm-active');
-
-    byId('progressTitle').textContent = '处理进度 · 示例课程：从视频到知识卡片';
-
-    const state = byId('taskState');
-    state.className = 'status-badge processing';
-    state.textContent = '正在整理笔记';
-
-    byId('elapsedTime').textContent = '03:42';
-    byId('progressFill').style.width = '68%';
-    byId('progressPercent').textContent = '68%';
-    document.querySelector('[role="progressbar"]').setAttribute('aria-valuenow', '68');
-
-    const activeStep = 6;
-    document.querySelectorAll('.progress-steps .step').forEach((step, index) => {
-        const number = index + 1;
-        step.classList.toggle('completed', number < activeStep);
-        step.classList.toggle('active', number === activeStep);
-    });
-
-    const cancel = byId('cancelTaskBtn');
-    cancel.hidden = false;
-    cancel.disabled = false;
-
-    byId('networkState').textContent = '正在等待模型返回';
-    byId('taskLogDetails').open = true;
-    const logArea = byId('logArea');
-    logArea.replaceChildren();
-    [
-        ['info', '已读取视频信息：示例课程：从视频到知识卡片（时长 12:08）'],
-        ['success', '已获取平台字幕，跳过本地语音转写'],
-        ['info', '已提取 12 张关键画面截图'],
-        ['info', '正在调用模型整理笔记（第 2/3 段）…'],
-    ].forEach(([type, message]) => {
-        const entry = document.createElement('div');
-        entry.className = 'log-entry ' + type;
-        entry.textContent = message;
-        logArea.appendChild(entry);
-    });
+    byId('historyEmpty').hidden = true;
+    byId('historyLoadMoreBtn').hidden = false;
+    renderRecentTasks([
+        { task_id: 'demo-1', title: '如何建立可复用的个人知识系统', status: 'completed',
+          output: 'note', platform: 'youtube', template_name: '学习讲义', favorite: true,
+          created_at: '2026-10-22T08:10:00+08:00', finished_at: '2026-10-22T08:14:20+08:00', elapsed_seconds: 260 },
+        { task_id: 'demo-2', title: '产品访谈：从用户问题到行动项', status: 'completed',
+          output: 'note', platform: 'bilibili', template_name: '访谈 / 观点分析', favorite: false,
+          created_at: '2026-10-22T07:30:00+08:00', finished_at: '2026-10-22T07:33:05+08:00', elapsed_seconds: 185 },
+        { task_id: 'demo-3', title: '本地课程录音转录稿', status: 'completed',
+          output: 'transcript', platform: 'local', template_name: '', favorite: false,
+          created_at: '2026-10-21T21:00:00+08:00', finished_at: '2026-10-21T21:08:40+08:00', elapsed_seconds: 520 },
+        { task_id: 'demo-4', title: '短视频运营复盘', status: 'failed',
+          output: 'note', platform: 'douyin', template_name: '知识精华', favorite: false,
+          created_at: '2026-10-21T20:10:00+08:00', finished_at: '2026-10-21T20:10:45+08:00', elapsed_seconds: 45 },
+    ]);
 
     window.scrollTo(0, 0);
     return true;
 })()`;
 
-// result：显示结果区，用页面自带的 renderMarkdown（marked + DOMPurify）渲染合成 Markdown。
-const RESULT_STATE_JS = `
+// template：选择“学习讲义”并展示确定性预览；隐藏其余任务区，避免私人数据进入截图。
+const TEMPLATE_STATE_JS = `
 (() => {
     const byId = (id) => document.getElementById(id);
     const recent = byId('recentTasksPanel');
     if (recent) recent.hidden = true;
     const source = document.querySelector('.source-panel');
-    if (source) source.hidden = true;
+    if (source) source.hidden = false;
     byId('progressArea').hidden = true;
-
-    const markdown = [
-        '# 示例课程：从视频到知识卡片',
-        '',
-        '## 摘要',
-        '',
-        '这节示例课程演示如何把一段教学视频拆解为结构化笔记：先抓住核心概念，',
-        '再沿着时间轴定位关键片段，最后落到可执行的行动清单。以下内容为演示数据。',
-        '',
-        '## 三个要点',
-        '',
-        '1. **概念先行**：先用一句话说清本节要解决的问题，再展开细节。',
-        '2. **示例驱动**：每个抽象概念都配一个具体例子，方便对照理解。',
-        '3. **可复用产出**：把结论沉淀为清单与模板，下一次直接套用。',
-        '',
-        '## 时间轴',
-        '',
-        '| 时间 | 内容 |',
-        '| --- | --- |',
-        '| 00:00 | 开场与课程目标 |',
-        '| 02:15 | 核心概念：知识卡片的结构 |',
-        '| 05:40 | 示例：从一段视频到三张卡片 |',
-        '| 09:20 | 常见误区与修正 |',
-        '| 11:30 | 总结与延伸阅读 |',
-        '',
-        '## 行动清单',
-        '',
-        '- [ ] 用自己的话复述本节的三个要点',
-        '- [ ] 挑一段 5 分钟视频，按时间轴做一次拆解练习',
-        '- [ ] 把拆解结果整理成卡片并归档到笔记库',
-    ].join('\\n');
-
-    byId('resultArea').hidden = false;
-    byId('resultTitle').textContent = '视频笔记 · 示例课程：从视频到知识卡片';
-    byId('markdownContent').innerHTML =
-        (typeof renderMarkdown === 'function')
-            ? renderMarkdown(markdown)
-            : '<pre></pre>';
-    if (typeof renderMarkdown !== 'function') {
-        byId('markdownContent').querySelector('pre').textContent = markdown;
-    }
-    byId('outputNotice').hidden = true;
-    byId('regenerateBtn').disabled = false;
-    byId('copyNoteBtn').disabled = false;
-    byId('downloadMdBtn').disabled = false;
+    byId('resultArea').hidden = true;
+    byId('destinationChooserSection').hidden = true;
+    document.querySelector('.source-controls').hidden = true;
+    byId('sourceInspectPanel').hidden = true;
+    byId('planSummary').hidden = true;
+    byId('exportHint').hidden = true;
+    byId('localImportHint').hidden = true;
+    document.querySelector('.source-meta').hidden = true;
+    const select = byId('noteTemplate');
+    select.value = 'builtin-study-lecture';
+    updateNoteTemplateDetails();
+    renderNoteTemplateCards();
+    setTemplatePreviewMode('rendered');
 
     window.scrollTo(0, 0);
     return true;
@@ -449,7 +393,7 @@ async function main() {
         // 等待应用完成初始化：脚本就绪标记 + 版本号回写 + 字体就绪。
         await waitFor(cdp, 'window.__videoToNoReady === true');
         await waitFor(cdp,
-            "document.getElementById('appVersion')?.textContent === 'v1.0.0-beta.2'",
+            "document.getElementById('appVersion')?.textContent === 'v1.0.0-beta.3'",
             { timeoutMs: 10000 });
         await waitFor(cdp,
             "document.querySelectorAll('#templateCards .template-card').length >= 6",
@@ -476,19 +420,32 @@ async function main() {
         console.log(`[shots] home -> ${path.relative(REPO_ROOT, home.file)}`
             + ` (${home.width}x${home.height}, ${home.bytes} bytes)`);
 
-        // 2) progress：合成进度状态
-        await evaluate(cdp, PROGRESS_STATE_JS);
+        // 2) history：合成历史与收藏状态
+        // 初始化阶段的真实空历史请求是异步的；先让它落定，再写入合成行，避免回包覆盖。
+        await sleep(1200);
+        await evaluate(cdp, HISTORY_STATE_JS);
         await sleep(300);
-        const progress = await capture(cdp, SHOTS[1].file);
-        console.log(`[shots] progress -> ${path.relative(REPO_ROOT, progress.file)}`
-            + ` (${progress.width}x${progress.height}, ${progress.bytes} bytes)`);
+        const history = await capture(cdp, SHOTS[1].file);
+        console.log(`[shots] history -> ${path.relative(REPO_ROOT, history.file)}`
+            + ` (${history.width}x${history.height}, ${history.bytes} bytes)`);
 
-        // 3) result：合成 Markdown 渲染结果（整页截图，覆盖标题→行动清单）
-        await evaluate(cdp, RESULT_STATE_JS);
+        // 3) template：展示确定性模板预览
+        const reloaded = cdp.waitEvent('Page.loadEventFired', 45000);
+        await cdp.send('Page.reload', { ignoreCache: true });
+        await reloaded;
+        await waitFor(cdp, 'window.__videoToNoReady === true');
+        await waitFor(cdp,
+            "document.querySelectorAll('#templateCards .template-card').length >= 6",
+            { timeoutMs: 10000 });
+        if (CAPTURE_THEME) {
+            await evaluate(cdp,
+                `document.documentElement.dataset.theme = ${JSON.stringify(CAPTURE_THEME)}; true`);
+        }
+        await evaluate(cdp, TEMPLATE_STATE_JS);
         await sleep(400);
-        const result = await capture(cdp, SHOTS[2].file, { fullPage: true });
-        console.log(`[shots] result -> ${path.relative(REPO_ROOT, result.file)}`
-            + ` (${result.width}x${result.height}, ${result.bytes} bytes)`);
+        const template = await capture(cdp, SHOTS[2].file);
+        console.log(`[shots] template -> ${path.relative(REPO_ROOT, template.file)}`
+            + ` (${template.width}x${template.height}, ${template.bytes} bytes)`);
 
         console.log('[shots] 三张截图已生成');
     } finally {

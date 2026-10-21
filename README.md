@@ -1,7 +1,7 @@
 <p align="center">
   <img src="sources/icon.png" width="96" alt="Video2Knowledge 图标">
 </p>
-<h1 align="center">Video2Knowledge v1.0.0-beta.2</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.3</h1>
 
 <p align="center"><em>本机知识工作台：把视频沉淀为可回看的 Markdown 笔记</em></p>
 
@@ -13,7 +13,7 @@
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.2）</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.3）</strong></a></p>
 
 ## 产品定位
 
@@ -31,13 +31,13 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 <p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio 工作台首页：模板、保存位置、来源与任务提交" width="100%"></p>
 
-### 处理进度
+### 历史记录与收藏
 
-<p align="center"><img src="sources/knowledge-studio-progress.png" alt="Video2Knowledge 任务处理进度与运行记录" width="100%"></p>
+<p align="center"><img src="sources/knowledge-studio-history.png" alt="Video2Knowledge 本地历史记录、筛选与笔记收藏" width="100%"></p>
 
-### 笔记结果
+### 笔记模板预览
 
-<p align="center"><img src="sources/knowledge-studio-result.png" alt="Video2Knowledge 生成的 Markdown 笔记结果区" width="100%"></p>
+<p align="center"><img src="sources/knowledge-studio-template-preview.png" alt="Video2Knowledge 学习讲义模板的确定性成品预览" width="100%"></p>
 
 ## ✨ 主要功能
 
@@ -47,15 +47,18 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 - 🧾 **真实时间轴**：保留字幕或 Whisper 分段的起止时间，不让模型凭空猜时间点；任一任务的转录都可导出标准 SubRip `.srt`。
 - 🧠 **长内容整理**：短转录直接生成，长转录自动分块、归并并控制上下文压力；生成后会核对是否写到材料结尾，小缺口自动补写。
 - 📝 **笔记模板与目的地**：首屏可选六套内置只读模板或自定义模板；本地 Markdown 始终保存到默认目录、自定义目录或 Obsidian Vault，飞书作为可选的附加发布。
+- 👁️ **无需调用模型的模板预览**：选择模板即可查看固定合成内容的成品与 Markdown 示例；预览不产生费用，也不读取已有笔记。
+- 🗂️ **本地历史与收藏**：按标题、状态、产物和平台筛选任务，分页查看全部本地清单；已完成笔记可加本地星标，旧任务只在打开时读取正文。
+- 🔎 **平台与复用提示**：粘贴链接后在本机识别平台并提示支持等级；发现已有转录时可打开历史、复用转录或重新处理，不会自动提交。
 - 🖼️ **多格式输出**：结果区直接提供 Markdown 导出，并可切换 SRT、HTML、JSON、纯文本和 PNG；可选提取视频截图作为附件。
 - 🤖 **给 agent 留了原料出口**：接入的 agent 只要「带时间轴转录」，可以不走大模型、不需要给本机配 API Key，笔记风格由 agent 自己定。
 - 🛡️ **本地优先**：媒体下载、转录和文件生成在本机完成；服务默认只监听 `127.0.0.1`。
 
 ## 🚀 安装（Windows 便携版）
 
-> **发布状态**：`v1.0.0-beta.2` 聚焦模板、保存位置与导出的可发现性。Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准，详细验收证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+> **发布状态**：`v1.0.0-beta.3` 聚焦模板预览、本地历史与收藏、平台识别和转录复用提示。Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准，详细验收证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
-普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2) 下载 `Video2Knowledge-1.0.0-beta.2-portable.exe`：
+普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3) 下载 `Video2Knowledge-1.0.0-beta.3-portable.exe`：
 
 1. 下载并双击 exe；
 2. 等待浏览器自动打开本地页面；
@@ -69,11 +72,11 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 启动后按页面提示完成以下操作即可：
 
 1. 选输出类型：**生成笔记**（要配 API Key）或 **仅转录字幕**（全程不调用大模型、**不需要 API Key**，模板与笔记目的地会自动收起）；
-2. 生成笔记时在首屏选择六个内置模板之一，或选择已经创建的自定义模板；
+2. 生成笔记时在首屏选择六个内置模板之一，或选择已经创建的自定义模板；下方可切换成品预览与 Markdown 示例；
 3. 选择默认 Markdown、自定义目录或 Obsidian Vault；需要时再开启「同时发布到飞书」，本地 Markdown 始终保留；
 4. 在设置中选择模型档案、笔记风格和转录参数并填写 API Key；
-5. 粘贴视频链接，或切换为本地文件 / 字幕文件上传；
-6. 生成完成后预览、复制或使用明确的「导出 Markdown」按钮；“更多导出格式”可切换 SRT、HTML、JSON、纯文本和 PNG。字幕稿会留在「最近任务」里，也可以基于已有转录重新生成笔记。
+5. 粘贴视频链接，或切换为本地文件 / 字幕文件上传；链接会在本机显示平台支持等级，发现已有转录时可明确选择打开、复用或重做；
+6. 生成完成后预览、复制或使用明确的「导出 Markdown」按钮；“更多导出格式”可切换 SRT、HTML、JSON、纯文本和 PNG。所有网页端任务会进入可筛选、分页的「历史记录」，已完成笔记可添加本地收藏。
 
 ## 🔁 处理流程
 
@@ -92,7 +95,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 ## 🌍 支持范围与兼容边界
 
 - **重点支持**：B 站、抖音、YouTube 和本地媒体，走字幕优先、本地 ASR 兜底的链路，并有针对性的回归测试与可操作报错。
-- **通用兼容**：其他当前版本 `yt-dlp` 能解析的 `http` / `https` 视频链接按通用链路尽力处理，不做平台级保证。
+- **通用兼容**：TikTok、小红书和其他当前版本 `yt-dlp` 能解析的 `http` / `https` 视频链接按通用链路尽力处理，不做平台级保证；Beta.3 的平台徽标只做离线 URL 识别，不代表链接已联网验证。
 - **待适配**：爱奇艺、腾讯视频等未做专门适配的平台，能否处理取决于平台访问权限、字幕可见性和 `yt-dlp` 的解析能力。
 - 项目不绕过付费、登录、验证、会员或地区限制；平台接口变化可能导致解析暂时失效。
 
@@ -277,7 +280,7 @@ agent 会调用技能附带的 `scripts/video_note.py`，自动探测服务端�
 
 ### 重启服务后任务会怎样？
 
-Video2Knowledge 会从 `workspace/<task-id>/task.json` 恢复最近任务。已完成任务可继续预览和下载；上传后尚未开始的任务可重新提交。重启时仍在运行的任务会标记为失败，因为外部下载、ASR 或大模型请求无法跨进程续跑；已经生成的字幕、转录和音频仍可在重新提交时复用。
+Video2Knowledge 会从 `workspace/<task-id>/task.json` 查询完整本地历史，并只预加载最近一批任务；打开更早的记录时才按需读取对应正文。已完成任务可继续预览和下载；上传后尚未开始的任务可重新提交。重启时仍在运行的任务会标记为失败，因为外部下载、ASR 或大模型请求无法跨进程续跑；已经生成的字幕、转录和音频仍可在重新提交时复用。
 
 ### 为什么某个链接无法处理？
 
