@@ -4,7 +4,7 @@ Updated: 2026-10-22
 
 ## Current stage
 
-`Video2Knowledge v1.0.0-beta.3 implemented locally; release acceptance in progress`
+`Video2Knowledge v1.0.0-beta.3 released and remotely re-verified`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
@@ -12,7 +12,7 @@ The product is now branded **Video2Knowledge** with an independent version line 
 
 The beta.2 release adds two safe built-in templates (Knowledge Essentials and Study Lecture), surfaces all built-in and custom templates in the main workflow, makes default/custom/Obsidian Markdown destinations explicit, keeps Feishu as an optional additional publication, and gives every result format an explicit export label. Existing request fields, task manifests, one-video-to-one-Markdown behavior, saved custom templates, Obsidian handling and Feishu publication logic remain compatible. The local candidate, published assets and downloaded Release executable have all passed the acceptance recorded below.
 
-The beta.3 implementation now adds deterministic synthetic template previews, manifest-backed history search/filter/pagination, lazy opening of older tasks, local favorites for completed notes, and offline URL support/reuse guidance. The first complete regression passed with `712 passed, 3 skipped`; visual, packaged, release, and downloaded-asset gates are still pending and must not be inferred from that result.
+The beta.3 release adds deterministic synthetic template previews, manifest-backed history search/filter/pagination, lazy opening of older tasks, local favorites for completed notes, and offline URL support/reuse guidance. The final complete regression passed with `713 passed, 3 skipped`; visual, packaged, release, digest and downloaded-asset smoke gates all passed.
 
 The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
@@ -134,7 +134,7 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 
 ## Next milestone
 
-The beta.3 candidate is the active milestone. Remaining gates are visual/accessibility acceptance, Windows packaging, cached-model offline ASR, exact remote publication, downloaded-asset revalidation, and a post-release evidence commit. Separate future product decisions remain proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, and new platform or Feishu extensions.
+Beta.3 is closed. The next milestone is not selected automatically. Candidate product decisions remain proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, and new platform or Feishu extensions; each requires a separate scoped plan and acceptance contract.
 
 ## Implemented beta.3 history and template preview milestone
 
@@ -146,7 +146,9 @@ The beta.3 candidate is the active milestone. Remaining gates are visual/accessi
 - Final local automated evidence: focused backend/frontend/template suite `264 passed, 1 skipped`; complete suite `713 passed, 3 skipped`; both JavaScript syntax checks, the PowerShell smoke-script parse, `pip check`, and `git diff --check` passed. The three skips remain the existing Windows link/reparse permission cases.
 - Visual evidence: the real page passed 1440×900 system-theme, 1024×768 light-theme, and 390×844 dark-theme capture checks with `scrollWidth == clientWidth`. The mobile template row scrolls inside its component, history filters form two columns, and visible focus/keyboard contracts remain covered by frontend tests. README home/history/template-preview images use only synthetic titles and an isolated empty workspace.
 - Final local Windows candidate: `Video2Knowledge-1.0.0-beta.3-portable.exe`, 133,204,719 bytes, SHA-256 `835ff8b06168f973537f99fa311c5c5e029ec82f08b88a0d05a9369393c3f3cc`. Windows VersionInfo reports ProductName `Video2Knowledge`, FileVersion `1.0.0.0`, and ProductVersion `1.0.0-beta.3`; `SHA256SUMS.txt` matches the candidate.
-- Packaged Beta.3 smoke used an isolated synthetic workspace and restarted the exact candidate process: all six previews were non-empty; history pagination returned two compact manifests; one completed-note favorite persisted across restart; the old task was lazily restored; offline YouTube classification found the seeded reusable transcript. A separate cached Whisper `small`/CPU/SAPI smoke completed through the frozen ASR child with 3 Chinese segments plus JSON, Markdown, SRT and a central transcript archive. No media/model download, LLM call, platform login, Cookie read, or Feishu write occurred. Remote publication and downloaded-asset evidence remain pending.
+- Packaged Beta.3 smoke used an isolated synthetic workspace and restarted the exact candidate process: all six previews were non-empty; history pagination returned two compact manifests; one completed-note favorite persisted across restart; the old task was lazily restored; offline YouTube classification found the seeded reusable transcript. A separate cached Whisper `small`/CPU/SAPI smoke completed through the frozen ASR child with 3 Chinese segments plus JSON, Markdown, SRT and a central transcript archive. No media/model download, LLM call, platform login, Cookie read, or Feishu write occurred.
+- Release commit `dcfedcb18a5b7088a1302070378e2a4efc371ed4` is the target of the dereferenced annotated tag `v1.0.0-beta.3`. The tag event produced no GitHub Actions run, so the approved manual fallback published the already accepted local assets without rebuilding. The resulting GitHub Release is a non-draft Pre-release.
+- GitHub reports `Video2Knowledge-1.0.0-beta.3-portable.exe` as 133,204,719 bytes with digest `sha256:835ff8b06168f973537f99fa311c5c5e029ec82f08b88a0d05a9369393c3f3cc`; `SHA256SUMS.txt` has digest `sha256:47140f7a147d70d1df3d4bd6c75843cdc6c3a1401bea709d02dccdc8889f828f`. Freshly downloaded assets matched both GitHub digests and the checksum file, then passed the packaged Beta.3 history/favorite/source smoke and the cached-Whisper `small` offline ASR smoke again.
 
 ## Implemented beta.2 template and export discoverability milestone
 
