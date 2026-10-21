@@ -29,13 +29,22 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const VIEWPORT = { width: 1440, height: 900 };
+const VIEWPORT = {
+    width: Number(process.env.V2K_CAPTURE_WIDTH) || 1440,
+    height: Number(process.env.V2K_CAPTURE_HEIGHT) || 900,
+};
 const DEFAULT_URL = 'http://127.0.0.1:8000/';
+const CAPTURE_THEME = ['light', 'dark'].includes(process.env.V2K_CAPTURE_THEME)
+    ? process.env.V2K_CAPTURE_THEME
+    : null;
+const OUTPUT_DIR = process.env.V2K_CAPTURE_OUTPUT_DIR
+    ? path.resolve(process.env.V2K_CAPTURE_OUTPUT_DIR)
+    : path.join(REPO_ROOT, 'sources');
 
 const SHOTS = [
-    { name: 'home', file: path.join(REPO_ROOT, 'sources', 'knowledge-studio-home.png') },
-    { name: 'progress', file: path.join(REPO_ROOT, 'sources', 'knowledge-studio-progress.png') },
-    { name: 'result', file: path.join(REPO_ROOT, 'sources', 'knowledge-studio-result.png') },
+    { name: 'home', file: path.join(OUTPUT_DIR, 'knowledge-studio-home.png') },
+    { name: 'progress', file: path.join(OUTPUT_DIR, 'knowledge-studio-progress.png') },
+    { name: 'result', file: path.join(OUTPUT_DIR, 'knowledge-studio-result.png') },
 ];
 
 // ---------------------------------------------------------------------------
@@ -183,6 +192,8 @@ const PROGRESS_STATE_JS = `
     const byId = (id) => document.getElementById(id);
     const recent = byId('recentTasksPanel');
     if (recent) recent.hidden = true;
+    const source = document.querySelector('.source-panel');
+    if (source) source.hidden = true;
     byId('resultArea').hidden = true;
     const area = byId('progressArea');
     area.hidden = false;
@@ -236,6 +247,8 @@ const RESULT_STATE_JS = `
     const byId = (id) => document.getElementById(id);
     const recent = byId('recentTasksPanel');
     if (recent) recent.hidden = true;
+    const source = document.querySelector('.source-panel');
+    if (source) source.hidden = true;
     byId('progressArea').hidden = true;
 
     const markdown = [
@@ -388,6 +401,7 @@ async function main() {
     let cdp = null;
 
     try {
+        fs.mkdirSync(OUTPUT_DIR, { recursive: true });
         console.log(`[shots] Chrome: ${chromePath}`);
         console.log(`[shots] 目标页面: ${url}`);
         proc = spawn(chromePath, [
@@ -435,11 +449,25 @@ async function main() {
         // 等待应用完成初始化：脚本就绪标记 + 版本号回写 + 字体就绪。
         await waitFor(cdp, 'window.__videoToNoReady === true');
         await waitFor(cdp,
-            "document.getElementById('appVersion').textContent !== 'v1.0.0-beta.1'"
-            + " || !document.getElementById('appVersion')",
-            { timeoutMs: 10000 }).catch(() => {});
+            "document.getElementById('appVersion')?.textContent === 'v1.0.0-beta.2'",
+            { timeoutMs: 10000 });
+        await waitFor(cdp,
+            "document.querySelectorAll('#templateCards .template-card').length >= 6",
+            { timeoutMs: 10000 });
+        if (CAPTURE_THEME) {
+            await evaluate(cdp,
+                `document.documentElement.dataset.theme = ${JSON.stringify(CAPTURE_THEME)}; true`);
+        }
         await evaluate(cdp, 'document.fonts && document.fonts.ready.then(() => true)');
         await sleep(400);
+        const layout = await evaluate(cdp, `({
+            clientWidth: document.documentElement.clientWidth,
+            scrollWidth: document.documentElement.scrollWidth
+        })`);
+        if (layout.scrollWidth > layout.clientWidth) {
+            throw new Error(`页面发生整体横向滚动: ${layout.scrollWidth} > ${layout.clientWidth}`);
+        }
+        console.log(`[shots] 页面宽度检查通过: ${layout.scrollWidth}/${layout.clientWidth}`);
 
         // 1) home：干净初始页面
         await evaluate(cdp, PAGE_PREPARE_JS);

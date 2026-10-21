@@ -882,6 +882,31 @@ assert.equal(cards.children[1].getAttribute('aria-checked'), 'true');
 """)
 
 
+def test_transcript_mode_hides_note_workflow_and_updates_export_hint() -> None:
+    _run_script_with_dom_stub(r"""
+prefs = defaultPrefs();
+const note = __el('modeNote');
+const transcript = __el('modeTranscript');
+note.value = 'note';
+note.checked = true;
+transcript.value = 'transcript';
+document.querySelector = (selector) =>
+    selector === 'input[name="outputMode"]:checked'
+        ? (transcript.checked ? transcript : note)
+        : null;
+const workflow = __el('noteWorkflowOptions');
+const hint = __el('exportHint');
+applyOutputMode();
+assert.equal(workflow.hidden, false);
+assert.ok(hint.textContent.includes('Markdown'));
+note.checked = false;
+transcript.checked = true;
+applyOutputMode();
+assert.equal(workflow.hidden, true);
+assert.ok(hint.textContent.includes('SRT'));
+""")
+
+
 def test_task_log_details_collapsed_by_default_open_on_failure_recollapse_on_new_task() -> None:
     """运行记录合同（DESIGN.md「Interaction states」）：默认折叠；任务失败自动展开；
     新任务开始（resetTaskView 是提交/重开任务的公共入口）回到折叠。"""

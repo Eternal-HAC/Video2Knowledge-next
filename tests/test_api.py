@@ -126,7 +126,7 @@ def test_health_and_frontend_are_served() -> None:
     client = TestClient(main.app)
     health = client.get("/api/health")
     assert health.status_code == 200
-    assert health.json()["version"] == "1.0.0-beta.1"
+    assert health.json()["version"] == "1.0.0-beta.2"
     assert health.json()["version"] == launcher.VERSION
     # 旧发现逻辑按 service 认服务；product/api_compat 是改名后新增的兼容契约
     assert health.json()["service"] == "VideoToNo"

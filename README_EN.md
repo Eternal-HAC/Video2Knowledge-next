@@ -2,7 +2,7 @@
   <img src="sources/icon.png" width="96" alt="Video2Knowledge icon">
 </p>
 
-<h1 align="center">Video2Knowledge v1.0.0-beta.1</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.2</h1>
 
 <p align="center"><em>A local knowledge studio: turn videos into Markdown notes you can revisit</em></p>
 
@@ -14,13 +14,13 @@ Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.1)</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.2)</strong></a></p>
 
 ## Product positioning
 
 Video2Knowledge is a **local-first knowledge studio**: give it a Bilibili, Douyin, YouTube link or a local media file; it prefers platform captions (including Bilibili AI captions), falls back to on-device transcription when none exist (paraformer is the fast default for Chinese, the Whisper family stays available), then has your chosen LLM write timestamped Markdown notes — or stops at a timestamped transcript without calling any LLM.
 
-It is neither a video downloader nor a general AI console: every download, transcription and file write happens on your machine, and the service listens on `127.0.0.1` by default. The interface answers only "what do you give it, which output, press start"; low-frequency settings live in a slide-out settings panel. The UI and brand design baseline is documented in [DESIGN.md](DESIGN.md).
+It is neither a video downloader nor a general AI console: every download, transcription and file write happens on your machine, and the service listens on `127.0.0.1` by default. Templates, destinations, sources and output type are visible in the main workflow; lower-frequency model and integration settings live in a slide-out panel. The UI and brand design baseline is documented in [DESIGN.md](DESIGN.md).
 
 > 🤖 **Agent Skill**: copy the `skills/video-to-note/` directory from this repo into your agent's skills directory (e.g. `~/.agents/skills/`) and coding agents like Claude Code or pi can generate video notes from a single sentence. See `SKILL.md` inside that directory.
 
@@ -30,7 +30,7 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 
 ### Studio home
 
-<p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio home: source input and task submission" width="100%"></p>
+<p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio home: templates, destinations, source, and task submission" width="100%"></p>
 
 ### Progress
 
@@ -47,16 +47,16 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 - 🎵 **Douyin single-link integration**: handles public share links directly and can retry after manual verification in an isolated local browser.
 - 🧾 **Real timestamps**: keeps segment start and end times from captions or Whisper instead of asking the model to invent them; any transcript exports as a standard SubRip `.srt`.
 - 🧠 **Long-transcript handling**: chunks, merges and reduces long material while keeping context pressure under control, and checks that the note reaches the end of the material.
-- 📝 **Templates and destinations**: four read-only built-in templates plus backend-stored custom templates; the finished Markdown can be written to a chosen directory or an Obsidian Vault, and optionally published as a native Feishu online document.
-- 🖼️ **Multiple exports**: Markdown, HTML, JSON, plain text, and PNG, with optional video screenshots as note attachments.
+- 📝 **Templates and destinations**: six read-only built-in templates and saved custom templates are selectable in the main workflow. Local Markdown always lands in the default folder, a custom directory, or an Obsidian Vault; Feishu is an optional additional publication.
+- 🖼️ **Discoverable exports**: the result panel leads with Export Markdown and visibly offers SRT, HTML, JSON, plain text, and PNG, with optional video screenshots as note attachments.
 - 🤖 **Raw material for agents**: a connected agent can stop at the timestamped transcript — no LLM call and no API key for this machine, and it writes the notes in its own structure and style.
 - 🛡️ **Local-first**: media downloads, transcription, and file generation happen locally; the service listens on `127.0.0.1` by default.
 
 ## 🚀 Install (Windows portable build)
 
-> **Release status**: `v1.0.0-beta.1` is the first prerelease on the independent version line. The local candidate has passed the full test suite, Windows EXE build, packaged offline-ASR, compatibility-environment, and SHA-256 gates. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for evidence.
+> **Release status**: `v1.0.0-beta.2` focuses on discoverable templates, destinations, and exports. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for acceptance evidence.
 
-No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.1-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1):
+No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.2-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2):
 
 1. Download and double-click the exe;
 2. Wait for the local page to open in your browser;
@@ -69,11 +69,12 @@ The portable build starts the local service and stays in the system tray. The fi
 
 After starting the app:
 
-1. Choose the output type: **Note** (needs an API key) or **Transcript only** (a timestamped transcript and nothing else — no LLM is called, **no API key needed**, and the note-style and reasoning settings collapse);
-2. For notes, pick a model profile and enter an API key: DeepSeek / OpenAI / GLM / Qwen / Kimi each remember their own model, and custom OpenAI-compatible endpoints can be saved as several named profiles — switching profiles never overwrites another one's settings;
-3. Choose a note style, reasoning effort, and Whisper model (with reasoning effort left at `auto`, detailed notes use a higher thinking tier and the task log prints the effective one);
-4. Paste a video URL or upload a local / subtitle file;
-5. Preview, copy, or download the result. A transcript stays in *Recent tasks* (tagged *Transcript*) for later review and download, and "Write notes from this transcript" switches it to the note route without re-running the transcription.
+1. Choose **Note** (needs an API key) or **Transcript only** (no LLM call and **no API key**; note templates and note destinations collapse automatically);
+2. For a note, choose one of the six built-in templates or a saved custom template in the main workflow;
+3. Choose the default Markdown folder, a custom directory, or an Obsidian Vault. Enable Feishu only as an additional publication; local Markdown is always retained;
+4. In Settings, choose the model profile, note style, transcription options, and API key;
+5. Paste a video URL or upload a local / subtitle file;
+6. Preview and copy the result, use the explicit **Export Markdown** action, or choose SRT, HTML, JSON, plain text, or PNG under **More export formats**. Existing transcripts can be reused to write a new note without re-running transcription.
 
 ## 🔁 Processing pipeline
 

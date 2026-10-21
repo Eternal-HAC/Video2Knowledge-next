@@ -4,11 +4,13 @@ Updated: 2026-10-21
 
 ## Current stage
 
-`Video2Knowledge v1.0.0-beta.1 published and accepted`
+`Video2Knowledge v1.0.0-beta.2 release candidate in local acceptance`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
 The product is now branded **Video2Knowledge** with an independent version line starting at `1.0.0-beta.1` (driven solely by `product_info.py`), an original script-generated logo, and a redesigned Knowledge Studio workspace per `DESIGN.md`. Local UI automation, visual acceptance, Windows candidate acceptance, remote publication, asset read-back and downloaded-release offline ASR have passed.
+
+The beta.2 local implementation adds two safe built-in templates (Knowledge Essentials and Study Lecture), surfaces all built-in and custom templates in the main workflow, makes default/custom/Obsidian Markdown destinations explicit, keeps Feishu as an optional additional publication, and gives every result format an explicit export label. Existing request fields, task manifests, one-video-to-one-Markdown behavior, saved custom templates, Obsidian handling and Feishu publication logic remain compatible. Release/build evidence below must be completed before beta.2 is called published.
 
 The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
@@ -131,6 +133,16 @@ One-off, approval-gated live checks (distinct from the automated suite; no perma
 ## Next milestone
 
 The native Feishu online-docx, subtitle-import/SRT-export, static-resource media-type, model context-window diagnosis, long-note resilience, packaged ASR worker, title/page-aware artifact naming, transcript-archive/completion-page, and LLM test-connection key-read slices are complete locally; none implies a permanent platform, player, or provider guarantee. The selective upstream reliability sync and first Windows successor prerelease validation are complete. The brand-migration direction listed below has since been decided and implemented locally (see "Implemented independent brand and Knowledge Studio UI milestone"); remaining product directions still require separate decisions: proxy/diagnostics policy (without automatic proxy bypass), headless agent operation, and new platform or Feishu extensions.
+
+## Implemented beta.2 template and export discoverability milestone
+
+- `/api/note-templates` now exposes six ordered, read-only built-ins. The two additions use the same safe `# {{title}}` + `{{content}}` layout, put section decisions in the existing summarizer instruction, snapshot into tasks, and do not add another LLM call.
+- The main page renders all built-in and custom templates as keyboard-operable cards synchronized with the existing template select/editor. Loading and failure stay explicit, and a failed template load still blocks note submission.
+- Local output is a three-way choice: default `workspace/notes`, a preserved custom absolute path, or a detected Obsidian Vault plus subfolder. Old preferences with a non-empty `note_destination` migrate to `custom`; switching to default does not erase the saved path. Feishu remains off by default and local Markdown remains the primary artifact.
+- The result action is labelled `Export Markdown` by default and follows the selected SRT/HTML/JSON/plain-text/PNG format. The request schema and backend export endpoints are unchanged.
+- Automated gate: `706 passed, 3 skipped` in the complete suite; the three skips remain the existing Windows link/reparse permission cases. `node --check` passed for both frontend scripts, `pip check` reported no broken requirements, and `git diff --check` passed.
+- Visual gate: the real page passed 1440×900, 1024×768 and 390×844 capture checks in system/light and dark rendering; document `scrollWidth` equalled `clientWidth` at every measured viewport. Mobile template cards scroll only inside their own component. The three README screenshots use isolated synthetic data and contain no real key, private path or user task.
+- Remaining release evidence: EXE checksum, packaged-ASR smoke, tag, Release and downloaded-asset smoke belong in the post-release closeout entry.
 
 ## Implemented independent brand and Knowledge Studio UI milestone
 

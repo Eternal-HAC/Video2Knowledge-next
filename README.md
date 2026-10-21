@@ -1,7 +1,7 @@
 <p align="center">
   <img src="sources/icon.png" width="96" alt="Video2Knowledge 图标">
 </p>
-<h1 align="center">Video2Knowledge v1.0.0-beta.1</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.2</h1>
 
 <p align="center"><em>本机知识工作台：把视频沉淀为可回看的 Markdown 笔记</em></p>
 
@@ -13,13 +13,13 @@
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.1）</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.2）</strong></a></p>
 
 ## 产品定位
 
 Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖音、YouTube 链接或本地音视频文件，优先读取平台字幕（含 B 站 AI 字幕），无字幕时用本机模型离线转写（中文首选 paraformer，也可选 Whisper 系），再由你选择的大模型生成带时间轴的 Markdown 笔记；也可以只要一份带时间轴的字幕稿，全程不调用大模型。
 
-它不是视频下载器，也不是通用 AI 控制台：所有下载、转写和文件生成都发生在本机，服务默认只监听 `127.0.0.1`；界面只回答「给我什么、要哪种产物、点开始」，低频配置统一收纳进设置面板。界面与品牌的设计基线见 [DESIGN.md](DESIGN.md)。
+它不是视频下载器，也不是通用 AI 控制台：所有下载、转写和文件生成都发生在本机，服务默认只监听 `127.0.0.1`；首屏直接选择笔记模板、保存位置、来源和产物，模型与接入等低频配置统一收纳进设置面板。界面与品牌的设计基线见 [DESIGN.md](DESIGN.md)。
 
 > 🤖 **Agent Skill**：把仓库里的 `skills/video-to-note/` 目录复制到 agent 的技能目录（如 `~/.agents/skills/`），即可让 Claude Code、pi 等直接一句话生成视频笔记。详见该目录下的 `SKILL.md`。
 
@@ -29,7 +29,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 ### 工作台首页
 
-<p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio 工作台首页：来源输入与任务提交" width="100%"></p>
+<p align="center"><img src="sources/knowledge-studio-home.png" alt="Video2Knowledge Knowledge Studio 工作台首页：模板、保存位置、来源与任务提交" width="100%"></p>
 
 ### 处理进度
 
@@ -46,16 +46,16 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 - 🎵 **抖音单链接适配**：支持公开分享链接直接解析；需要验证时可在独立本机浏览器完成登录后重试。
 - 🧾 **真实时间轴**：保留字幕或 Whisper 分段的起止时间，不让模型凭空猜时间点；任一任务的转录都可导出标准 SubRip `.srt`。
 - 🧠 **长内容整理**：短转录直接生成，长转录自动分块、归并并控制上下文压力；生成后会核对是否写到材料结尾，小缺口自动补写。
-- 📝 **笔记模板与目的地**：四套内置只读模板 + 后端保存的自定义模板；成品 Markdown 可写入指定目录或 Obsidian Vault，并可选择性发布为飞书在线文档。
-- 🖼️ **多格式输出**：Markdown 笔记、HTML、JSON、纯文本和 PNG 图片；可选提取视频截图作为附件。
+- 📝 **笔记模板与目的地**：首屏可选六套内置只读模板或自定义模板；本地 Markdown 始终保存到默认目录、自定义目录或 Obsidian Vault，飞书作为可选的附加发布。
+- 🖼️ **多格式输出**：结果区直接提供 Markdown 导出，并可切换 SRT、HTML、JSON、纯文本和 PNG；可选提取视频截图作为附件。
 - 🤖 **给 agent 留了原料出口**：接入的 agent 只要「带时间轴转录」，可以不走大模型、不需要给本机配 API Key，笔记风格由 agent 自己定。
 - 🛡️ **本地优先**：媒体下载、转录和文件生成在本机完成；服务默认只监听 `127.0.0.1`。
 
 ## 🚀 安装（Windows 便携版）
 
-> **发布状态**：`v1.0.0-beta.1` 是独立版本线的第一个预发布版。本地候选已完成完整测试、Windows EXE 构建、打包态离线 ASR、兼容环境变量与 SHA-256 验收；Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准。详细证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+> **发布状态**：`v1.0.0-beta.2` 聚焦模板、保存位置与导出的可发现性。Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准，详细验收证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
-普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.1) 下载 `Video2Knowledge-1.0.0-beta.1-portable.exe`：
+普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.2) 下载 `Video2Knowledge-1.0.0-beta.2-portable.exe`：
 
 1. 下载并双击 exe；
 2. 等待浏览器自动打开本地页面；
@@ -68,11 +68,12 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 启动后按页面提示完成以下操作即可：
 
-1. 选输出类型：**生成笔记**（要配 API Key）或 **仅转录字幕**（只要一份带时间轴的字幕稿，全程不调用大模型、**不需要 API Key**，笔记风格与推理强度这些设置会自动收起）；
-2. 生成笔记时选择模型档案并填写 API Key：DeepSeek / OpenAI / 智谱 / 通义 / Kimi 各自记住自己的模型，自定义 OpenAI 兼容接口可以保存多个命名档案，切换档案不会互相覆盖设置；
-3. 选择笔记风格、推理强度和 Whisper 模型（推理强度保持 `auto` 时，详细类笔记会用更高思考档，任务日志会打印实际生效档位）；
-4. 粘贴视频链接，或切换为本地文件 / 字幕文件上传；
-5. 生成完成后预览、复制或下载结果。字幕稿会留在「最近任务」里（标题前带「转录」标记）随时回看和下载，也可以点「基于字幕稿生成笔记」改走笔记路线——转录不重跑，只补一次大模型调用。
+1. 选输出类型：**生成笔记**（要配 API Key）或 **仅转录字幕**（全程不调用大模型、**不需要 API Key**，模板与笔记目的地会自动收起）；
+2. 生成笔记时在首屏选择六个内置模板之一，或选择已经创建的自定义模板；
+3. 选择默认 Markdown、自定义目录或 Obsidian Vault；需要时再开启「同时发布到飞书」，本地 Markdown 始终保留；
+4. 在设置中选择模型档案、笔记风格和转录参数并填写 API Key；
+5. 粘贴视频链接，或切换为本地文件 / 字幕文件上传；
+6. 生成完成后预览、复制或使用明确的「导出 Markdown」按钮；“更多导出格式”可切换 SRT、HTML、JSON、纯文本和 PNG。字幕稿会留在「最近任务」里，也可以基于已有转录重新生成笔记。
 
 ## 🔁 处理流程
 

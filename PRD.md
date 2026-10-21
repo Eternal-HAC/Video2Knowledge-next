@@ -5,6 +5,7 @@
 - The user-visible product is **Video2Knowledge**; `VideoToNo` appears only in protocol-compatibility positions (for example the `/api/health` `service` field) and in attribution.
 - From `v1.0.0-beta.1` the project uses an **independent version line**: `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0`. The transitional `v1.4.2-v2k.N` line always sorts below the independent line in update checks. `product_info.py` is the single source for the product name, version, environment-variable prefixes, and release metadata consumed by the launcher, backend, build script, and release workflow.
 - The Windows portable artifact for this line is `Video2Knowledge-<version>-portable.exe`; `v1.0.0-beta.1` has passed its local and downloaded-release acceptance gates and is published as a GitHub Pre-release.
+- `v1.0.0-beta.2` keeps the same task/API contracts while making templates, local Markdown destinations, optional Feishu publication, and export formats visible in the task flow. Its release evidence is recorded separately from the already accepted beta.1 artifact.
 
 ## Compatibility boundaries of the rebrand
 
@@ -19,7 +20,7 @@ The rename must not break existing integrations:
 
 ## Knowledge Studio UI principles
 
-The redesigned workspace ("Knowledge Studio") follows [DESIGN.md](DESIGN.md) as the single design baseline: task-first first screen (source → output type → start), one-screen-one-thing with low-frequency settings collected into a slide-out panel, state conveyed by text and badges rather than color alone, local-trust copy that states where data goes, and restrained motion honoring `prefers-reduced-motion`. The brand mark is an original geometric logo generated reproducibly by repository scripts (`scripts/make_brand_assets.py`); no third-party icon sets or upstream-derived artwork are used. The rebrand does not change backend APIs, task semantics, or the element-ID contract guarded by `tests/test_frontend_hygiene.py`.
+The redesigned workspace ("Knowledge Studio") follows [DESIGN.md](DESIGN.md) as the single design baseline: task-first flow (output type → template → destination → source → start), low-frequency model and integration settings collected into a slide-out panel, state conveyed by text and badges rather than color alone, local-trust copy that states where data goes, and restrained motion honoring `prefers-reduced-motion`. Six built-in templates and saved custom templates are visible before submission. Local Markdown always remains the primary artifact; Feishu is an opt-in additional publication. The brand mark is an original geometric logo generated reproducibly by repository scripts (`scripts/make_brand_assets.py`); no third-party icon sets or upstream-derived artwork are used. The rebrand does not change backend APIs, task semantics, or the element-ID contract guarded by `tests/test_frontend_hygiene.py`.
 
 ## User goal
 
@@ -112,7 +113,7 @@ The note-template milestone is complete locally with the following contract:
 | Same-name output | Default and custom destinations use exclusive creation, safe Unicode filenames, and `-2`, `-3`, and later suffixes. Controlled race tests cover notes and attachment directories without overwriting foreign content. | Covered by automated tests. |
 | LLM failure preserves transcript | Transcript artifacts are written before the LLM step and remain readable for failed note tasks. | Covered by code and tests. |
 | Unicode and Frontmatter | UTF-8 reads/writes, Chinese filenames, Unicode destination paths, URI-encoded attachment links, deterministic YAML Frontmatter, and YAML-sensitive Unicode escaping are tested. | Covered by automated tests. |
-| Brand and workspace UI | Product metadata is centralized in `product_info.py`; the frontend implements the Knowledge Studio layout per `DESIGN.md` with the element-ID contract guarded by `tests/test_frontend_hygiene.py`; brand assets are generated reproducibly by repository scripts. | Released in `v1.0.0-beta.1`. UI automation, visual acceptance, the complete test suite, candidate build, packaged offline ASR, compatibility smoke, remote asset checksum and downloaded-release ASR have passed. |
+| Brand and workspace UI | Product metadata is centralized in `product_info.py`; the frontend implements the Knowledge Studio layout per `DESIGN.md` with the element-ID contract guarded by `tests/test_frontend_hygiene.py`; brand assets are generated reproducibly by repository scripts. | Brand baseline released in `v1.0.0-beta.1`; beta.2 adds task-flow discoverability for six templates, three local destination modes, optional Feishu publication and explicit export actions. |
 
 ## Ordered successor roadmap
 
@@ -127,6 +128,7 @@ The note-template milestone is complete locally with the following contract:
 9. Limited real note chain: the GitHub Release EXE completed `short synthetic SRT -> DeepSeek deepseek-flash -> built-in template -> one Markdown file in an isolated custom destination`. This closes the first end-to-end evidence gap without claiming broad Provider, long-video, public-platform or network compatibility.
 10. Independent brand, version line, and Knowledge Studio UI: implemented locally. Product metadata is driven by `product_info.py`; the legacy service id, environment-variable aliases, browser preferences, and MCP/Skill discovery remain compatible; local UI automation and visual acceptance have passed.
 11. `v1.0.0-beta.1` release: **complete**. The final local gate passed with `693 passed, 3 skipped`; the branded EXE, cached-model packaged ASR, legacy-environment/static-resource smoke and candidate SHA-256 passed. `main`, the annotated tag and GitHub Pre-release are published; the downloaded EXE matched its checksum and GitHub digest and passed the same offline ASR smoke. Repository Description and Topics were read back successfully.
+12. `v1.0.0-beta.2` template and export discoverability: **implemented locally, release acceptance pending**. Six built-in templates and custom templates are selectable on the main page; default/custom/Obsidian Markdown destinations are explicit; Feishu remains an opt-in additional publication; export labels identify Markdown, SRT, HTML, JSON, plain text and PNG without changing request fields or task formats.
 
 ## Non-goals for the current phase
 

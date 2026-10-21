@@ -6,7 +6,7 @@ This file holds only the active gap-verification queue. For every item: close it
    - Closed by the optional absolute-path destination setting, preflight validation, final-note-only export, referenced-attachment copying, relative-link rewriting, and collision tests.
    - Leaving the setting empty keeps the existing `workspace/notes` behavior.
 2. [x] Personal Markdown template
-   - Closed locally by four read-only built-ins, backend-stored custom templates, safe deterministic layouts, immutable task snapshots, YAML Frontmatter, and transcript-reuse regeneration.
+   - Closed locally by six read-only built-ins, backend-stored custom templates, safe deterministic layouts, immutable task snapshots, YAML Frontmatter, and transcript-reuse regeneration.
    - Keep `summary_style` independent from `note_template`; do not add a second full-document LLM pass.
 3. [x] Subtitle-first and local-ASR fallback
    - Closed for gap verification by current code and tests. Live checks are performed only when platform work or release risk justifies them.
@@ -43,6 +43,13 @@ This file holds only the active gap-verification queue. For every item: close it
 15. [x] Independent brand and Knowledge Studio UI: product metadata centralized in `product_info.py` (Video2Knowledge, independent `1.0.0-beta.N` line); legacy service id, `VIDEOTONOTES_*` env aliases, browser preferences, MCP tool names and Skill discovery kept compatible; workspace redesigned per `DESIGN.md` with an original script-generated logo. Local UI automation and visual acceptance have passed. This closes the local implementation slice only — it is not release acceptance.
 
 ## Next single execution task
+
+- [ ] `v1.0.0-beta.2` template and export discoverability release:
+  1. [x] Add Knowledge Essentials and Study Lecture as safe built-in templates without a second LLM call.
+  2. [x] Surface built-in/custom template cards, default/custom/Obsidian destinations, optional Feishu publication and explicit export labels in the main workflow.
+  3. [x] Finish 1440/1024/390 light/dark/system and keyboard acceptance; regenerate the three synthetic README screenshots without page-level horizontal scrolling.
+  4. [ ] Complete suite passed with `706 passed, 3 skipped`; build `Video2Knowledge-1.0.0-beta.2-portable.exe` and pass packaged offline-ASR plus compatibility smoke with the cached Whisper `small` model.
+  5. [ ] Push `main`, publish the annotated tag and Pre-release, verify downloaded digests and rerun offline ASR, then record the final evidence in a separate documentation commit.
 
 - [x] `v1.0.0-beta.1` remote release closeout:
   1. [x] Run the complete `pytest` suite on the intended release branch and repeat it after the build-script fix.

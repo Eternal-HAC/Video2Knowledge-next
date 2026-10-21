@@ -64,6 +64,8 @@ Review condition: Tighten a platform's gate when repeated regressions show that 
 
 Decision: Keep the existing `summary_style` pipeline as the generation-depth strategy and add a separate `note_template` contract. Ship four read-only built-ins, store custom templates in the backend, require one `{{content}}` placeholder from a safe allowlist, add deterministic YAML Frontmatter, and snapshot the selected template with each task.
 
+Later extension: the 2026-10-21 beta.2 decision below adds two more read-only built-ins without changing this contract or adding an LLM pass.
+
 Reason: The upstream summarizer already handles short and long transcripts, coverage, reasoning effort, and retry behavior. Templates should organize content and wrap the final Markdown without duplicating that mature pipeline or executing user code.
 
 Alternatives considered: Replace summary styles with templates; run a second full-document LLM formatting call; allow executable Jinja or scripts; generate multiple linked notes per video.
@@ -151,3 +153,15 @@ Alternatives considered: keep the `v1.4.2-v2k.N` suffix line (rejected: no indep
 Impact: Application, API, frontend, build artifact (`Video2Knowledge-1.0.0-beta.1-portable.exe`), and release metadata expose the new brand and version. Documentation (README, PRD, status, release notes) is rewritten around Video2Knowledge with the VideoToNo `v1.4.2` derivation, MIT License, and `UPSTREAM.md` attribution retained. Download, caption, and local-ASR capabilities remain inherited upstream implementations and are not presented as from-scratch work. Local UI automation, visual acceptance, the final full test run, candidate build, packaged offline-ASR acceptance, compatibility smoke and SHA-256 registration passed. The annotated tag and GitHub Pre-release are published; the downloaded release asset matched both checksum sources and passed the offline ASR smoke.
 
 Review condition: Revisit if the compatibility shims (legacy service id, environment aliases) block a required change, if the independent line needs re-alignment with upstream, or if release acceptance evidence requires restating the brand scope.
+
+## 2026-10-21: Make templates, destinations, and exports part of the task flow
+
+Decision: Starting with `v1.0.0-beta.2`, show all six built-in templates and saved custom templates before submission, followed by an explicit local Markdown destination choice: default `workspace/notes`, custom absolute directory, or Obsidian Vault. Feishu remains a separate opt-in additional publication. The result area names the current export action and exposes the other existing formats under a visible label. One input still produces one Markdown note.
+
+Reason: The template, Obsidian, Feishu and export pipelines already existed, but placing their controls only in the settings drawer made working features look absent. Improving discoverability reuses the mature storage and publication paths and avoids a second template system or destination API.
+
+Alternatives considered: keep every control in Settings (rejected because users could not discover core product choices); add a second frontend-only template or export pipeline (rejected because it would duplicate validated backend behavior); split notes into multiple linked files or build an automatic knowledge graph (deferred as a separate product scope).
+
+Impact: `/api/note-templates` returns six built-ins with the same response schema. Browser preferences gain non-sensitive `note_destination_mode`; old non-empty destinations migrate to `custom` without clearing the path. Existing `note_template_id`, `note_destination`, `feishu_upload_enabled` and `feishu_folder` request fields remain unchanged. Interaction research referenced Fabric, video-fetcher-to-markdown, course2md and YouTube Transcript Notes, with no third-party code, prompt, icon or asset copied.
+
+Review condition: Revisit when user evidence supports multi-file notes, note interlinking, an OS-native folder picker, or a broader destination plugin architecture.
