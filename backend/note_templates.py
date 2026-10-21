@@ -1,4 +1,4 @@
-"""笔记模板：四个只读内置模板 + 后端持久化的自定义模板 + 确定性渲染。
+"""笔记模板：六个只读内置模板 + 后端持久化的自定义模板 + 确定性渲染。
 
 契约（见 DECISIONS.md「Separate summary strategy from safe note templates」）：
 
@@ -37,6 +37,8 @@ GENERAL_TEMPLATE_ID = "builtin-general-structured"
 CORNELL_TEMPLATE_ID = "builtin-cornell-review"
 TUTORIAL_TEMPLATE_ID = "builtin-tutorial-howto"
 INTERVIEW_TEMPLATE_ID = "builtin-interview-viewpoint"
+KNOWLEDGE_TEMPLATE_ID = "builtin-knowledge-essentials"
+STUDY_TEMPLATE_ID = "builtin-study-lecture"
 DEFAULT_TEMPLATE_ID = GENERAL_TEMPLATE_ID
 
 # Frontmatter 固定字段顺序；缺失值直接省略。
@@ -257,6 +259,35 @@ def _builtin_templates() -> list[NoteTemplate]:
             instructions=(
                 "整理访谈或观点类内容：按发言人或主题归纳核心观点与论据，"
                 "保留有信息量的原话表述并标注时间点。"
+            ),
+            layout="# {{title}}\n\n{{content}}",
+            version=1,
+            built_in=True,
+        ),
+        NoteTemplate(
+            id=KNOWLEDGE_TEMPLATE_ID,
+            name="知识精华",
+            description="提炼内容中的可带走知识：概览、观点、事实与可执行建议。",
+            instructions=(
+                "把内容提炼为知识精华：先用一句话给出全片概览；再归纳核心观点；"
+                "随后整理支撑观点的事实与例子；摘录转录中确实存在的重要表达（原话）；"
+                "汇总片中提及的书籍、工具、人物与项目；最后给出可执行的建议。"
+                "某个分区在材料中没有内容就直接省略该分区；只依据转录本身，"
+                "不补充外部知识，不虚构引用或出处。"
+            ),
+            layout="# {{title}}\n\n{{content}}",
+            version=1,
+            built_in=True,
+        ),
+        NoteTemplate(
+            id=STUDY_TEMPLATE_ID,
+            name="学习讲义",
+            description="面向课程与讲座：目标、概念、推理步骤、示例、易错点与复习问题。",
+            instructions=(
+                "把内容整理成可自学的讲义：先写明学习目标；再解释核心概念与定义；"
+                "按顺序呈现推理过程或操作步骤；给出示例；标注易错点；"
+                "最后给出可用于自测的复习问题。保留有信息量的时间点，便于回看定位；"
+                "某个分区在材料中没有内容就直接省略该分区；只依据转录本身，不补充外部知识。"
             ),
             layout="# {{title}}\n\n{{content}}",
             version=1,

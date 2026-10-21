@@ -2140,3 +2140,39 @@ async def test_organization_instructions_enter_condensed_final_prompt_without_ex
     prompts.clear()
     await summarizer.generate_summary("标题", segments, style="faithful")
     assert len(prompts) == with_instructions
+
+
+@pytest.mark.asyncio
+async def test_new_builtin_template_instructions_reach_prompt_in_one_pass(
+    tmp_path,
+) -> None:
+    """知识精华 / 学习讲义的整理指令原样进入成稿提示词，且不新增 LLM 调用。"""
+    from backend import note_templates
+
+    store = note_templates.TemplateStore(tmp_path / "note_templates")
+    expected_phrases = {
+        note_templates.KNOWLEDGE_TEMPLATE_ID: "不虚构引用",
+        note_templates.STUDY_TEMPLATE_ID: "复习问题",
+    }
+    for template_id, phrase in expected_phrases.items():
+        template = store.get(template_id)
+        summarizer = object.__new__(LLMSummarizer)
+        summarizer.warnings = []
+        prompts: list[str] = []
+
+        async def complete(prompt, max_tokens, effort="auto", retry_empty=True, **kwargs):
+            prompts.append(prompt)
+            return "# 笔记"
+
+        summarizer._complete = complete
+        segments = [TranscriptSegment(0, 10, "一段简短转录")]
+
+        await summarizer.generate_summary(
+            "标题",
+            segments,
+            style="faithful",
+            organization_instructions=template.instructions,
+        )
+        assert len(prompts) == 1
+        assert phrase in prompts[0]
+        assert template.instructions in prompts[0]

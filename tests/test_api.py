@@ -816,6 +816,32 @@ async def test_subtitle_import_note_respects_custom_destination_and_template(
     assert manifest["note_template"]["id"]
 
 
+def test_note_templates_api_returns_six_builtins_in_stable_order(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """新增的知识精华 / 学习讲义随列表接口下发：顺序固定、合同字段齐全。"""
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    response = TestClient(main.app).get("/api/note-templates")
+
+    assert response.status_code == 200
+    templates = response.json()["templates"]
+    assert [item["id"] for item in templates] == [
+        "builtin-general-structured",
+        "builtin-cornell-review",
+        "builtin-tutorial-howto",
+        "builtin-interview-viewpoint",
+        "builtin-knowledge-essentials",
+        "builtin-study-lecture",
+    ]
+    assert templates[-2]["name"] == "知识精华"
+    assert templates[-1]["name"] == "学习讲义"
+    for item in templates[-2:]:
+        assert item["built_in"] is True
+        assert item["version"] == 1
+        assert item["layout"] == "# {{title}}\n\n{{content}}"
+        assert "不补充外部知识" in item["instructions"]
+
+
 @pytest.mark.asyncio
 async def test_subtitle_import_note_never_calls_feishu_when_disabled(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

@@ -18,6 +18,8 @@ from backend.note_templates import (
     DEFAULT_TEMPLATE_ID,
     GENERAL_TEMPLATE_ID,
     INTERVIEW_TEMPLATE_ID,
+    KNOWLEDGE_TEMPLATE_ID,
+    STUDY_TEMPLATE_ID,
     TUTORIAL_TEMPLATE_ID,
     TemplateImmutableError,
     TemplateNotFoundError,
@@ -34,16 +36,24 @@ def _store(tmp_path: Path) -> TemplateStore:
 # 内置模板与默认值
 # ---------------------------------------------------------------------------
 
-def test_four_builtin_templates_exist_and_general_is_default(tmp_path: Path) -> None:
+BUILTIN_ORDER = (
+    GENERAL_TEMPLATE_ID,
+    CORNELL_TEMPLATE_ID,
+    TUTORIAL_TEMPLATE_ID,
+    INTERVIEW_TEMPLATE_ID,
+    KNOWLEDGE_TEMPLATE_ID,
+    STUDY_TEMPLATE_ID,
+)
+
+
+def test_six_builtin_templates_in_stable_order_and_general_is_default(
+    tmp_path: Path,
+) -> None:
     store = _store(tmp_path)
     templates = store.list_templates()
-    ids = {template.id for template in templates}
-    assert ids == {
-        GENERAL_TEMPLATE_ID,
-        CORNELL_TEMPLATE_ID,
-        TUTORIAL_TEMPLATE_ID,
-        INTERVIEW_TEMPLATE_ID,
-    }
+    assert [template.id for template in templates] == list(BUILTIN_ORDER)
+    assert KNOWLEDGE_TEMPLATE_ID == "builtin-knowledge-essentials"
+    assert STUDY_TEMPLATE_ID == "builtin-study-lecture"
     assert DEFAULT_TEMPLATE_ID == GENERAL_TEMPLATE_ID
     assert store.get(DEFAULT_TEMPLATE_ID).built_in is True
     for template in templates:
@@ -54,20 +64,76 @@ def test_four_builtin_templates_exist_and_general_is_default(tmp_path: Path) -> 
         assert note_templates.validate_layout(template.layout)
 
 
+def test_new_builtin_templates_use_the_safe_shell_layout(tmp_path: Path) -> None:
+    """知识精华与学习讲义：built_in=True、version=1、布局严格为安全外壳。"""
+    store = _store(tmp_path)
+    for template_id in (KNOWLEDGE_TEMPLATE_ID, STUDY_TEMPLATE_ID):
+        template = store.get(template_id)
+        assert template is not None
+        assert template.built_in is True
+        assert template.version == 1
+        assert template.layout == "# {{title}}\n\n{{content}}"
+    # 新增模板不影响默认模板的选择
+    assert store.get(DEFAULT_TEMPLATE_ID).id == GENERAL_TEMPLATE_ID
+
+
+def test_knowledge_essentials_instructions_cover_the_planned_sections(
+    tmp_path: Path,
+) -> None:
+    instructions = _store(tmp_path).get(KNOWLEDGE_TEMPLATE_ID).instructions
+    for phrase in (
+        "一句话",
+        "概览",
+        "核心观点",
+        "事实",
+        "例子",
+        "重要表达",
+        "书籍",
+        "工具",
+        "人物",
+        "项目",
+        "可执行",
+        "省略",
+        "不补充外部知识",
+        "不虚构引用",
+    ):
+        assert phrase in instructions, phrase
+
+
+def test_study_lecture_instructions_cover_the_planned_sections(tmp_path: Path) -> None:
+    instructions = _store(tmp_path).get(STUDY_TEMPLATE_ID).instructions
+    for phrase in (
+        "学习目标",
+        "核心概念",
+        "定义",
+        "推理",
+        "步骤",
+        "示例",
+        "易错点",
+        "复习问题",
+        "时间点",
+        "省略",
+        "不补充外部知识",
+    ):
+        assert phrase in instructions, phrase
+
+
+def test_new_builtin_instructions_are_independently_worded(tmp_path: Path) -> None:
+    """两个新模板的指令各自成文，不与其他内置模板共用同一段文字。"""
+    store = _store(tmp_path)
+    texts = {template.id: template.instructions for template in store.list_templates()}
+    assert len(set(texts.values())) == len(texts)
+
+
 def test_builtin_templates_are_immutable(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    for template_id in (
-        GENERAL_TEMPLATE_ID,
-        CORNELL_TEMPLATE_ID,
-        TUTORIAL_TEMPLATE_ID,
-        INTERVIEW_TEMPLATE_ID,
-    ):
+    for template_id in BUILTIN_ORDER:
         with pytest.raises(TemplateImmutableError):
             store.update(template_id, name="改名")
         with pytest.raises(TemplateImmutableError):
             store.delete(template_id)
     # 不可变指的不只是报错：名单与内容保持原样
-    assert len(store.list_templates()) == 4
+    assert len(store.list_templates()) == 6
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +167,7 @@ def test_custom_template_crud_persists_and_increments_version(tmp_path: Path) ->
     store.delete(created.id)
     assert store.get(created.id) is None
     assert not persisted_file.exists()
-    assert len(store.list_templates()) == 4  # 只剩内置
+    assert len(store.list_templates()) == 6  # 只剩内置
 
 
 def test_store_unknown_id_raises_not_found(tmp_path: Path) -> None:
@@ -136,7 +202,7 @@ def test_corrupt_custom_template_file_is_ignored(tmp_path: Path) -> None:
     assert created.id in ids
     assert "custom-broken" not in ids
     assert "custom-evil" not in ids
-    assert len(ids) == 5
+    assert len(ids) == 7
     assert store.get("custom-broken") is None
     assert store.get("custom-evil") is None
 
@@ -187,7 +253,7 @@ def test_schema_damaged_custom_template_is_isolated(
     ids = {template.id for template in templates}
     assert "custom-a1b2c3d4e5f6" not in ids
     assert good.id in ids  # 正常自定义模板不受影响
-    assert len(ids) == 5  # 四个内置 + 一个好的自定义
+    assert len(ids) == 7  # 六个内置 + 一个好的自定义
     assert store.get("custom-a1b2c3d4e5f6") is None
     assert damaged.read_bytes() == before  # 隔离而不是改写
 
@@ -400,8 +466,17 @@ def test_template_api_lists_builtins_and_supports_crud(
     listed = client.get("/api/note-templates")
     assert listed.status_code == 200
     templates = listed.json()["templates"]
-    assert len(templates) == 4
+    assert [item["id"] for item in templates] == list(BUILTIN_ORDER)
     assert all("layout" in item and "instructions" in item for item in templates)
+    new_builtins = {
+        item["id"]: item for item in templates if item["id"] in BUILTIN_ORDER[-2:]
+    }
+    assert new_builtins[KNOWLEDGE_TEMPLATE_ID]["name"] == "知识精华"
+    assert new_builtins[STUDY_TEMPLATE_ID]["name"] == "学习讲义"
+    for item in new_builtins.values():
+        assert item["built_in"] is True
+        assert item["version"] == 1
+        assert item["layout"] == "# {{title}}\n\n{{content}}"
 
     created = client.post(
         "/api/note-templates",
@@ -428,7 +503,7 @@ def test_template_api_lists_builtins_and_supports_crud(
     assert deleted.status_code == 200
     assert deleted.json() == {"deleted": True}
     remaining = client.get("/api/note-templates").json()["templates"]
-    assert len(remaining) == 4
+    assert len(remaining) == 6
 
 
 def test_template_api_rejects_invalid_layout_with_stable_error(
@@ -513,6 +588,35 @@ async def test_submit_resolves_and_snapshots_template_into_task_json(
     )
     assert manifest_again["note_template_snapshot"]["layout"] == custom.layout
     assert manifest_again["note_template"]["version"] == 1
+
+
+@pytest.mark.asyncio
+async def test_submit_snapshots_a_selected_new_builtin_template(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """选中新增内置模板提交：快照整体落盘，内容与名单里的模板一致。"""
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main.config_store, "load_bili_credentials", lambda: None)
+    expected = main.get_template_store().get(KNOWLEDGE_TEMPLATE_ID)
+    request = main.SummarizeRequest(
+        video_url="https://www.bilibili.com/video/BV1xx",
+        note_template_id=KNOWLEDGE_TEMPLATE_ID,
+        llm_config=main.LLMConfig(model_type="deepseek", api_key="test-key"),
+    )
+    submitted = await main.submit_video_task(request, origin="web")
+    task_id = submitted["task_id"]
+    job = main.running_jobs.get(task_id)
+    if job is not None:
+        job.cancel()
+        await asyncio.gather(job, return_exceptions=True)
+
+    manifest = json.loads((tmp_path / task_id / "task.json").read_text(encoding="utf-8"))
+    assert manifest["note_template"] == {"id": KNOWLEDGE_TEMPLATE_ID, "version": 1}
+    snapshot = manifest["note_template_snapshot"]
+    assert snapshot["id"] == KNOWLEDGE_TEMPLATE_ID
+    assert snapshot["built_in"] is True
+    assert snapshot["layout"] == "# {{title}}\n\n{{content}}"
+    assert snapshot["instructions"] == expected.instructions
 
 
 @pytest.mark.asyncio
