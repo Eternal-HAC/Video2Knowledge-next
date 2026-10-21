@@ -4,13 +4,13 @@ Updated: 2026-10-21
 
 ## Current stage
 
-`Video2Knowledge v1.0.0-beta.2 release candidate in local acceptance`
+`Video2Knowledge v1.0.0-beta.2 published and remotely re-verified`
 
 The successor Fork and product baseline are established. The configurable final-note destination and approved note-template milestone are complete locally while preserving the upstream download, subtitle, ASR, task, and summary-style architecture.
 
 The product is now branded **Video2Knowledge** with an independent version line starting at `1.0.0-beta.1` (driven solely by `product_info.py`), an original script-generated logo, and a redesigned Knowledge Studio workspace per `DESIGN.md`. Local UI automation, visual acceptance, Windows candidate acceptance, remote publication, asset read-back and downloaded-release offline ASR have passed.
 
-The beta.2 local implementation adds two safe built-in templates (Knowledge Essentials and Study Lecture), surfaces all built-in and custom templates in the main workflow, makes default/custom/Obsidian Markdown destinations explicit, keeps Feishu as an optional additional publication, and gives every result format an explicit export label. Existing request fields, task manifests, one-video-to-one-Markdown behavior, saved custom templates, Obsidian handling and Feishu publication logic remain compatible. Release/build evidence below must be completed before beta.2 is called published.
+The beta.2 release adds two safe built-in templates (Knowledge Essentials and Study Lecture), surfaces all built-in and custom templates in the main workflow, makes default/custom/Obsidian Markdown destinations explicit, keeps Feishu as an optional additional publication, and gives every result format an explicit export label. Existing request fields, task manifests, one-video-to-one-Markdown behavior, saved custom templates, Obsidian handling and Feishu publication logic remain compatible. The local candidate, published assets and downloaded Release executable have all passed the acceptance recorded below.
 
 The first successor customization was completed in commit `26a53be`: note tasks can export their final Markdown and referenced task attachments to a user-selected absolute directory, including an Obsidian Vault subdirectory. Leaving the destination empty preserves the upstream `workspace/notes` archive behavior. It is included with the later template, retention, destination, reliability and prerelease work in the successor release line.
 
@@ -142,7 +142,16 @@ The native Feishu online-docx, subtitle-import/SRT-export, static-resource media
 - The result action is labelled `Export Markdown` by default and follows the selected SRT/HTML/JSON/plain-text/PNG format. The request schema and backend export endpoints are unchanged.
 - Automated gate: `706 passed, 3 skipped` in the complete suite; the three skips remain the existing Windows link/reparse permission cases. `node --check` passed for both frontend scripts, `pip check` reported no broken requirements, and `git diff --check` passed.
 - Visual gate: the real page passed 1440×900, 1024×768 and 390×844 capture checks in system/light and dark rendering; document `scrollWidth` equalled `clientWidth` at every measured viewport. Mobile template cards scroll only inside their own component. The three README screenshots use isolated synthetic data and contain no real key, private path or user task.
-- Remaining release evidence: EXE checksum, packaged-ASR smoke, tag, Release and downloaded-asset smoke belong in the post-release closeout entry.
+- Release evidence is closed by the post-release entry below.
+
+## Published beta.2 release closeout
+
+- Release commit `cf03f4e7ff0958d09c3a916afd920c457529c4d4` contains three focused commits for the templates, main-workflow discoverability and documentation. Remote `main` and the dereferenced annotated tag `v1.0.0-beta.2` both resolve to that commit.
+- Local automated acceptance passed with `706 passed, 3 skipped` in 54.39 seconds. The three skips remain the existing Windows link/reparse permission cases. Both JavaScript syntax checks, `pip check` and `git diff --check` also passed.
+- The Windows candidate is `Video2Knowledge-1.0.0-beta.2-portable.exe`, 133,192,576 bytes, SHA-256 `50c278fd1d8b659b066b77f7d6157b7d2a92b0f3511268c7e6f58f53d0bde970`. Windows VersionInfo reports ProductName `Video2Knowledge`, FileVersion `1.0.0.0` and ProductVersion `1.0.0-beta.2`.
+- Packaged acceptance used an isolated workspace, a Windows SAPI-generated Chinese WAV, cached Whisper `small`, CPU mode and offline Hugging Face settings. The frozen ASR child produced 3 non-empty Chinese segments, JSON, Markdown, standards-shaped SRT and one central transcript archive. No model/media download, LLM call or Feishu write occurred. Separate launches proved both `VIDEO2KNOWLEDGE_*` and legacy `VIDEOTONOTES_*` workspace/browser aliases, the branded home page and all six built-in templates.
+- GitHub Release `v1.0.0-beta.2` is a non-draft Pre-release. GitHub reports the EXE at 133,192,576 bytes with digest `sha256:50c278fd1d8b659b066b77f7d6157b7d2a92b0f3511268c7e6f58f53d0bde970`; a fresh download matched that digest, the published `SHA256SUMS.txt` and the local candidate, then passed the same packaged offline-ASR smoke again.
+- The tag-triggered Release workflow again produced no Actions run. The authorized manual fallback uploaded the already accepted local assets. Both uploads completed; the first publish transition hit a TLS handshake timeout, and retrying only the missing draft-to-Pre-release transition succeeded. No asset was rebuilt, no tag was moved, and no history was rewritten.
 
 ## Implemented independent brand and Knowledge Studio UI milestone
 

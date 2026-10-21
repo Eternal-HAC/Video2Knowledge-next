@@ -42,14 +42,14 @@ This file holds only the active gap-verification queue. For every item: close it
 14. [x] Limited real note chain: the downloaded GitHub Release EXE processed a three-segment synthetic SRT with DeepSeek `deepseek-flash`, the general template, `faithful` style and an isolated custom destination. It produced one Markdown file with parseable Frontmatter and all coverage anchors, without saving the page-session Key.
 15. [x] Independent brand and Knowledge Studio UI: product metadata centralized in `product_info.py` (Video2Knowledge, independent `1.0.0-beta.N` line); legacy service id, `VIDEOTONOTES_*` env aliases, browser preferences, MCP tool names and Skill discovery kept compatible; workspace redesigned per `DESIGN.md` with an original script-generated logo. Local UI automation and visual acceptance have passed. This closes the local implementation slice only — it is not release acceptance.
 
-## Next single execution task
+## Completed release task
 
-- [ ] `v1.0.0-beta.2` template and export discoverability release:
+- [x] `v1.0.0-beta.2` template and export discoverability release:
   1. [x] Add Knowledge Essentials and Study Lecture as safe built-in templates without a second LLM call.
   2. [x] Surface built-in/custom template cards, default/custom/Obsidian destinations, optional Feishu publication and explicit export labels in the main workflow.
   3. [x] Finish 1440/1024/390 light/dark/system and keyboard acceptance; regenerate the three synthetic README screenshots without page-level horizontal scrolling.
-  4. [ ] Complete suite passed with `706 passed, 3 skipped`; build `Video2Knowledge-1.0.0-beta.2-portable.exe` and pass packaged offline-ASR plus compatibility smoke with the cached Whisper `small` model.
-  5. [ ] Push `main`, publish the annotated tag and Pre-release, verify downloaded digests and rerun offline ASR, then record the final evidence in a separate documentation commit.
+  4. [x] Complete suite passed with `706 passed, 3 skipped`; built `Video2Knowledge-1.0.0-beta.2-portable.exe` and passed packaged offline-ASR plus new/legacy environment compatibility smoke with the cached Whisper `small` model.
+  5. [x] Pushed `main`, published the annotated tag and Pre-release, verified the downloaded EXE against GitHub's digest and `SHA256SUMS.txt`, and passed the downloaded-asset offline-ASR smoke. Final evidence is recorded in the separate documentation commit after the release tag.
 
 - [x] `v1.0.0-beta.1` remote release closeout:
   1. [x] Run the complete `pytest` suite on the intended release branch and repeat it after the build-script fix.
