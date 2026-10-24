@@ -2,6 +2,8 @@
 
 更新时间：2026-10-24。
 
+当前完成：[Beta.4 远端发布验收](docs/strategy/28-beta4-remote-release-acceptance.md)。用户授权后 main 快进推送，注释标签 `v1.0.0-beta.4` 固定指向 `d8135b6`；已公开 Pre-release 422600838。工作流 active/Actions enabled，但没有运行记录，因此按备用合同手工上传已验收本地构建，不宣称 CI 通过。实际 Draft 下载资产四方摘要、新旧环境客户端/安全/HTTP/MCP、历史收藏重启和离线 ASR 全通过，直接 worker 确认 small/CPU/exit 0；通过后才公开，asset IDs/digests 未换。下载副本保留 `.test-tmp/beta4-release-20261024/download/`，本次进程/合成工作区/WAV 已清理。后续证据文档提交更新 main，不移动标签。本轮无源码修改或新整套 pytest，沿用冻结源码 1382/3；下方未授权/未发布描述均为历史。
+
 最新：[Beta.4 本地收口验收](docs/strategy/27-beta4-local-release-acceptance.md) 完成。三个本地提交 `90655e4`、`a129f65`、`7df3d51`，候选输入归属 `7df3d51`。最终独立快照 1382 passed、3 个原有跳过；五套九组浏览器、打包新旧环境变量、HTTP/MCP、历史收藏重启、原文对照和离线 ASR 通过，直接 worker 确认 small/CPU/exit 0。EXE 133248935 字节，SHA-256 `f78ed36f707ff8d302f6e721b7b4f18067b0dcd3d64e63ed1f6afa190968dc5b`，保留 `.test-tmp/beta4-closeout-20261024/source/dist/`。本次进程/合成工作区/WAV 已清理，旧 dist 元数据和校验文件未变。未推送、打标签或发布，下一步须单独授权远端 Draft 资产验收与公开流程。下方为历史。
 
 当前：用户已授权本地收口，产品版本已改为 `1.0.0-beta.4`。`90655e4` 产品提交独立快照 1329/3、`a129f65` 工具提交独立快照 1381/3；三个跳过不变。五套浏览器脚本各九组通过，合成截图已更新。版本/文档提交和 Beta.4 重建验收进行中，尚未完成候选验收。未推送、打标签或发布；旧 Beta.3 候选摘要不可复用。下方记录均为历史。

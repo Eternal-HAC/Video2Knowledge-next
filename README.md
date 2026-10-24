@@ -11,7 +11,7 @@
 
 项目文档：[产品基线](PRD.md) · [当前状态](PROJECT_STATUS.md) · [当前任务](TODO.md) · [长期决定](DECISIONS.md) · [界面设计基线](DESIGN.md) · [开发约定](AGENTS.md)
 
-> **当前状态**：`1.0.0-beta.4` 已完成[本地候选验收](docs/strategy/27-beta4-local-release-acceptance.md)，尚未公开发布；下方下载入口仍指向已发布 Beta.3。源码、新版本候选与远端发布状态分别记录在 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+> **当前状态**：`1.0.0-beta.4` 已公开为 Pre-release，实际下载资产已通过摘要核对、客户端兼容和离线 ASR 复验。详见[发布验收](docs/strategy/28-beta4-remote-release-acceptance.md)；本版采用已验收的本地构建手工发布，没有宣称 CI 通过。
 
 ## Beta.4 带来什么
 
@@ -25,7 +25,7 @@
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.3）</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.4"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.4）</strong></a></p>
 
 ## 产品定位
 
@@ -37,7 +37,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 ## 🖼️ Knowledge Studio 界面
 
-以下为 Beta.4 开发版界面。首页/历史/模板由 `scripts/capture_readme_screenshots.mjs` 生成，进度/结果由 `scripts/verify_g0_browser.mjs` 生成；均使用隔离 workspace 与合成数据从真实页面截图，不包含真实凭据、私人路径或用户任务标题。
+以下为 Beta.4 界面。首页/历史/模板由 `scripts/capture_readme_screenshots.mjs` 生成，进度/结果由 `scripts/verify_g0_browser.mjs` 生成；均使用隔离 workspace 与合成数据从真实页面截图，不包含真实凭据、私人路径或用户任务标题。
 
 ### 工作台首页
 
@@ -62,7 +62,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 - 👁️ **无需调用模型的模板预览**：选择模板即可查看固定合成内容的成品与 Markdown 示例；预览不产生费用，也不读取已有笔记。
 - 🗂️ **本地历史与收藏**：按标题、状态、产物和平台筛选任务，分页查看全部本地清单；已完成笔记可加本地星标，旧任务只在打开时读取正文。
 - 🔎 **平台与复用提示**：粘贴链接后在本机识别平台并提示支持等级；发现已有转录时可打开历史、复用转录或重新处理，不会自动提交。
-- ⏱️ **可信任务反馈（开发版）**：开始前汇总来源、模型缓存、Key 与保存位置；运行中显示队列位置、真实 ASR 时间进度和保守的剩余时间范围，滚动页面时仍可从顶部任务条返回进度。
+- ⏱️ **可信任务反馈**：开始前汇总来源、模型缓存、Key 与保存位置；运行中显示队列位置、真实 ASR 时间进度和保守的剩余时间范围，滚动页面时仍可从顶部任务条返回进度。
 - 🖼️ **多格式输出**：结果区直接提供 Markdown 导出，并可切换 SRT、HTML、JSON、纯文本和 PNG；可选提取视频截图作为附件。
 - 🤖 **给 agent 留了原料出口**：接入的 agent 只要「带时间轴转录」，可以不走大模型、不需要给本机配 API Key，笔记风格由 agent 自己定。
 - 🛡️ **本地优先**：媒体下载、本地 ASR 和文件保存在本机完成；云模型会接收转录内容，启用飞书会发送发布内容。服务默认只监听 `127.0.0.1`。
@@ -75,7 +75,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 ## 已知限制
 
-- Beta.4 尚未公开发布；下方安装说明对应 Beta.3。新版本候选的本地验收不代表 Release 已更新。
+- 当前为 Beta.4 Pre-release，可能仍有未发现问题；已验收环境不代表清洁 Windows 新机或所有平台均兼容。
 - ETA 只在转录已有足够样本时显示；Key 已提供、路径已填写都不代表认证和写入权限已验证。
 - 重新生成笔记会调用所选模型，启用截图仍可能下载预览视频；原转录对照本身不额外调用模型。
 - 历史缓存性能实验未通过，默认使用新鲜读取；没有数据库或已达成的 300ms 保证。
@@ -84,9 +84,9 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 
 ## 🚀 安装（Windows 便携版）
 
-> **发布状态**：`v1.0.0-beta.3` 聚焦模板预览、本地历史与收藏、平台识别和转录复用提示。Release 资产及校验文件以本节链接中的 GitHub Pre-release 为准，详细验收证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+> **发布状态**：`v1.0.0-beta.4` 已发布，包含可信进度、显式恢复、阅读/原文对照、历史刷新和本机请求安全。远端资产下载后通过独立验收，版本标签固定；详细证据见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
-普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3) 下载 `Video2Knowledge-1.0.0-beta.3-portable.exe`：
+普通用户无需安装 Python 或配置开发环境，可从 [Release 页面](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.4) 下载 `Video2Knowledge-1.0.0-beta.4-portable.exe`：
 
 1. 下载并双击 exe；
 2. 等待浏览器自动打开本地页面；
@@ -123,7 +123,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 ## 🌍 支持范围与兼容边界
 
 - **重点支持**：B 站、抖音、YouTube 和本地媒体，走字幕优先、本地 ASR 兜底的链路，并有针对性的回归测试与可操作报错。
-- **通用兼容**：TikTok、小红书和其他当前版本 `yt-dlp` 能解析的 `http` / `https` 视频链接按通用链路尽力处理，不做平台级保证；Beta.3 的平台徽标只做离线 URL 识别，不代表链接已联网验证。
+- **通用兼容**：TikTok、小红书和其他当前版本 `yt-dlp` 能解析的 `http` / `https` 视频链接按通用链路尽力处理，不做平台级保证；平台徽标只做离线 URL 识别，不代表链接已联网验证。
 - **待适配**：爱奇艺、腾讯视频等未做专门适配的平台，能否处理取决于平台访问权限、字幕可见性和 `yt-dlp` 的解析能力。
 - 项目不绕过付费、登录、验证、会员或地区限制；平台接口变化可能导致解析暂时失效。
 

@@ -12,7 +12,7 @@
 
 Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS.md) · [Current tasks](TODO.md) · [Decisions](DECISIONS.md) · [UI design baseline](DESIGN.md) · [Development rules](AGENTS.md)
 
-> **Current status**: `1.0.0-beta.4` passed [local candidate acceptance](docs/strategy/27-beta4-local-release-acceptance.md); it is not publicly released. The download below remains the published Beta.3. [PROJECT_STATUS.md](PROJECT_STATUS.md) separates source, candidate and public-release acceptance.
+> **Current status**: `1.0.0-beta.4` is a public Pre-release. The actual downloaded assets passed hash comparison, client compatibility and offline ASR checks. See [release acceptance](docs/strategy/28-beta4-remote-release-acceptance.md). This release uses an accepted local build uploaded manually; no CI success is claimed.
 
 ## What Beta.4 adds
 
@@ -26,7 +26,7 @@ Six built-in templates, custom templates, Obsidian destinations and optional Fei
 
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
-<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.3)</strong></a></p>
+<p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.4"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.4)</strong></a></p>
 
 ## Product positioning
 
@@ -38,7 +38,7 @@ Media downloads, local ASR and file writes run on your machine. Cloud models rec
 
 ## 🖼️ Knowledge Studio UI
 
-These show the Beta.4 development UI. Home/history/template screenshots come from `scripts/capture_readme_screenshots.mjs`; progress/results come from `scripts/verify_g0_browser.mjs`. Both use real page rendering, isolated workspaces and synthetic data, without real credentials, private paths or user task titles.
+These show the Beta.4 UI. Home/history/template screenshots come from `scripts/capture_readme_screenshots.mjs`; progress/results come from `scripts/verify_g0_browser.mjs`. Both use real page rendering, isolated workspaces and synthetic data, without real credentials, private paths or user task titles.
 
 ### Studio home
 
@@ -63,7 +63,7 @@ These show the Beta.4 development UI. Home/history/template screenshots come fro
 - 👁️ **No-cost template previews**: selecting a template shows a rendered result and Markdown sample made from fixed synthetic content; previews never call an LLM or read an existing note.
 - 🗂️ **Local history and favorites**: search and filter all local task manifests, load them in pages, and star completed notes locally. Older Markdown bodies are read only when opened.
 - 🔎 **Platform and reuse guidance**: a pasted URL is classified locally; when a reusable transcript exists, the UI offers explicit open, reuse, or restart actions without automatic submission.
-- ⏱️ **Trustworthy task feedback (development build)**: preflight summarizes source, model cache, key and destination readiness; running jobs show queue position, measured ASR media-time progress, and a conservative ETA range, with a pinned shortcut back to details.
+- ⏱️ **Trustworthy task feedback**: preflight summarizes source, model cache, key and destination readiness; running jobs show queue position, measured ASR media-time progress, and a conservative ETA range, with a pinned shortcut back to details.
 - 🖼️ **Discoverable exports**: the result panel leads with Export Markdown and visibly offers SRT, HTML, JSON, plain text, and PNG, with optional video screenshots as note attachments.
 - 🤖 **Raw material for agents**: a connected agent can stop at the timestamped transcript — no LLM call and no API key for this machine, and it writes the notes in its own structure and style.
 - 🛡️ **Local-first**: media downloads, local ASR, and file storage happen locally. Cloud LLMs receive transcript content; optional Feishu publishing sends the published content. The service listens on `127.0.0.1` by default.
@@ -76,7 +76,7 @@ These show the Beta.4 development UI. Home/history/template screenshots come fro
 
 ## Known limits
 
-- Beta.4 is not publicly released; installation below still refers to Beta.3. Local candidate acceptance does not update Release assets.
+- This is a Beta.4 Pre-release and may contain undiscovered issues. Acceptance does not certify a clean Windows installation or every platform.
 - ETA requires enough transcription samples. A provided key or destination does not establish authentication or write permission.
 - Regenerating notes calls the selected model; enabled screenshots may download preview media. Transcript comparison itself makes no extra model calls.
 - Experimental history caching failed its performance gate. Default queries use fresh reads; there is no database or 300ms guarantee.
@@ -85,9 +85,9 @@ These show the Beta.4 development UI. Home/history/template screenshots come fro
 
 ## 🚀 Install (Windows portable build)
 
-> **Release status**: `v1.0.0-beta.3` focuses on template previews, local history/favorites, platform labels, and transcript-reuse guidance. Treat the GitHub Pre-release linked below and its checksum file as the authoritative downloadable assets. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for acceptance evidence.
+> **Release status**: `v1.0.0-beta.4` is published with measured progress, explicit recovery, reading/transcript comparison, history refresh and local request security. Downloaded assets passed independent acceptance; the release tag remains fixed. See [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.3-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3):
+No Python or development setup is required: download `Video2Knowledge-1.0.0-beta.4-portable.exe` from the [Release page](https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.4):
 
 1. Download and double-click the exe;
 2. Wait for the local page to open in your browser;
@@ -124,7 +124,7 @@ LLM-generated timestamped Markdown note → chosen directory / Obsidian Vault / 
 ## 🌍 Supported inputs and compatibility boundaries
 
 - **Focused support**: Bilibili, Douyin, YouTube, and local media use the subtitle-first, local-ASR-fallback pipeline, with targeted regression tests and actionable errors.
-- **Generic compatibility**: TikTok, Xiaohongshu, and other `http` / `https` video URLs the installed `yt-dlp` can parse are handled on a best-effort basis, without platform-specific guarantees. The beta.3 badge is offline URL classification, not a live availability check.
+- **Generic compatibility**: TikTok, Xiaohongshu, and other `http` / `https` video URLs the installed `yt-dlp` can parse are handled on a best-effort basis, without platform-specific guarantees. Platform badges are offline URL classification, not a live availability check.
 - **Pending adaptation**: platforms without dedicated adaptation (such as iQiyi or Tencent Video) depend on access permissions, caption availability, and `yt-dlp` behavior.
 - The project does not bypass payment, login, verification, membership, or region restrictions; platform interface changes can temporarily break parsing.
 

@@ -1,5 +1,9 @@
 # Decisions
 
+## 2026-10-24 Beta.4 Draft 下载后验收再公开
+
+用户另行授权远端流程后，main 快进推送并创建注释标签。Actions active/enabled 但未观察到运行，按既定备用合同手工上传已验收本地构建到 Draft；下载实际资产完成摘要、客户端与离线 ASR 验收后才公开为 Pre-release。公开前后 asset IDs/digests 保持一致，后续证据提交不移动标签。网络 TLS 超时只重试缺失的精确步骤，不重复创建或上传，不把本地构建当成 CI 证据。详见 [发布验收](docs/strategy/28-beta4-remote-release-acceptance.md)。
+
 ## 2026-10-24 Beta.4 本地收口与 Draft 发布门禁
 
 Beta.4 冻结新功能，收口累计进度、恢复、阅读/对照、历史刷新和本机请求安全实现。用户授权本地版本修改、聚焦提交及隔离重建验收，未授权本轮远端操作。发布工作流改为仅创建 Draft Pre-release；实际下载的 CI 资产通过摘要、客户端和离线 ASR 验收后才可公开。本地 Python 3.13 候选不能替代 Python 3.11 CI 资产验收。默认历史继续新鲜读取，缓存及 G4 规则工具不作为性能或模型准确率成果。完整合同见 [Beta.4 计划](docs/strategy/26-beta4-release-closeout-plan.md)。

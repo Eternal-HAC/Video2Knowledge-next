@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-24",
+  "scope": "beta4-remote-pre-release-acceptance",
+  "release": {
+    "assets": [
+      {
+        "browser_download_url": "https://github.com/Eternal-HAC/Video2Knowledge-next/releases/download/v1.0.0-beta.4/SHA256SUMS.txt",
+        "digest": "sha256:c7113d291de4d2a7ef4c33f7f1ea7a13244907be4f5a4093c10929ba8707d668",
+        "id": 671667863,
+        "name": "SHA256SUMS.txt",
+        "size": 109,
+        "state": "uploaded"
+      },
+      {
+        "browser_download_url": "https://github.com/Eternal-HAC/Video2Knowledge-next/releases/download/v1.0.0-beta.4/Video2Knowledge-1.0.0-beta.4-portable.exe",
+        "digest": "sha256:f78ed36f707ff8d302f6e721b7b4f18067b0dcd3d64e63ed1f6afa190968dc5b",
+        "id": 671667866,
+        "name": "Video2Knowledge-1.0.0-beta.4-portable.exe",
+        "size": 133248935,
+        "state": "uploaded"
+      }
+    ],
+    "draft": false,
+    "html_url": "https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.4",
+    "id": 422600838,
+    "prerelease": true,
+    "published_at": "2026-10-24T08:23:48Z",
+    "tag_name": "v1.0.0-beta.4",
+    "target_commitish": "main"
+  },
+  "annotated_tag_object": "68fc5b9e2f591072c6e229dbe5a600a45c3720aa",
+  "tag_commit": "d8135b60270dbed8885fe11bd5af89c483cb5ac0",
+  "build_source_commit": "7df3d51f04f140ec11624abd6c43fb06167c9076",
+  "main_at_publication": "d8135b60270dbed8885fe11bd5af89c483cb5ac0",
+  "publication_path": "manual Draft using accepted local Python 3.13.7 / PyInstaller 6.22.3 assets",
+  "workflow_observation": {
+    "state": "active",
+    "actions_enabled": true,
+    "runs_observed": [],
+    "wait_before_fallback": "more than two minutes",
+    "ci_success_claimed": false
+  },
+  "download_phase": "Draft before publication",
+  "asset_ids_and_digests_unchanged_after_publication": true,
+  "four_way_exe_comparison": {
+    "passed": true,
+    "asset": "Video2Knowledge-1.0.0-beta.4-portable.exe",
+    "sha256": "f78ed36f707ff8d302f6e721b7b4f18067b0dcd3d64e63ed1f6afa190968dc5b",
+    "size": 133248935
+  },
+  "checksum_file_comparison": {
+    "passed": true,
+    "size": 109,
+    "sha256": "c7113d291de4d2a7ef4c33f7f1ea7a13244907be4f5a4093c10929ba8707d668"
+  },
+  "downloaded_packaged_clients": {
+    "new": {
+      "passed": true,
+      "version": "1.0.0-beta.4",
+      "mode": "portable",
+      "templates": 6,
+      "boundaries_rejected": 5,
+      "same_origin_upload": true,
+      "sdk_sse_sessions": 2,
+      "native_backend_http": true,
+      "static_icons": true,
+      "transcript_context": true,
+      "explicit_recovery": true,
+      "uncertain_lookup": true,
+      "real_llm": false,
+      "feishu": false
+    },
+    "legacy": {
+      "passed": true,
+      "version": "1.0.0-beta.4",
+      "mode": "portable",
+      "templates": 6,
+      "boundaries_rejected": 5,
+      "same_origin_upload": true,
+      "sdk_sse_sessions": 2,
+      "native_backend_http": true,
+      "static_icons": true,
+      "transcript_context": true,
+      "explicit_recovery": true,
+      "uncertain_lookup": true,
+      "real_llm": false,
+      "feishu": false
+    }
+  },
+  "downloaded_history": {
+    "passed": true,
+    "templates": 6,
+    "tasks": 2,
+    "favorite_restart": true,
+    "lazy_restore": true,
+    "offline_source_reuse": true
+  },
+  "downloaded_http_asr": {
+    "passed": true,
+    "segments": 3,
+    "language": "zh",
+    "markdown_chars": 100,
+    "srt_chars": 157,
+    "archives": 1,
+    "public_result_exposes_device": false
+  },
+  "downloaded_worker": {
+    "passed": true,
+    "model": "small",
+    "requested_model": "small",
+    "device": "cpu",
+    "segments": 3,
+    "worker_exit_code": 0,
+    "offline": true,
+    "real_llm": false
+  },
+  "cleanup": {
+    "synthetic_wavs_removed": true,
+    "owned_candidate_processes_remaining": 0,
+    "credential_artifact_audit": "passed",
+    "temporary_workspaces_removed": true,
+    "method": "finite allowlisted files and empty directories; no recursive delete",
+    "removed": [
+      "client-workspace-new",
+      "client-workspace-legacy",
+      "worker-workspace"
+    ]
+  },
+  "source_regression": {
+    "passed": 1382,
+    "skipped": 3,
+    "source_unchanged": true,
+    "full_suite_rerun_this_remote_stage": false
+  },
+  "limits": [
+    "not clean-machine certification",
+    "no actual CI build or CI test claim",
+    "no real LLM, credentials, Feishu write, login, media or ASR-model download",
+    "no all-Provider/platform/network guarantee",
+    "no default cache speedup claim"
+  ]
+}

@@ -1,5 +1,7 @@
 # Video2Knowledge Product Baseline
 
+> 2026-10-24 Beta.4 已公开为 Pre-release：[发布与实际下载验收](docs/strategy/28-beta4-remote-release-acceptance.md)。下载资产已通过摘要、安全/HTTP/MCP、新旧环境变量、历史收藏重启和离线 small/CPU 验收。Actions 未产生运行，采用已授权的本地资产 Draft 备用流程；没有 CI 通过或真实 Provider 普遍兼容声明。后续文档提交不移动发布标签。
+
 > Beta.4 本地准备已完成：[验收与边界](docs/strategy/27-beta4-local-release-acceptance.md)。进度、显式恢复、阅读/原文对照、历史刷新、本机请求安全已纳入新版本候选；完整 1382/3、打包 HTTP/MCP 和离线 small/CPU 通过。尚未公开发布，也不代表普遍 Provider/平台兼容；下方历史阶段的待办描述以本次验收为准。
 
 > Beta.4 本地收口已获授权，版本目标 `1.0.0-beta.4`。累计能力按 [收口合同](docs/strategy/26-beta4-release-closeout-plan.md) 整理提交并重建验收；源码、候选、公开发布分开记录。Beta.3 仍是现有下载版本，未公开 Beta.4。历史性能目标及真实 Provider 普遍兼容不列为达成。

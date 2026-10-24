@@ -38,8 +38,11 @@ This file holds only the active gap-verification queue. For every item: close it
 
 ## Active development task
 
+- [x] Publish Beta.4 after explicit remote authorization and actual downloaded Draft acceptance; record unchanged tag/assets, manual fallback without CI claim, and clean synthetic processes/workspaces. See [remote evidence](docs/strategy/28-beta4-remote-release-acceptance.md).
+- [ ] Choose a separately scoped next product stage after Beta.4 user testing; do not auto-enable cache or add platforms/database.
+
 - [x] Beta.4 local closeout: three independent commit snapshots, version/Draft gates, five browser matrices, isolated committed-input EXE, new/legacy clients, offline ASR/worker and finite synthetic cleanup. See [acceptance](docs/strategy/27-beta4-local-release-acceptance.md).
-- [ ] Separately authorize remote main/tag/Draft operations, accept the actual downloaded assets, then publish and push release evidence. Beta.4 remains unpublished.
+- [x] Separately authorize remote main/tag/Draft operations, accept the actual downloaded assets, then publish and push release evidence. Beta.4 is a public Pre-release.
 
 - [x] Authorize and create dependency-complete product and offline quality commits, each verified from an independent staged snapshot.
 - [x] Set Beta.4 runtime/page/capture versions, add failure-first Draft/version gates and refresh synthetic browser matrices/screenshots.
@@ -47,7 +50,7 @@ This file holds only the active gap-verification queue. For every item: close it
 
 - [x] Define the [Beta.4 version/commit/release closeout contract](docs/strategy/26-beta4-release-closeout-plan.md).
 - [x] With explicit local execution/commit authorization, reconcile accumulated files, version Beta.4, validate commit snapshots and rebuild/accept the new portable candidate.
-- [ ] With separate remote authorization, push/tag, accept downloaded Draft assets, publish the Pre-release and record evidence. No default cache speedup or broad Provider compatibility claim.
+- [x] With separate remote authorization, push/tag, accept downloaded Draft assets, publish the Pre-release and record evidence. No default cache speedup or broad Provider compatibility claim.
 
 - [x] G1 source-first composition and lightweight reader: source/start and the selected-plan summary precede templates; long previews collapse by default; heading navigation and literal text-node search preserve original Markdown, formulas, images and exports; download feedback distinguishes actual MD/ZIP responses. `800 passed, 3 skipped`; G1 and G0 each pass 9 browser combinations. See [G1 acceptance](docs/strategy/08-g1-acceptance.md). Source-local only, no new build or release.
 
@@ -77,7 +80,7 @@ This file holds only the active gap-verification queue. For every item: close it
 - [x] S0 source gate: failure-first Host/Origin/Fetch Metadata, unknown-peer protection and disabled proxy-header trust. Native no-Origin callers, dynamic loopback ports, SSE and uploads preserved. [Acceptance](docs/strategy/23-local-request-security-acceptance.md): `1367 passed, 3 skipped`, cross-port browser rejection and nine UI combinations. The audit above is historical.
 - [x] Prioritized cumulative-source review and real native HTTP/MCP SDK SSE compatibility: [evidence](docs/strategy/24-source-review-client-acceptance.md), `1381 passed, 3 skipped`. Fixed smoke instance misidentification with owned-process listener discovery; actual Windows verification touches only the synthetic owned service. This is scoped review, not every-line audit or packaged acceptance.
 - [x] Isolated development candidate: [packaged acceptance](docs/strategy/25-isolated-portable-acceptance.md) covers templates/history/favorite restart, request security, native HTTP, SDK SSE and cached small/CPU ASR. Current candidate still says beta.3 and has its own hash; original dist/release assets were not replaced. This does not authorize or complete a new release.
-- [ ] Beta.4 release preparation: agree version/commit boundaries and final review, then rebuild the versioned candidate with new input/EXE hashes and repeat required release gates. Do not rename the beta.3 development candidate or automatically push/tag/release.
+- [x] Beta.4 release preparation and separately authorized remote closeout: version/commit boundaries, rebuilt candidate and actual downloaded asset gates passed. No beta.3 rename, force push or tag movement.
 
 1. [x] Optional age-based cleanup of failed/cancelled-task media: implemented locally.
 2. ~~On-demand real checks for YouTube, Bilibili, and Douyin.~~ Completed as a one-off real validation milestone (see PROJECT_STATUS.md): YouTube platform subtitles, Bilibili audio download plus local ASR, and Douyin login through local ASR all passed. Automated tests remain the durable evidence; live results are point-in-time and do not guarantee ongoing platform availability.
