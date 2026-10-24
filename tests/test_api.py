@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from urllib.parse import quote, unquote
 
 import pytest
-from fastapi.testclient import TestClient
+from local_client import TestClient
 
 import launcher
 from backend import main
@@ -23,6 +23,19 @@ from backend.video_processor import (
     VideoProcessor,
 )
 from retention_support import IS_WINDOWS, assert_media_removed, assert_removed_count
+
+
+def test_history_refresh_boolean_validation_and_legacy_response(tmp_path, monkeypatch):
+    from backend import history_cache
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(main, "tasks", {})
+    monkeypatch.setattr(history_cache, "history_summaries", history_cache.HistorySummaryCache())
+    client = TestClient(main.app)
+    original = client.get("/api/tasks").json()
+    assert original == {"tasks": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+    assert client.get("/api/tasks?refresh=true").json() == original
+    assert client.get("/api/tasks?refresh=false").json() == original
+    assert client.get("/api/tasks?refresh=not-a-bool").status_code == 422
 
 
 @pytest.mark.asyncio
@@ -322,6 +335,84 @@ def test_whisper_manual_folder_endpoint(tmp_path: Path, monkeypatch: pytest.Monk
 
     invalid = client.post("/api/whisper-models/manual-folder", json={"model": "nope"})
     assert invalid.status_code == 422
+
+
+def test_open_completed_result_uses_only_manifest_backed_destinations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    custom = tmp_path / "notes"
+    custom.mkdir()
+    task_id = "open-result-task"
+    task_dir = workspace / task_id
+    task_dir.mkdir()
+    internal = task_dir / "notes.md"
+    internal.write_text("# 内部笔记", encoding="utf-8")
+    archived = custom / "课程.md"
+    archived.write_text("# 归档笔记", encoding="utf-8")
+    (task_dir / "task.json").write_text(
+        json.dumps({"task_id": task_id, "output": "note", "note_destination": str(custom)}),
+        encoding="utf-8",
+    )
+    task = main.new_task("completed", task_id)
+    task["output"] = "note"
+    task["result"] = {
+        "title": "课程",
+        "output_directory": str(task_dir),
+        "archived_path": str(archived),
+    }
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+    monkeypatch.setattr(main, "tasks", {task_id: task})
+    opened: list[Path] = []
+    monkeypatch.setattr(main, "_open_in_file_manager", lambda path: opened.append(path) or True)
+    client = TestClient(main.app)
+
+    file_response = client.post(
+        f"/api/task/{task_id}/open-result", json={"target": "file"}
+    )
+    folder_response = client.post(
+        f"/api/task/{task_id}/open-result", json={"target": "folder"}
+    )
+
+    assert file_response.status_code == 200
+    assert file_response.json() == {"opened": True, "target": "file"}
+    assert folder_response.json() == {"opened": True, "target": "folder"}
+    assert opened == [archived, custom]
+
+
+def test_open_result_rejects_untrusted_archive_and_unfinished_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "private.txt"
+    outside.write_text("private", encoding="utf-8")
+    task_id = "unsafe-open-result"
+    task_dir = workspace / task_id
+    task_dir.mkdir()
+    internal = task_dir / "notes.md"
+    internal.write_text("# safe", encoding="utf-8")
+    (task_dir / "task.json").write_text(
+        json.dumps({"task_id": task_id, "output": "note", "note_destination": str(tmp_path / "allowed")}),
+        encoding="utf-8",
+    )
+    task = main.new_task("completed", task_id)
+    task["output"] = "note"
+    task["result"] = {"archived_path": str(outside), "output_directory": str(task_dir)}
+    monkeypatch.setattr(main, "WORKSPACE_DIR", workspace)
+    monkeypatch.setattr(main, "tasks", {task_id: task})
+    opened: list[Path] = []
+    monkeypatch.setattr(main, "_open_in_file_manager", lambda path: opened.append(path) or True)
+    client = TestClient(main.app)
+
+    response = client.post(f"/api/task/{task_id}/open-result", json={"target": "file"})
+    assert response.status_code == 200
+    assert opened == [internal]
+
+    task["status"] = "processing"
+    unfinished = client.post(f"/api/task/{task_id}/open-result", json={"target": "folder"})
+    assert unfinished.status_code == 409
 
 
 def test_manual_folder_for_paraformer_lists_sherpa_components(
@@ -2430,6 +2521,70 @@ async def test_task_queue_respects_concurrency_limit(monkeypatch) -> None:
     main.tasks.pop("queued-two", None)
 
 
+def test_task_status_reports_queue_position(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(main, "WORKSPACE_DIR", tmp_path)
+    first = main.new_task("processing", "running")
+    second = main.new_task("queued", "queued-one")
+    third = main.new_task("queued", "queued-two")
+    monkeypatch.setattr(
+        main,
+        "tasks",
+        {"running": first, "queued-one": second, "queued-two": third},
+    )
+    for task_id in main.tasks:
+        (tmp_path / task_id).mkdir()
+        (tmp_path / task_id / "task.json").write_text("{}", encoding="utf-8")
+
+    payload = main.task_status_payload("queued-two", third)
+
+    assert payload["queue_ahead"] == 2
+    assert payload["queue_position"] == 3
+    assert payload["queue_total"] == 3
+
+
+def test_asr_progress_snapshot_is_dynamic_and_eta_is_delayed() -> None:
+    early = main.asr_progress_snapshot(
+        position=8, duration=100, elapsed=2, offset_seconds=0, overall_duration=None
+    )
+    mature = main.asr_progress_snapshot(
+        position=40, duration=100, elapsed=20, offset_seconds=0, overall_duration=None
+    )
+    multipage = main.asr_progress_snapshot(
+        position=20, duration=50, elapsed=10, offset_seconds=50, overall_duration=150
+    )
+
+    assert early["overall_progress"] > 28
+    assert early["phase_progress"] == 8
+    assert early["estimated_remaining_seconds"] is None
+    assert mature["overall_progress"] > early["overall_progress"]
+    assert mature["estimated_remaining_seconds"] == pytest.approx(30)
+    assert multipage["processed_seconds"] == 70
+    assert multipage["total_seconds"] == 150
+    assert multipage["phase_progress"] == 47
+    assert 28 < multipage["overall_progress"] < 49
+
+
+@pytest.mark.asyncio
+async def test_transcribe_progress_reporter_schedules_detailed_progress() -> None:
+    task = main.new_task("processing")
+    task.update(step=4, progress=28)
+    reporter = main.transcribe_progress_reporter(task, "small")
+
+    reporter(20, 100)
+    await asyncio.sleep(0)
+
+    assert task["progress"] > 28
+    assert task["phase_progress"] == 20
+    assert task["processed_seconds"] == 20
+    assert task["total_seconds"] == 100
+
+    reporter(30, 100)
+    task.update(step=5, progress=50)
+    await asyncio.sleep(0)
+    assert task["step"] == 5
+    assert task["progress"] == 50
+
+
 @pytest.mark.asyncio
 async def test_task_status_reports_and_freezes_elapsed_time() -> None:
     task_id = "timing-task"
@@ -2516,7 +2671,7 @@ async def test_pipeline_uses_platform_subtitles_without_downloading_audio(
 
     class FakeSummarizer:
         def __init__(self, **kwargs):
-            pass
+            self.model = "deepseek-flash"
         def describe_effort(self, reasoning_effort: str, style: str) -> str:
             return reasoning_effort
 
@@ -2552,6 +2707,9 @@ async def test_pipeline_uses_platform_subtitles_without_downloading_audio(
     assert task["result"]["transcript_source"] == "platform_subtitle"
     assert (tmp_path / task_id / "transcript.json").is_file()
     assert (tmp_path / task_id / "notes.md").is_file()
+    note = (tmp_path / task_id / "notes.md").read_text(encoding="utf-8")
+    assert "生成模型：deepseek · deepseek-flash" in note
+    assert any("Model=deepseek-flash" in line for line in task["logs"])
 
 
 @pytest.mark.asyncio

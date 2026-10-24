@@ -124,6 +124,9 @@ const LEGACY_PROVIDER_MAP = {
 };
 
 let currentTaskId = null;
+// Only a non-secret identifier and output mode survive an uncertain response.
+// Never retain a serialized request with Key/Cookie values or auto-repeat POST.
+let pendingSubmission = null;
 // 上传上限以本机后端 /api/health 下发为准；后端未就绪时按这个回退（与后端默认值一致）
 const DEFAULT_MAX_UPLOAD_MB = 2048;
 let maxUploadBytes = DEFAULT_MAX_UPLOAD_MB * 1024 * 1024;
@@ -157,6 +160,7 @@ let mediaRetentionBusy = false;
 let sourceInspectTimer = null;
 let sourceInspectController = null;
 let inspectedReusableTask = null;
+let currentTaskSnapshot = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     window.__videoToNoReady = false;
@@ -183,6 +187,8 @@ function safeStep(action, label) {
 }
 
 async function loadAppVersion() {
+    const serviceHost = window.location.host || '本机';
+    byId('serviceState').textContent = `本地 API · ${serviceHost}`;
     try {
         const response = await fetch(`${API_BASE}/health`, { cache: 'no-store' });
         const data = await readResponse(response, '读取版本失败');
@@ -282,6 +288,7 @@ function bindEvents() {
     bindListener('resetConfigBtn', 'click', resetPreferences);
     bindListener('submitBtn', 'click', () => startSummary());
     bindListener('retryBtn', 'click', () => startSummary({ resumeCurrent: true }));
+    bindListener('checkTaskBtn', 'click', checkUncertainTask);
     bindListener('restartBtn', 'click', () => startSummary({ forceRestart: true }));
     // 字幕稿跑完后这个按钮的含义是"改用大模型出笔记"：先把输出类型切回笔记再提交
     bindListener('regenerateBtn', 'click', () => startSummary({
@@ -293,9 +300,65 @@ function bindEvents() {
     bindListener('cancelTaskBtn', 'click', cancelCurrentTask);
     bindListener('downloadMdBtn', 'click', downloadSummary);
     bindListener('copyNoteBtn', 'click', copyFullNote);
+    bindListener('openResultFileBtn', 'click', () => openCurrentResult('file'));
+    bindListener('openResultFolderBtn', 'click', () => openCurrentResult('folder'));
+    bindListener('activeTaskStrip', 'click', () => {
+        byId('progressArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    bindTaskStripPosition();
     bindListener('feishuRetryBtn', 'click', retryFeishuUpload);
     bindListener('formatSelect', 'change', toggleImageLayout);
-    bindListener('refreshRecentTasksBtn', 'click', () => loadRecentTasks());
+    bindListener('noteSearch', 'input', () => searchNote());
+    bindListener('noteSearch', 'keydown', (event) => {
+        if (event.isComposing) return;
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            moveNoteMatch(event.shiftKey ? -1 : 1);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            clearNoteSearch();
+        }
+    });
+    bindListener('noteSearchPrevBtn', 'click', () => moveNoteMatch(-1));
+    bindListener('noteSearchNextBtn', 'click', () => moveNoteMatch(1));
+    bindListener('noteSearchClearBtn', 'click', () => clearNoteSearch());
+    bindListener('viewTranscriptBtn', 'click', () => openTranscriptContext(0, null, byId('viewTranscriptBtn')));
+    bindListener('transcriptContextCloseBtn', 'click', () => closeTranscriptContext());
+    bindListener('transcriptContextMoreBtn', 'click', () => loadTranscriptContext(true));
+    bindListener('transcriptContextReloadNoteBtn', 'click', () => {
+        if (currentTaskId) openRecentTask(currentTaskId);
+    });
+    bindListener('transcriptRangeForm', 'submit', (event) => {
+        event.preventDefault();
+        const start = parseNoteClock(byId('transcriptRangeStart').value);
+        const rawEnd = byId('transcriptRangeEnd').value.trim();
+        const end = rawEnd ? parseNoteClock(rawEnd) : null;
+        if (start === null || (rawEnd && end === null) || (end !== null && end < start)) {
+            transcriptContextRequest += 1;
+            transcriptContextAbort?.abort();
+            byId('transcriptContextPanel').removeAttribute('aria-busy');
+            byId('transcriptContextRows').replaceChildren();
+            byId('transcriptContextMoreBtn').hidden = true;
+            byId('transcriptContextStatus').textContent = '请输入有效时间，终点须不早于起点，例如 00:10 或 01:02:03。';
+            return;
+        }
+        if (!transcriptContextState) return;
+        transcriptContextState.start = start;
+        transcriptContextState.end = end;
+        // An explicit read is the only way to accept a changed transcript revision.
+        transcriptContextState.transcriptHash = null;
+        loadTranscriptContext();
+    });
+    bindListener('transcriptContextPanel', 'keydown', (event) => {
+        if (event.key === 'Escape') { event.preventDefault(); closeTranscriptContext(); }
+    });
+    bindListener('templatePreviewDetails', 'keydown', (event) => {
+        if (event.key === 'Escape' && byId('templatePreviewDetails').open) {
+            byId('templatePreviewDetails').open = false;
+            byId('templatePreviewToggle').focus();
+        }
+    });
+    bindListener('refreshRecentTasksBtn', 'click', () => loadRecentTasks(false, false, true));
     bindListener('historyLoadMoreBtn', 'click', () => loadRecentTasks(false, true));
     bindListener('historyQuery', 'input', scheduleHistoryReload);
     ['historyStatus', 'historyOutput', 'historyPlatform', 'historyFavorite'].forEach((id) => {
@@ -381,6 +444,7 @@ function bindEvents() {
     bindListener('localFile', 'change', () => {
         updateFileInfo();
         resetSubmitLabel();
+        updateReadinessCard();
     });
     bindSettingsPanel();
     bindPlanSummary();
@@ -416,9 +480,27 @@ function isSettingsPanelOpen() {
     return Boolean(panel) && !panel.hidden;
 }
 
-function openSettingsPanel() {
+function bindTaskStripPosition() {
+    const header = document.querySelector('.app-bar');
+    if (!header) return;
+    const update = () => document.documentElement.style.setProperty(
+        '--app-bar-height', `${Math.ceil(header.getBoundingClientRect().height)}px`
+    );
+    update();
+    if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(update);
+        observer.observe(header);
+    } else {
+        window.addEventListener('resize', update);
+    }
+}
+
+let settingsReturnFocus = null;
+
+function openSettingsPanel(trigger = byId('settingsToggleBtn')) {
     const panel = byId('settingsPanel');
     if (!panel || !panel.hidden) return;
+    settingsReturnFocus = trigger;
     panel.hidden = false;
     const backdrop = byId('settingsBackdrop');
     if (backdrop) backdrop.hidden = false;
@@ -437,9 +519,11 @@ function closeSettingsPanel() {
     const toggle = byId('settingsToggleBtn');
     if (toggle) {
         toggle.setAttribute('aria-expanded', 'false');
-        // 焦点还给触发按钮：面板（连同其中的关闭按钮）隐藏后，焦点必须有处可去
-        if (typeof toggle.focus === 'function') toggle.focus();
     }
+    // Return to the actual entry, including the task-flow template manager.
+    const trigger = settingsReturnFocus || toggle;
+    if (trigger && typeof trigger.focus === 'function') trigger.focus();
+    settingsReturnFocus = null;
 }
 
 function bindSettingsPanel() {
@@ -528,13 +612,116 @@ function updatePlanSummary() {
         if (feishu && feishu.checked) parts.push('同时发布飞书');
     }
     summary.textContent = parts.join(' · ');
+    updateReadinessCard();
+}
+
+function readinessItem(label, detail, state = 'ready') {
+    return { label, detail, state };
+}
+
+function updateReadinessCard() {
+    const list = byId('readinessList');
+    const summary = byId('readinessSummary');
+    const card = byId('readinessCard');
+    if (!list || !summary || !card) return;
+    const items = [];
+    const sourceType = byId('sourceType')?.value || 'url';
+    if (sourceType === 'url') {
+        const value = normalizeVideoInput(byId('videoUrl')?.value || '');
+        const inspection = byId('sourceInspectPanel');
+        if (!value) {
+            items.push(readinessItem('来源', '还未填写视频链接', 'missing'));
+        } else if (inspection && !inspection.hidden) {
+            const focused = inspection.dataset.supportLevel === 'focused';
+            items.push(readinessItem(
+                '来源',
+                focused ? '已识别为重点支持平台' : '通用兼容平台，结果取决于访问条件',
+                focused ? 'ready' : 'warning'
+            ));
+        } else {
+            items.push(readinessItem('来源', '链接已填写，平台识别尚未完成', 'pending'));
+        }
+    } else {
+        const file = byId('localFile')?.files?.[0];
+        items.push(readinessItem(
+            '来源',
+            file ? `已选择 ${file.name}` : (sourceType === 'subtitle' ? '还未选择字幕文件' : '还未选择媒体文件'),
+            file ? 'ready' : 'missing'
+        ));
+    }
+
+    if (sourceType !== 'subtitle') {
+        const whisper = byId('whisperModel')?.selectedOptions?.[0];
+        const status = whisper?.dataset?.status || 'unknown';
+        const label = (whisper?.dataset?.baseLabel || whisper?.textContent || '本地语音模型').split('（')[0];
+        if (status === 'cached') {
+            items.push(readinessItem('本地转录', `${label} 已缓存`, 'ready'));
+        } else if (status === 'missing' || status === 'incomplete') {
+            items.push(readinessItem('本地转录', `${label} 必要时需要下载或补全`, 'warning'));
+        } else {
+            items.push(readinessItem('本地转录', `${label} 缓存状态待确认`, 'pending'));
+        }
+    }
+
+    if (!isTranscriptMode()) {
+        const model = getSelectedModelConfig();
+        const hasKey = Boolean(typedApiKey() || hasReusableKey());
+        items.push(readinessItem(
+            '笔记模型',
+            hasKey ? `${model?.name || '当前模型'} Key 已提供，未验证连接与权限` : '缺少当前接口的 API Key',
+            hasKey ? 'warning' : 'missing'
+        ));
+        if (noteTemplatesStatus !== 'ready') {
+            items.push(readinessItem('模板',
+                noteTemplatesStatus === 'error' ? '模板加载失败，请重试' : '模板正在加载',
+                noteTemplatesStatus === 'error' ? 'missing' : 'pending'));
+        }
+        const destinationMode = selectedDestinationMode();
+        const destination = byId('noteDestination')?.value.trim() || '';
+        const destinationReady = destinationMode === 'default' || Boolean(destination);
+        items.push(readinessItem(
+            '保存位置',
+            destinationReady ? `${destinationSummaryLabel()}（未验证可写，保存时检查）` : '还未选择或填写保存目录',
+            destinationReady ? 'warning' : 'missing'
+        ));
+        if (byId('feishuUploadEnabled')?.checked) {
+            const folder = byId('feishuFolder')?.value.trim() || '';
+            items.push(readinessItem(
+                '飞书发布',
+                folder ? '目标已填写，权限未验证；本地保存后发布到飞书' : '已开启，但还未填写目标文件夹',
+                folder ? 'warning' : 'missing'
+            ));
+        }
+    }
+
+    list.replaceChildren(...items.map((item) => {
+        const row = document.createElement('li');
+        row.className = item.state;
+        const label = document.createElement('strong');
+        label.textContent = item.label;
+        const detail = document.createElement('span');
+        detail.textContent = item.detail;
+        row.appendChild(label);
+        row.appendChild(detail);
+        return row;
+    }));
+    const missing = items.filter((item) => item.state === 'missing').length;
+    const warnings = items.filter((item) => item.state === 'warning').length;
+    const pending = items.filter((item) => item.state === 'pending').length;
+    const notices = [];
+    if (missing) notices.push(`${missing} 项需要补充`);
+    if (pending) notices.push(`${pending} 项待确认`);
+    if (warnings) notices.push(`${warnings} 项提醒`);
+    summary.textContent = notices.length ? notices.join(' · ') : '基础信息已齐备，实际处理时仍会检查';
+    card.classList.toggle('has-missing', missing > 0);
+    card.classList.toggle('has-warning', missing === 0 && (warnings > 0 || pending > 0));
 }
 
 function bindPlanSummary() {
     ['llmProfile', 'llmModel', 'noteTemplate', 'whisperModel', 'feishuUploadEnabled',
         'obsidianVaultSelect', 'obsidianSubfolder']
         .forEach((id) => bindListener(id, 'change', updatePlanSummary));
-    ['noteDestination', 'customModelName'].forEach((id) => {
+    ['noteDestination', 'customModelName', 'feishuFolder'].forEach((id) => {
         bindListener(id, 'change', updatePlanSummary);
         bindListener(id, 'input', updatePlanSummary);
     });
@@ -572,6 +759,9 @@ let recentTasksElapsedTimer = null;
 let historyOffset = 0;
 let historyHasMore = false;
 let historyReloadTimer = null;
+let historyRequestSequence = 0;
+let historyRequestController = null;
+let historyPageFilters = '';
 
 function recentTaskMetaText(task, nowSeconds) {
     const created = formatTaskDate(task.created_at);
@@ -630,20 +820,36 @@ function historyFiltersActive() {
     );
 }
 
-async function loadRecentTasks(silent = false, append = false) {
+async function loadRecentTasks(silent = false, append = false, refresh = false) {
+    window.clearTimeout(historyReloadTimer);
+    const filters = historyQueryString(0);
+    if (refresh || (append && filters !== historyPageFilters)) append = false;
+    const sequence = ++historyRequestSequence;
+    if (historyRequestController) historyRequestController.abort();
+    const controller = new AbortController();
+    historyRequestController = controller;
+    const isCurrent = () => sequence === historyRequestSequence && filters === historyQueryString(0);
     const refreshButton = byId('refreshRecentTasksBtn');
+    const more = byId('historyLoadMoreBtn');
+    const list = byId('recentTaskList');
     if (refreshButton) refreshButton.disabled = true;
+    if (more) more.disabled = true;
+    if (list) list.setAttribute('aria-busy', 'true');
     const offset = append ? historyOffset : 0;
+    const params = new URLSearchParams(filters);
+    params.set('offset', String(offset));
+    if (refresh) params.set('refresh', 'true');
     try {
-        const response = await fetch(`${API_BASE}/tasks?${historyQueryString(offset)}`, {
-            cache: 'no-store'
+        const response = await fetch(`${API_BASE}/tasks?${params}`, {
+            cache: 'no-store', signal: controller.signal
         });
         const data = await readResponse(response, '读取历史记录失败');
+        if (!isCurrent()) return;
         const page = Array.isArray(data.tasks) ? data.tasks : [];
         renderRecentTasks(page, append);
+        historyPageFilters = filters;
         historyOffset = offset + page.length;
         historyHasMore = Boolean(data.has_more);
-        const more = byId('historyLoadMoreBtn');
         if (more) more.hidden = !historyHasMore;
         const empty = byId('historyEmpty');
         if (empty) {
@@ -653,9 +859,15 @@ async function loadRecentTasks(silent = false, append = false) {
                 : '还没有历史任务。完成一次转录或笔记后会显示在这里。';
         }
     } catch (error) {
-        if (!silent) showToast(error.message, 'error');
+        if (!isCurrent() || error.name === 'AbortError') return;
+        if (!silent) showToast('读取历史记录失败，请重试。', 'error');
     } finally {
-        if (refreshButton) refreshButton.disabled = false;
+        if (sequence === historyRequestSequence) {
+            historyRequestController = null;
+            if (refreshButton) refreshButton.disabled = false;
+            if (more) more.disabled = false;
+            if (list) list.removeAttribute('aria-busy');
+        }
     }
 }
 
@@ -794,7 +1006,7 @@ function formatElapsedCompact(value) {
 
 async function openRecentTask(taskId) {
     try {
-        const response = await fetch(`${API_BASE}/task/${encodeURIComponent(taskId)}`, {
+        const response = await fetch(`${API_BASE}/task/${encodeURIComponent(taskId)}?refresh_note=true`, {
             cache: 'no-store'
         });
         const task = await readResponse(response, '读取任务失败');
@@ -812,6 +1024,8 @@ async function openRecentTask(taskId) {
         toggleSourceType();
         updateProgress(task.progress || 0);
         updateStep(task.step || 0);
+        currentTaskSnapshot = task;
+        renderTaskProgressDetails(task);
         setTranscriptTaskView(task.output === 'transcript');
         renderTaskAdvisory(task.advisory);
         if (Array.isArray(task.logs)) updateLogs(task.logs);
@@ -821,6 +1035,7 @@ async function openRecentTask(taskId) {
             await completeTask(task.result, task.elapsed_seconds, task.download_name);
         } else if (['queued', 'processing', 'cancelling'].includes(task.status)) {
             setTaskActive(true);
+            updateActiveTaskStrip(task);
             startElapsedTimer(task.elapsed_seconds);
             setTaskState('processing', TASK_STATUS_LABELS[task.status]);
             byId('networkState').textContent = task.status === 'cancelling'
@@ -846,7 +1061,7 @@ function showStoppedTask(task) {
     byId('taskErrorMessage').textContent = task.error || (cancelled
         ? '任务已取消；可以复用已有中间文件重新生成。'
         : '任务未完成；可以从已有中间文件继续。');
-    byId('retryBtn').disabled = false;
+    renderTaskRecovery(task);
     byId('restartBtn').disabled = false;
     byId('networkState').textContent = '历史任务';
     setSubmitButton(false, '重新提交');
@@ -1626,6 +1841,7 @@ function updateKeyControls() {
     if (saveButton) saveButton.disabled = !typed;
     const clearButton = byId('clearKeyBtn');
     if (clearButton) clearButton.hidden = !(keyMatch && keyMatch.saved);
+    updateReadinessCard();
 }
 
 async function saveApiKey() {
@@ -1730,7 +1946,8 @@ function getSelectedModelConfig() {
     const providerConfig = PROVIDER_CONFIG[provider];
     if (!providerConfig) return null;
 
-    const selectedModel = byId('llmModel').value;
+    const modelSelect = byId('llmModel');
+    const selectedModel = modelSelect.value;
     const model = selectedModel === CUSTOM_MODEL_ID
         ? byId('customModelName').value.trim()
         : selectedModel;
@@ -1740,9 +1957,11 @@ function getSelectedModelConfig() {
     const profileLabel = provider === 'custom'
         ? ((activeCustom() || {}).label || '自定义接口')
         : providerConfig.name;
+    const selectedOption = modelSelect.selectedOptions?.[0]
+        || modelSelect.options?.[modelSelect.selectedIndex];
     const modelLabel = selectedModel === CUSTOM_MODEL_ID
         ? model
-        : byId('llmModel').selectedOptions[0]?.textContent;
+        : selectedOption?.textContent;
     return {
         provider,
         baseUrl,
@@ -1787,6 +2006,7 @@ function toggleSourceType() {
         scheduleBiliPagesPreview();
         scheduleSourceInspect();
     }
+    updateReadinessCard();
 }
 
 // ---- 输出类型：生成笔记 / 仅转录字幕 ----
@@ -1841,6 +2061,7 @@ function applyOutputMode() {
             : '';
     }
     resetSubmitLabel();
+    updateReadinessCard();
 }
 
 // ---- 笔记模板：下拉选择 + 新建/复制/编辑/删除 ----
@@ -1857,6 +2078,7 @@ let noteTemplatesStatus = 'loading';
 async function loadNoteTemplates(preferredId = null) {
     noteTemplatesStatus = 'loading';
     renderNoteTemplateCards();
+    updateReadinessCard();
     try {
         const response = await fetch(`${API_BASE}/note-templates`, { cache: 'no-store' });
         const data = await readResponse(response, '读取笔记模板失败');
@@ -1868,6 +2090,7 @@ async function loadNoteTemplates(preferredId = null) {
         noteTemplatesStatus = 'error';
     }
     renderNoteTemplateOptions(preferredId);
+    updateReadinessCard();
 }
 
 function renderNoteTemplateOptions(preferredId = null) {
@@ -1940,6 +2163,8 @@ function renderNoteTemplateCards() {
             select.value = template.id;
             updateNoteTemplateDetails();
             renderNoteTemplateCards();
+            // Cards are rebuilt after selection; return focus to the selected card.
+            Array.from(container.children).find((card) => card.dataset.templateId === template.id)?.focus();
             persistGlobals();
             updatePlanSummary();
         });
@@ -1963,6 +2188,8 @@ function renderNoteTemplatePreview() {
         ? template.preview_markdown
         : '';
     panel.hidden = noteTemplatesStatus !== 'ready' || !template || !markdown;
+    const details = byId('templatePreviewDetails');
+    if (details) details.hidden = panel.hidden;
     if (panel.hidden) {
         rendered.replaceChildren();
         source.textContent = '';
@@ -1970,6 +2197,8 @@ function renderNoteTemplatePreview() {
     }
     const title = byId('templatePreviewTitle');
     if (title) title.textContent = `${template.name}示例`;
+    const toggle = byId('templatePreviewToggle');
+    if (toggle) toggle.textContent = `查看模板示例：${template.name}`;
     const meta = byId('templatePreviewMeta');
     if (meta) {
         meta.textContent = `${template.built_in ? '内置模板' : '自定义模板'} · `
@@ -1993,7 +2222,7 @@ function renderNoteTemplatePreview() {
 }
 
 function revealTemplateManager() {
-    openSettingsPanel();
+    openSettingsPanel(byId('manageTemplatesBtn'));
     const field = byId('noteTemplateField');
     if (field && typeof field.scrollIntoView === 'function') {
         field.scrollIntoView({ block: 'center' });
@@ -2221,6 +2450,7 @@ function dismissBiliHint() {
 
 function scheduleSourceInspect() {
     window.clearTimeout(sourceInspectTimer);
+    hideSourceInspect();
     sourceInspectTimer = window.setTimeout(inspectCurrentSource, 500);
 }
 
@@ -2230,6 +2460,7 @@ function hideSourceInspect() {
     inspectedReusableTask = null;
     const panel = byId('sourceInspectPanel');
     if (panel) panel.hidden = true;
+    updateReadinessCard();
 }
 
 async function inspectCurrentSource() {
@@ -2251,6 +2482,9 @@ async function inspectCurrentSource() {
             signal: controller.signal
         });
         const data = await readResponse(response, '识别视频来源失败');
+        if (sourceInspectController !== controller || controller.signal.aborted
+            || fileSourceSelected()
+            || normalizeVideoInput(byId('videoUrl')?.value || '') !== normalized) return;
         inspectedReusableTask = data.reusable_task || null;
         const panel = byId('sourceInspectPanel');
         const label = byId('sourceInspectLabel');
@@ -2268,8 +2502,9 @@ async function inspectCurrentSource() {
         actions.hidden = !inspectedReusableTask;
         panel.dataset.supportLevel = focused ? 'focused' : 'generic';
         panel.hidden = false;
+        updateReadinessCard();
     } catch (error) {
-        if (error.name !== 'AbortError') hideSourceInspect();
+        if (error.name !== 'AbortError' && sourceInspectController === controller) hideSourceInspect();
     } finally {
         if (sourceInspectController === controller) sourceInspectController = null;
     }
@@ -2666,8 +2901,10 @@ async function refreshWhisperModelHints() {
                 option.textContent = `${baseLabel}（未缓存，首次使用需下载 ${size}）`;
             }
         });
+        updateReadinessCard();
     } catch {
         // 后端不可达时保持默认文案
+        updateReadinessCard();
     }
 }
 
@@ -2775,6 +3012,10 @@ async function startSummary(options = {}) {
         showToast('已有任务正在处理中', 'info');
         return;
     }
+    if (pendingSubmission) {
+        await checkUncertainTask();
+        return;
+    }
     flushPendingPrefs();   // 本次提交用的设置必须同步落盘，不能留在防抖里
     if (options.outputMode) setOutputMode(options.outputMode);
 
@@ -2863,6 +3104,8 @@ async function startSummary(options = {}) {
         const config = buildSummarizeConfig(
             videoUrl, uploadTaskId, resumeTaskId, forceRestart, request.transcriptOnly
         );
+        config.client_request_id = crypto.randomUUID();
+        pendingSubmission = {id: config.client_request_id, transcriptOnly: request.transcriptOnly};
         addLog(request.transcriptOnly
             ? '正在提交转写任务（只到字幕稿为止，不调用大模型）'
             : `正在提交总结任务 · ${request.modelConfig.name}`);
@@ -2871,24 +3114,102 @@ async function startSummary(options = {}) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
         });
+        if (response.status >= 400 && response.status < 500) pendingSubmission = null;
         const data = await readResponse(response, '提交任务失败');
 
         if (!data.task_id) throw new Error('后端未返回任务 ID');
+        pendingSubmission = null;
         currentTaskId = data.task_id;
+        currentTaskSnapshot = {
+            status: 'queued', step_name: '等待执行', progress_message: '任务已提交', progress: 0,
+            queue_ahead: 0
+        };
         setTranscriptTaskView(request.transcriptOnly);
         loadRecentTasks(true);
         if (data.reused_task_id) addLog(`已复用任务 ${data.reused_task_id} 的中间结果`, 'success');
         addLog(`任务已创建：${currentTaskId}`, 'success');
         setTaskActive(true);
+        renderTaskProgressDetails(currentTaskSnapshot);
+        updateActiveTaskStrip(currentTaskSnapshot);
         startElapsedTimer(0);
         setTaskState('processing', '处理中');
         setSubmitting(false, '处理中');
         schedulePoll(currentTaskId, 0);
     } catch (error) {
+        if (pendingSubmission) {
+            setSubmitting(false);
+            showUncertainTask('提交响应未确认；任务可能已开始。请先确认提交结果，避免重复生成。');
+            return;
+        }
         if (resumeTaskId) currentTaskId = resumeTaskId;
         setSubmitting(false);
         failTask(error.message || '提交失败，请确认本地后端已启动');
     }
+}
+
+function showUncertainTask(message) {
+    stopPolling();
+    setTaskState('queued', '状态未知');
+    byId('taskError').hidden = false;
+    byId('taskErrorTitle').textContent = '任务状态未知';
+    byId('taskErrorMessage').textContent = message;
+    byId('taskRecoveryMessage').hidden = true;
+    byId('retryBtn').hidden = true;
+    byId('restartBtn').hidden = true;
+    byId('checkTaskBtn').hidden = false;
+    byId('checkTaskBtn').textContent = pendingSubmission ? '确认提交结果' : '重新查询原任务';
+    byId('networkState').textContent = '连接中断，后台状态未知';
+    setSubmitButton(false, '请先确认任务状态');
+    byId('submitBtn').disabled = true;
+}
+
+async function checkUncertainTask() {
+    const button = byId('checkTaskBtn');
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+        if (pendingSubmission) {
+            const response = await fetch(`${API_BASE}/submission/${encodeURIComponent(pendingSubmission.id)}`, {cache: 'no-store'});
+            if (response.status === 404) {
+                pendingSubmission = null;
+                byId('checkTaskBtn').hidden = true;
+                setTaskActive(false);
+                byId('taskErrorMessage').textContent = '当前工作区未找到该提交。请确认服务未切换；可以检查历史后手动新建任务。';
+                byId('taskErrorTitle').textContent = '未找到提交';
+                setSubmitButton(false, '新建任务');
+                return;
+            }
+            const data = await readResponse(response, '确认提交结果失败');
+            if (!data.task_id) throw new Error('服务未返回可查询的任务');
+            currentTaskId = data.task_id;
+            setTranscriptTaskView(pendingSubmission.transcriptOnly);
+            pendingSubmission = null;
+        }
+        if (currentTaskId) {
+            byId('checkTaskBtn').hidden = true;
+            byId('taskError').hidden = true;
+            pollErrorCount = 0;
+            setTaskActive(true);
+            schedulePoll(currentTaskId, 0);
+        }
+    } catch (error) {
+        showToast(error.message || '仍无法连接；没有重新提交任务', 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function renderTaskRecovery(task) {
+    const recovery = task?.recovery;
+    const message = byId('taskRecoveryMessage');
+    message.hidden = !recovery;
+    message.textContent = recovery?.message || '';
+    byId('taskErrorTitle').textContent = task?.status === 'cancelled' ? '任务已取消' : '任务未完成';
+    byId('retryBtn').hidden = false;
+    byId('restartBtn').hidden = false;
+    byId('checkTaskBtn').hidden = true;
+    byId('retryBtn').disabled = recovery?.can_resume !== true;
+    byId('retryBtn').textContent = recovery?.can_resume ? '复用转录继续' : '无可用转录';
 }
 
 function validateAndBuildRequestBase(resumeTaskId = null) {
@@ -2979,11 +3300,13 @@ async function loadNoteDestinations() {
         const data = await readResponse(response, '读取笔记目的地检测失败');
         renderObsidianVaults(data.obsidian || {});
         renderFeishuReadiness(data.feishu || {});
+        updateReadinessCard();
     } catch (error) {
         console.warn('[Video2Knowledge] 笔记目的地检测失败：', error);
         renderObsidianVaults({ status: 'missing', vaults: [] });
         if (obsidianStatus) obsidianStatus.textContent = '检测失败，可手动填写上方路径';
         if (feishuStatus) feishuStatus.textContent = '检测失败，提交时后端会再次校验';
+        updateReadinessCard();
     }
 }
 
@@ -3235,6 +3558,12 @@ async function pollTask(taskId) {
 
         updateProgress(task.progress);
         updateStep(task.step);
+        renderTaskProgressDetails(task);
+        updateActiveTaskStrip(task);
+        setTaskState(
+            'processing',
+            task.status === 'queued' ? '排队中' : (task.status === 'cancelling' ? '取消中' : '处理中')
+        );
         renderTaskAdvisory(task.advisory);
         if (Array.isArray(task.logs) && task.logs.length) updateLogs(task.logs);
 
@@ -3244,7 +3573,7 @@ async function pollTask(taskId) {
             return;
         }
         if (task.status === 'failed') {
-            failTask(task.error || '后端未提供失败原因', task.elapsed_seconds);
+            failTask(task.error || '后端未提供失败原因', task.elapsed_seconds, task);
             return;
         }
         if (task.status === 'cancelled') {
@@ -3252,6 +3581,9 @@ async function pollTask(taskId) {
                 '任务已取消；已生成的中间文件仍保留在工作目录',
                 task.elapsed_seconds
             );
+            byId('taskError').hidden = false;
+            byId('taskErrorMessage').textContent = '任务已取消';
+            renderTaskRecovery(task);
             return;
         }
         schedulePoll(taskId);
@@ -3262,7 +3594,7 @@ async function pollTask(taskId) {
         addLog(`状态连接异常：${error.message}`, 'warning');
 
         if (pollErrorCount >= MAX_POLL_ERRORS) {
-            failTask(`连续 ${MAX_POLL_ERRORS} 次无法读取任务状态。请确认本地后端仍在运行，然后重新提交。`);
+            showUncertainTask(`连续 ${MAX_POLL_ERRORS} 次无法读取状态；后台可能仍在处理。重新连接后只查询原任务。`);
             return;
         }
         schedulePoll(taskId, Math.min(POLL_DELAY_MS * pollErrorCount, 8000));
@@ -3317,7 +3649,9 @@ function renderElapsedTime(rawSeconds) {
 }
 
 function resetTaskView() {
+    resetTranscriptContext();
     stopPolling();
+    clearNoteSearch(false);
     resetElapsedTimer();
     setTaskActive(false);
     pollErrorCount = 0;
@@ -3327,15 +3661,19 @@ function resetTaskView() {
     currentHtml = '';
     currentDownloadName = '';
     currentFeishuPublication = null;
+    currentTaskSnapshot = null;
     setTranscriptTaskView(false);
     byId('progressArea').hidden = false;
     byId('resultArea').hidden = true;
     byId('taskError').hidden = true;
+    renderTaskRecovery(null);
     // 新任务开始：运行记录回到默认折叠（失败时 failTask 会再自动展开）
     byId('taskLogDetails').open = false;
     byId('downloadMdBtn').disabled = true;
     byId('copyNoteBtn').disabled = true;
     byId('regenerateBtn').disabled = true;
+    byId('openResultFileBtn').disabled = true;
+    byId('openResultFolderBtn').disabled = true;
     byId('outputNotice').hidden = true;
     byId('outputPath').textContent = '';
     byId('taskDirPath').textContent = '';
@@ -3346,6 +3684,8 @@ function resetTaskView() {
     clearLogs();
     updateProgress(0);
     updateStep(0);
+    renderTaskProgressDetails(null);
+    updateActiveTaskStrip(null);
     setTaskState('processing', '准备中');
 }
 
@@ -3378,13 +3718,14 @@ async function completeTask(result, elapsedSeconds = null, downloadName = '') {
     refreshWhisperModelHints();
 }
 
-function failTask(message, elapsedSeconds = null) {
+function failTask(message, elapsedSeconds = null, task = null) {
     stopPolling();
     stopElapsedTimer(elapsedSeconds);
     setTaskActive(false);
     setTaskState('failed', '失败');
     byId('taskError').hidden = false;
     byId('taskErrorMessage').textContent = message;
+    renderTaskRecovery(task);
     // 失败时自动展开运行记录：失败原因与最后一段日志直接可见（DESIGN.md 交互状态合同）
     byId('taskLogDetails').open = true;
     byId('networkState').textContent = '任务已停止';
@@ -3453,11 +3794,13 @@ function setSubmitting(active, label = '开始生成') {
 
 function setTaskActive(active) {
     isTaskActive = active;
+    if (!active) renderTaskProgressDetails(null);
     setSourceControlsDisabled(active || isSubmitting);
     byId('submitBtn').disabled = active || isSubmitting;
     const cancelButton = byId('cancelTaskBtn');
     cancelButton.hidden = !active;
     cancelButton.disabled = !active || isCancelling;
+    updateActiveTaskStrip(active ? currentTaskSnapshot : null);
 }
 
 function setSourceControlsDisabled(disabled) {
@@ -3497,6 +3840,84 @@ function updateProgress(rawProgress) {
     byId('progressPercent').textContent = `${Math.round(progress)}%`;
     const progressBar = document.querySelector('[role="progressbar"]');
     progressBar.setAttribute('aria-valuenow', String(Math.round(progress)));
+}
+
+function formatProgressClock(rawSeconds) {
+    const total = Math.max(0, Math.floor(Number(rawSeconds) || 0));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return hours
+        ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+        : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatEtaRange(rawSeconds) {
+    const seconds = Number(rawSeconds);
+    if (!Number.isFinite(seconds) || seconds <= 0) return '';
+    if (seconds < 60) return '转录阶段预计剩余约 1 分钟内';
+    const lower = Math.max(1, Math.floor((seconds * 0.8) / 60));
+    const upper = Math.max(lower + 1, Math.ceil((seconds * 1.2) / 60));
+    return `转录阶段预计剩余约 ${lower}–${upper} 分钟`;
+}
+
+function renderTaskProgressDetails(task) {
+    const details = byId('progressDetails');
+    if (!details) return;
+    if (!task || !['queued', 'processing'].includes(task.status)) {
+        details.hidden = true;
+        details.replaceChildren();
+        return;
+    }
+    const parts = [];
+    if (task.status === 'queued') {
+        const ahead = Math.max(0, Number(task.queue_ahead) || 0);
+        parts.push(ahead ? `排队中 · 前面还有 ${ahead} 个任务` : '排队中 · 即将开始');
+    } else if (Number(task.step) === 4) {
+        const hasProcessed = task.processed_seconds !== null && task.processed_seconds !== undefined;
+        const hasTotal = task.total_seconds !== null && task.total_seconds !== undefined;
+        const processed = Number(task.processed_seconds);
+        const total = Number(task.total_seconds);
+        if (hasProcessed && hasTotal && Number.isFinite(processed) && processed >= 0 && Number.isFinite(total) && total > 0) {
+            parts.push(`转录阶段 ${formatProgressClock(processed)} / ${formatProgressClock(total)}`);
+        } else if (hasProcessed && Number.isFinite(processed) && processed >= 0) {
+            parts.push(`已转录 ${formatProgressClock(processed)} · 总时长未知`);
+        } else if (
+            task.phase_progress !== null
+            && task.phase_progress !== undefined
+            && Number.isFinite(Number(task.phase_progress))
+        ) {
+            parts.push(`转录阶段 ${Math.min(100, Math.max(0, Math.round(Number(task.phase_progress))))}%`);
+        }
+        const eta = hasTotal && Number.isFinite(total) && total > 0
+            ? formatEtaRange(task.estimated_remaining_seconds) : '';
+        if (eta) parts.push(`${eta}，会随设备速度变化`);
+    }
+    details.replaceChildren(...parts.map((text) => {
+        const span = document.createElement('span');
+        span.textContent = text;
+        return span;
+    }));
+    details.hidden = parts.length === 0;
+}
+
+function updateActiveTaskStrip(task) {
+    const strip = byId('activeTaskStrip');
+    if (!strip) return;
+    if (task) currentTaskSnapshot = task;
+    const snapshot = task || currentTaskSnapshot;
+    if (!isTaskActive || !snapshot) {
+        strip.hidden = true;
+        return;
+    }
+    const step = snapshot.status === 'queued' ? '等待执行' : (snapshot.step_name || '任务处理中');
+    const message = snapshot.status === 'queued'
+        ? (Number(snapshot.queue_ahead) > 0 ? `前面还有 ${snapshot.queue_ahead} 个任务` : '即将开始')
+        : (snapshot.progress_message || '正在处理');
+    byId('activeTaskStep').textContent = step;
+    byId('activeTaskMessage').textContent = message;
+    byId('activeTaskPercent').textContent = `${Math.round(Number(snapshot.progress) || 0)}%`;
+    strip.hidden = false;
 }
 
 function updateStep(rawStep) {
@@ -3580,9 +4001,14 @@ async function showResult(result) {
         currentHtml = replaceImagePaths(markdown);
         content.innerHTML = renderMarkdown(currentHtml);
     }
+    initResultReader();
+    initTranscriptContext();
+    updateMarkdownDownloadHint();
     byId('resultArea').hidden = false;
     byId('downloadMdBtn').disabled = false;
     byId('copyNoteBtn').disabled = false;
+    byId('openResultFileBtn').disabled = false;
+    byId('openResultFolderBtn').disabled = false;
     const outputDirectory = typeof result.output_directory === 'string'
         ? result.output_directory.trim()
         : '';
@@ -3601,6 +4027,393 @@ async function showResult(result) {
     const taskDirNotice = byId('taskDirNotice');
     if (taskDirNotice) taskDirNotice.hidden = !(archivedPath && outputDirectory);
     return true;
+}
+
+// Reader-only state. Source Markdown remains the authority for copy and all exports.
+let noteMatches = [];
+let noteMatchIndex = -1;
+let noteMatchesLimited = false;
+const NOTE_MATCH_LIMIT = 200;
+
+function initResultReader() {
+    clearNoteSearch(false);
+    const root = byId('markdownContent');
+    const outline = byId('resultOutline');
+    const list = byId('resultOutlineList');
+    if (!root || !outline || !list) return;
+    list.replaceChildren();
+    const headings = Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+        .filter((heading) => heading.textContent.trim() && !root.contains(heading.closest('[hidden]')));
+    let serial = 0;
+    headings.forEach((heading) => {
+        let id;
+        do { id = `v2k-reader-heading-${serial++}`; } while (document.getElementById(id));
+        heading.id = id;
+        heading.tabIndex = -1;
+        const item = document.createElement('li');
+        item.dataset.level = heading.tagName.slice(1);
+        const link = document.createElement('a');
+        link.href = `#${id}`;
+        link.textContent = heading.textContent;
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            // Hold the verified element reference, never resolve an ID from note HTML.
+            heading.focus({ preventScroll: true });
+            heading.scrollIntoView({ block: 'start' });
+        });
+        item.appendChild(link);
+        list.appendChild(item);
+    });
+    outline.hidden = headings.length === 0;
+    outline.open = window.matchMedia('(min-width: 681px)').matches;
+    byId('resultOutlineCount').textContent = `（${headings.length} 节）`;
+}
+
+function removeNoteHighlights() {
+    const root = byId('markdownContent');
+    if (!root) return;
+    // Only unwrap our own mark references, never similarly named user-supplied HTML.
+    const parents = new Set();
+    noteMatches.forEach((match) => match.forEach((mark) => {
+        if (!root.contains(mark)) return;
+        const parent = mark.parentNode;
+        parents.add(parent);
+        mark.replaceWith(...mark.childNodes);
+    }));
+    parents.forEach((parent) => parent.normalize());
+    noteMatches = [];
+    noteMatchIndex = -1;
+    noteMatchesLimited = false;
+}
+
+function clearNoteSearch(focus = true) {
+    removeNoteHighlights();
+    const input = byId('noteSearch');
+    if (input) {
+        input.value = '';
+        if (focus) input.focus();
+    }
+    updateNoteSearchStatus();
+}
+
+function noteTextRuns(root) {
+    const runs = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let run = null;
+    let node;
+    while ((node = walker.nextNode())) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.matches('br, img, hr, .katex, [hidden]')) run = null;
+            continue;
+        }
+        if (!node.textContent) continue;
+        if (node.parentElement.closest('.katex, math, script, style, [hidden], [aria-hidden="true"]')) {
+            run = null;
+            continue;
+        }
+        const block = node.parentElement.closest('p, li, td, th, h1, h2, h3, h4, h5, h6, pre, blockquote, div') || root;
+        if (!run || run.block !== block) {
+            run = { block, text: '', nodes: [] };
+            runs.push(run);
+        }
+        run.nodes.push({ node, start: run.text.length });
+        run.text += node.textContent;
+    }
+    return runs;
+}
+
+function searchNote() {
+    removeNoteHighlights();
+    const root = byId('markdownContent');
+    const query = byId('noteSearch')?.value.trim() || '';
+    if (!root || !query) return updateNoteSearchStatus();
+    // Literal matching, including across inline emphasis. No untrusted HTML insertion.
+    const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const edits = new Map();
+    scan: for (const run of noteTextRuns(root)) {
+        for (const match of run.text.matchAll(pattern)) {
+            if (noteMatches.length >= NOTE_MATCH_LIMIT) {
+                noteMatchesLimited = true;
+                break scan;
+            }
+            const marks = [];
+            noteMatches.push(marks);
+            const end = match.index + match[0].length;
+            for (const entry of run.nodes) {
+                const start = Math.max(0, match.index - entry.start);
+                const stop = Math.min(entry.node.textContent.length, end - entry.start);
+                if (stop <= start) continue;
+                if (!edits.has(entry.node)) edits.set(entry.node, []);
+                edits.get(entry.node).push({ start, stop, marks });
+            }
+        }
+    }
+    edits.forEach((operations, node) => {
+        operations.reverse().forEach(({ start, stop, marks }) => {
+            const text = node.splitText(start);
+            text.splitText(stop - start);
+            const mark = document.createElement('mark');
+            mark.className = 'note-search-match';
+            text.replaceWith(mark);
+            mark.appendChild(text);
+            marks.push(mark);
+        });
+    });
+    // Typing does not scroll the page or move focus. Enter / arrows explicitly navigate.
+    if (noteMatches.length) noteMatchIndex = 0;
+    updateNoteSearchStatus();
+}
+
+function moveNoteMatch(delta) {
+    if (!noteMatches.length) return;
+    noteMatchIndex = (noteMatchIndex + delta + noteMatches.length) % noteMatches.length;
+    updateNoteSearchStatus();
+    noteMatches[noteMatchIndex][0]?.scrollIntoView({ block: 'center' });
+}
+
+function updateNoteSearchStatus() {
+    const hasQuery = Boolean(byId('noteSearch')?.value.trim());
+    const status = byId('noteSearchStatus');
+    if (status) status.textContent = !hasQuery ? '只查找当前正文，公式保持原样。'
+        : !noteMatches.length ? '未找到匹配'
+        : `${noteMatchIndex + 1} / ${noteMatches.length} 处匹配`
+            + (noteMatchesLimited ? '（仅显示前 200 处，请缩小关键词范围）' : '');
+    noteMatches.forEach((marks, index) => marks.forEach((mark) => {
+        mark.classList.toggle('is-current', index === noteMatchIndex);
+    }));
+    ['noteSearchPrevBtn', 'noteSearchNextBtn'].forEach((id) => {
+        const button = byId(id);
+        if (button) button.disabled = !noteMatches.length;
+    });
+    const clear = byId('noteSearchClearBtn');
+    if (clear) clear.disabled = !byId('noteSearch')?.value;
+}
+
+function updateMarkdownDownloadHint(filename = '') {
+    const hint = byId('resultExportHint');
+    if (!hint) return;
+    hint.textContent = /\.zip$/i.test(filename)
+        ? '已下载 ZIP：包含 Markdown 与可用截图，解压后阅读，保留笔记与图片的相对位置。'
+        : /\.md$/i.test(filename) ? '已下载 .md 文件：本次没有可打包的截图。'
+        : 'Markdown 导出：无可用截图时为 .md；含可用截图时为 ZIP，解压后阅读笔记与图片。';
+}
+
+// Read-only comparison. Never alter source Markdown or persist a timestamp mapping.
+let transcriptContextEpoch = 0;
+let transcriptContextRequest = 0;
+let transcriptContextAbort = null;
+let transcriptContextState = null;
+let transcriptContextReturn = null;
+
+function parseNoteClock(raw) {
+    const value = String(raw).trim();
+    if (!/^\d{1,3}:\d{2}(?::\d{2})?$/.test(value)) return null;
+    const parts = value.split(':').map(Number);
+    if (parts.at(-1) > 59 || (parts.length === 3 && parts[1] > 59)) return null;
+    return parts.reduce((seconds, part) => seconds * 60 + part, 0);
+}
+
+function noteTimeRanges(text) {
+    const ranges = [];
+    const pattern = /\[(\d{1,3}:\d{2}(?::\d{2})?)(?:\s*[-–—]\s*(\d{1,3}:\d{2}(?::\d{2})?))?\]/g;
+    for (const match of text.matchAll(pattern)) {
+        const start = parseNoteClock(match[1]);
+        const end = match[2] ? parseNoteClock(match[2]) : null;
+        if (start === null || (match[2] && (end === null || end < start))) continue;
+        ranges.push({index: match.index, label: match[0], start, end});
+    }
+    return ranges;
+}
+
+function resetTranscriptContext() {
+    transcriptContextEpoch += 1;
+    transcriptContextRequest += 1;
+    transcriptContextAbort?.abort();
+    transcriptContextAbort = null;
+    transcriptContextState = null;
+    transcriptContextReturn = null;
+    const panel = byId('transcriptContextPanel');
+    if (panel) { panel.hidden = true; panel.removeAttribute('aria-busy'); }
+    byId('viewTranscriptBtn')?.setAttribute('aria-expanded', 'false');
+    byId('transcriptContextRows')?.replaceChildren();
+    if (byId('transcriptContextReloadNoteBtn')) byId('transcriptContextReloadNoteBtn').hidden = true;
+}
+
+function initTranscriptContext() {
+    resetTranscriptContext();
+    byId('viewTranscriptBtn').hidden = isTranscriptTask;
+    byId('noteTimestampHint').hidden = isTranscriptTask;
+    if (isTranscriptTask || !currentTaskId) return;
+    const root = byId('markdownContent');
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const entries = [];
+    let node;
+    while ((node = walker.nextNode())) {
+        const excluded = node.parentElement.closest('a, button, code, pre, .katex, math, script, style');
+        const hidden = node.parentElement.closest('[hidden], [aria-hidden="true"]');
+        // showResult renders before revealing resultArea; only hidden content inside the note is excluded.
+        if (!excluded && !(hidden && root.contains(hidden))) entries.push(node);
+    }
+    let count = 0;
+    const epoch = transcriptContextEpoch;
+    const markdown = currentMarkdown;
+    for (const text of entries) {
+        // Split from the end to retain exact offsets. Buttons keep only verified text.
+        const ranges = noteTimeRanges(text.textContent).slice(0, 200 - count);
+        count += ranges.length;
+        ranges.reverse().forEach((range) => {
+            const stamp = text.splitText(range.index);
+            stamp.splitText(range.label.length);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'note-time-button';
+            button.textContent = range.label;
+            button.setAttribute('aria-label', `查看 ${range.label} 的原转录`);
+            button.setAttribute('aria-controls', 'transcriptContextPanel');
+            button.addEventListener('click', () => {
+                if (epoch === transcriptContextEpoch && markdown === currentMarkdown) openTranscriptContext(range.start, range.end, button);
+            });
+            stamp.replaceWith(button);
+        });
+        if (count >= 200) break;
+    }
+    byId('noteTimestampHint').textContent = count
+        ? `点击正文时间戳核对原文${count >= 200 ? '（最多启用前 200 个）' : ''}，未验证观点正确性。`
+        : '正文没有可定位的时间戳；可点“查看原转录”手动输入时间。';
+}
+
+function openTranscriptContext(start, end, trigger) {
+    if (!currentTaskId || !currentMarkdown || isTranscriptTask) return;
+    transcriptContextReturn = trigger;
+    const previousHash = transcriptContextState?.transcriptHash || null;
+    transcriptContextState = {start, end, transcriptHash: previousHash, offset: 0};
+    byId('transcriptRangeStart').value = formatContextClock(start);
+    byId('transcriptRangeEnd').value = end === null ? '' : formatContextClock(end);
+    byId('transcriptContextPanel').hidden = false;
+    byId('viewTranscriptBtn').setAttribute('aria-expanded', 'true');
+    byId('transcriptContextTitle').focus({preventScroll: true});
+    byId('transcriptContextPanel').scrollIntoView({block: 'start'});
+    loadTranscriptContext();
+}
+
+function closeTranscriptContext() {
+    transcriptContextRequest += 1;
+    transcriptContextAbort?.abort();
+    byId('transcriptContextPanel').hidden = true;
+    byId('transcriptContextPanel').removeAttribute('aria-busy');
+    byId('viewTranscriptBtn').setAttribute('aria-expanded', 'false');
+    const trigger = transcriptContextReturn?.isConnected ? transcriptContextReturn : byId('viewTranscriptBtn');
+    trigger?.focus({preventScroll: true});
+    trigger?.scrollIntoView({block: 'center'});
+}
+
+function formatContextClock(seconds) {
+    const total = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    return (hours ? `${String(hours).padStart(2, '0')}:` : '')
+        + `${String(minutes).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+async function loadTranscriptContext(append = false) {
+    const state = transcriptContextState;
+    if (!state || !currentTaskId) return;
+    transcriptContextAbort?.abort();
+    const controller = new AbortController();
+    transcriptContextAbort = controller;
+    const request = ++transcriptContextRequest;
+    const epoch = transcriptContextEpoch;
+    const taskId = currentTaskId;
+    const markdown = currentMarkdown;
+    const stillCurrent = () => epoch === transcriptContextEpoch && request === transcriptContextRequest
+        && taskId === currentTaskId && markdown === currentMarkdown;
+    const rows = byId('transcriptContextRows');
+    const status = byId('transcriptContextStatus');
+    const more = byId('transcriptContextMoreBtn');
+    const panel = byId('transcriptContextPanel');
+    if (!append) { rows.replaceChildren(); state.offset = 0; }
+    more.hidden = true;
+    panel.setAttribute('aria-busy', 'true');
+    status.textContent = '正在读取本地原转录…';
+    byId('transcriptContextReloadNoteBtn').hidden = true;
+    byId('transcriptContextMetadata').textContent = '';
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    try {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(markdown));
+        if (!stillCurrent()) return;
+        const noteHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+        const params = new URLSearchParams({start: state.start, offset: state.offset, limit: 100, note_hash: noteHash});
+        if (state.end !== null) params.set('end', state.end);
+        if (state.transcriptHash) params.set('transcript_hash', state.transcriptHash);
+        const response = await fetch(`${API_BASE}/task/${encodeURIComponent(taskId)}/transcript-context?${params}`, {
+            cache: 'no-store', signal: controller.signal,
+        });
+        // Error text is deliberately local and fixed; no backend details enter the reader.
+        if (!response.ok) throw new Error('context-unavailable');
+        const data = await response.json();
+        if (!stillCurrent()) return;
+        if (data.note_hash !== noteHash || !/^[a-f0-9]{64}$/.test(data.transcript_hash)
+            || (state.transcriptHash && state.transcriptHash !== data.transcript_hash)
+            || !Array.isArray(data.segments)) throw new Error('context-changed');
+        state.transcriptHash = data.transcript_hash;
+        data.segments.forEach((segment) => {
+            const row = document.createElement('div');
+            row.className = 'transcript-context-row';
+            const time = document.createElement('time');
+            time.textContent = `${formatContextClock(segment.start)} → ${formatContextClock(segment.end)}`;
+            const text = document.createElement('p');
+            text.textContent = segment.text;
+            row.append(time, text);
+            rows.appendChild(row);
+        });
+        state.offset += data.segments.length;
+        more.hidden = !data.has_more;
+        const messages = {
+            matched: `命中 ${data.total} 段，已显示 ${state.offset} 段。`,
+            partial: `请求超出已保存时间范围，仅显示相交原文（${state.offset} / ${data.total} 段）。`,
+            outside: '该时间超出已保存的转录范围，可能未保留完整转录；未匹配最近句。',
+            gap: '该时间范围没有转录片段，可能是静音或字幕缺口；未匹配最近句。',
+        };
+        status.textContent = messages[data.range_state] || '未找到可定位原文。';
+        byId('transcriptContextMetadata').textContent = `已保存范围 ${formatContextClock(data.coverage.start)} 至 ${formatContextClock(data.coverage.end)}，不代表转录完整。`
+            + (data.timeline === 'merged' ? ' 多 P 累计时间轴，未提供逐 P 视频跳转。' : '')
+            + (data.media_state === 'retained' ? ' 任务媒体仍保留，本面板不播放媒体。' : ' 任务媒体未保留或不可读，仍可核对已保存转录。');
+    } catch {
+        if (!stillCurrent()) return;
+        rows.replaceChildren();
+        more.hidden = true;
+        byId('transcriptContextReloadNoteBtn').hidden = false;
+        status.textContent = '无法读取原转录，可能是文件缺失、版本已变化或连接中断。可点“读取此范围”重试；笔记有变化时请从历史重新打开。不会自动重新处理。';
+    } finally {
+        window.clearTimeout(timeout);
+        if (stillCurrent()) panel.removeAttribute('aria-busy');
+    }
+}
+
+async function openCurrentResult(target) {
+    if (!currentTaskId || !['file', 'folder'].includes(target)) return;
+    const button = byId(target === 'file' ? 'openResultFileBtn' : 'openResultFolderBtn');
+    if (button) button.disabled = true;
+    try {
+        const response = await fetch(
+            `${API_BASE}/task/${encodeURIComponent(currentTaskId)}/open-result`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target })
+            }
+        );
+        const data = await readResponse(response, target === 'file' ? '打开文件失败' : '打开文件夹失败');
+        if (data.opened) {
+            showToast(target === 'file' ? '已用系统默认程序打开文件' : '已打开结果文件夹', 'success');
+        } else {
+            showToast('系统未能自动打开；保存路径仍显示在结果区', 'error');
+        }
+    } catch (error) {
+        showToast(error.message || '无法打开结果', 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
 }
 
 async function fetchTranscriptText() {
@@ -3921,6 +4734,7 @@ async function downloadMarkdownFile() {
         if (!response.ok) throw new Error(await extractErrorMessage(response, '下载失败'));
         const filename = serverFilename(response);
         triggerBlobDownload(await response.blob(), '.md', filename || noteFileName('.md'));
+        updateMarkdownDownloadHint(filename);
         showToast(
             /\.zip$/i.test(filename) ? '笔记与截图已打包下载，解压后 .md 里才显示截图' : '下载已开始',
             'success'

@@ -349,6 +349,8 @@ async def summarize_video(
     bilibili_sessdata: str | None = None,
     bilibili_bili_jct: str | None = None,
     bilibili_buvid3: str | None = None,
+    resume_task_id: str | None = None,
+    client_request_id: str | None = None,
 ) -> dict[str, Any]:
     """提交视频总结任务（异步执行，立即返回任务 ID，用 get_task_status 轮询）。
 
@@ -366,6 +368,8 @@ async def summarize_video(
         screenshot_interval: 截图间隔秒数（5-300）。
         prefer_subtitles: 优先使用平台字幕（默认开启）。
         processing_mode: reuse=复用同链接已有转录 / restart=从头处理。
+        resume_task_id: 显式复用完整转录的历史任务 ID；转录不可用时拒绝，不自动重跑。
+        client_request_id: 可选提交 ID，重发同参数返回原任务；新生成请用新 ID。
         bilibili_sessdata/bilibili_bili_jct/bilibili_buvid3: B 站凭据（可省略，
             省略时使用已保存凭据；未保存也能处理，只是可能读不到 AI 字幕）。
     """
@@ -390,14 +394,20 @@ async def summarize_video(
     if bili_cookie:
         payload["bilibili_cookie"] = bili_cookie
 
+    if resume_task_id is not None:
+        payload["resume_task_id"] = resume_task_id
+    if client_request_id is not None:
+        payload["client_request_id"] = client_request_id
+
     data = await backend.start_summarize(payload)
     task_id = data.get("task_id")
     if not task_id:
         raise RuntimeError(f"后端未返回任务 ID：{data}")
-    hint = f"任务已提交：{task_id}"
+    hint = f"{'已找到原提交' if data.get('replayed') else '任务已提交'}：{task_id}"
     if data.get("reused_task_id"):
         hint += f"（复用任务 {data['reused_task_id']} 的转录）"
-    return {"ok": True, "task_id": task_id, "hint": hint + "，请用 get_task_status 轮询进度。"}
+    return {"ok": True, "task_id": task_id, "replayed": bool(data.get("replayed")),
+            "hint": hint + "，请用 get_task_status 轮询进度。"}
 
 
 @mcp.tool()
@@ -410,6 +420,8 @@ async def transcribe_video(
     bilibili_sessdata: str | None = None,
     bilibili_bili_jct: str | None = None,
     bilibili_buvid3: str | None = None,
+    resume_task_id: str | None = None,
+    client_request_id: str | None = None,
 ) -> dict[str, Any]:
     """只做「视频 → 带时间轴转录」，不调用任何大模型，因此不需要 API Key。
 
@@ -424,6 +436,8 @@ async def transcribe_video(
         use_gpu: 是否启用 NVIDIA GPU 转写。
         prefer_subtitles: 优先使用平台字幕（默认开启，命中时不跑转写、几乎秒回）。
         processing_mode: reuse=复用同链接已有转录 / restart=从头处理。
+        resume_task_id: 显式复用历史完整转录；缺失时拒绝恢复。
+        client_request_id: 可选提交 ID，同参数重发不会再建任务。
         bilibili_sessdata/bilibili_bili_jct/bilibili_buvid3: B 站凭据（可省略，
             省略时使用本机已保存凭据；未保存也能处理，只是可能读不到 AI 字幕）。
     """
@@ -441,16 +455,22 @@ async def transcribe_video(
     if bili_cookie:
         payload["bilibili_cookie"] = bili_cookie
 
+    if resume_task_id is not None:
+        payload["resume_task_id"] = resume_task_id
+    if client_request_id is not None:
+        payload["client_request_id"] = client_request_id
+
     data = await backend.start_transcribe(payload)
     task_id = data.get("task_id")
     if not task_id:
         raise RuntimeError(f"后端未返回任务 ID：{data}")
-    hint = f"转录任务已提交：{task_id}"
+    hint = f"{'已找到原提交' if data.get('replayed') else '转录任务已提交'}：{task_id}"
     if data.get("reused_task_id"):
         hint += f"（复用任务 {data['reused_task_id']} 的转录）"
     return {
         "ok": True,
         "task_id": task_id,
+        "replayed": bool(data.get("replayed")),
         "hint": hint + "，请用 wait_for_task 等待完成，再用 get_transcript 取带时间轴的转录。",
     }
 

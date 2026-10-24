@@ -7,7 +7,7 @@ import base64
 import json
 
 import pytest
-from fastapi.testclient import TestClient
+from local_client import TestClient
 
 from backend import main, secret_box
 from backend.config_store import (

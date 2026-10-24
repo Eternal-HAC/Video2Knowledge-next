@@ -239,6 +239,7 @@ const TEMPLATE_STATE_JS = `
     updateNoteTemplateDetails();
     renderNoteTemplateCards();
     setTemplatePreviewMode('rendered');
+    byId('templatePreviewDetails').open = true;
 
     window.scrollTo(0, 0);
     return true;
@@ -479,7 +480,12 @@ async function main() {
     }
 }
 
-main().catch((error) => {
-    console.error(`[shots] 失败: ${error.message}`);
-    process.exitCode = 1;
-});
+export { CdpClient, locateChrome, waitForDevToolsPort, findPageTarget,
+    evaluate, waitFor, navigateAndWait, capture, sleep };
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    main().catch((error) => {
+        console.error(`[shots] 失败: ${error.message}`);
+        process.exitCode = 1;
+    });
+}

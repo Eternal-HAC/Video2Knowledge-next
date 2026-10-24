@@ -171,6 +171,7 @@ def start_server(port: int) -> tuple[Any, threading.Thread]:
         port=port,
         log_level="info",
         access_log=False,
+        proxy_headers=False,
     )
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)

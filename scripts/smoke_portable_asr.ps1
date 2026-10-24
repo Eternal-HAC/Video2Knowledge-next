@@ -11,6 +11,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "portable_smoke_common.ps1")
 $exePath = (Resolve-Path -LiteralPath $Exe).Path
 if (-not $ExpectedVersion) {
     $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -103,23 +104,7 @@ try {
 
     $baseUrl = $null
     for ($attempt = 0; $attempt -lt $StartupTimeoutSeconds; $attempt++) {
-        foreach ($port in 8000..8019) {
-            try {
-                $candidate = "http://127.0.0.1:$port"
-                $health = Invoke-RestMethod -Uri "$candidate/api/health" -TimeoutSec 1
-                if (
-                    $health.status -eq "ok" -and
-                    $health.product -eq "Video2Knowledge" -and
-                    $health.service -eq "VideoToNo" -and
-                    $health.api_compat -eq 1 -and
-                    $health.mode -eq "portable" -and
-                    $health.version -eq $ExpectedVersion
-                ) {
-                    $baseUrl = $candidate
-                    break
-                }
-            } catch {}
-        }
+        $baseUrl = Find-SmokeOwnedService -Process $process -ExpectedVersion $ExpectedVersion
         if ($baseUrl) { break }
         if ($process.HasExited) {
             throw "The portable executable exited before startup, exit=$($process.ExitCode)"

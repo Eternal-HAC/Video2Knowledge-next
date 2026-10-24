@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
@@ -16,6 +17,30 @@ class TranscriptSegment:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+def transcript_revision(segments: Sequence[TranscriptSegment]) -> str:
+    """Content identity only, independent of JSON formatting and int/float spelling."""
+    canonical = [[float(s.start) or 0.0, float(s.end) or 0.0, s.text] for s in segments]
+    encoded = json.dumps(canonical, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def locate_transcript(
+    segments: Sequence[TranscriptSegment], start: float, end: float | None = None,
+) -> list[dict]:
+    """Half-open overlap, preserving input order and simultaneous cues. No nearest fallback."""
+    point = end is None or end == start
+    matches = []
+    for index, segment in enumerate(segments):
+        if segment.start == segment.end:
+            overlaps = (segment.start == start if point else start <= segment.start < end)
+        else:
+            overlaps = (segment.start <= start < segment.end if point
+                        else segment.start < end and segment.end > start)
+        if overlaps:
+            matches.append({"index": index, **segment.to_dict()})
+    return matches
 
 
 def format_timestamp(seconds: float) -> str:

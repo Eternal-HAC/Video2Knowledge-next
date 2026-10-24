@@ -123,7 +123,7 @@ jobs:
           NOTES=$(cat <<EOF
           ## $PRODUCT_NAME $GITHUB_REF_NAME
 
-          Video2Knowledge 是 VideoToNo 的继任产品（Derived from VideoToNo v1.4.2）：在本机把视频/字幕转成结构化笔记，数据不出本机。仓库保留上游 Git 历史与 MIT License 归属，详见 UPSTREAM.md。
+          Video2Knowledge 是 VideoToNo 的继任产品（Derived from VideoToNo v1.4.2）：本地 ASR 与文件保存在本机完成；调用云模型会发送转录内容，启用飞书会发送发布内容。仓库保留上游 Git 历史与 MIT License 归属，详见 UPSTREAM.md。
 
           本版本沿用 Video2Knowledge 的独立品牌与版本线（1.0.0-beta → rc → stable）：
           - Knowledge Studio 首屏直接提供六个内置模板、自定义模板、默认/自定义/Obsidian 本地 Markdown 目的地与可选飞书附加发布

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.util
 import io
 import ipaddress
 import json
+import math
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import threading
@@ -26,6 +29,9 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFi
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from .local_security import LOCAL_HOSTS, header_error
 
 
 # 自己的前端资源不能让操作系统决定类型：Windows 上 mimetypes 先读注册表
@@ -67,11 +73,13 @@ from product_info import API_COMPAT, LEGACY_SERVICE_ID, PRODUCT_NAME, VERSION, e
 
 from . import (
     asr_process,
+    history_cache,
     media_retention,
     note_integrations,
     note_templates,
     paraformer_asr,
     secret_box,
+    task_repository,
 )
 from .config_store import BiliCredentialsUnavailable, LLM_KEYS_FILE, ConfigStore
 from .media_retention import (
@@ -92,10 +100,12 @@ from .douyin_login import DouyinLoginManager
 from .transcript import (
     TranscriptSegment,
     format_timestamp,
+    locate_transcript,
     parse_subtitle_payload,
     segments_to_prompt,
     segments_to_srt,
     transcript_quality,
+    transcript_revision,
 )
 from .video_processor import (
     FRAMES_DIR_NAME,
@@ -175,8 +185,8 @@ app = FastAPI(title=f"{PRODUCT_NAME} API", version=VERSION)
 
 
 def is_loopback_client(host: str | None) -> bool:
-    if not host or host == "testclient":
-        return True
+    if not isinstance(host, str) or not host:
+        return False
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
@@ -221,36 +231,55 @@ class LocalSecurityMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        client = scope.get("client")
-        client_host = client[0] if isinstance(client, (tuple, list)) and client else None
-        if not is_loopback_client(client_host):
-            body = json.dumps(
-                {"detail": f"{PRODUCT_NAME} 仅允许本机访问"}, ensure_ascii=False
-            ).encode("utf-8")
-            await send(
-                {
-                    "type": "http.response.start",
-                    "status": 403,
-                    "headers": [
-                        (b"content-type", b"application/json; charset=utf-8"),
-                        (b"content-length", str(len(body)).encode("latin-1")),
-                    ],
-                }
-            )
-            await send({"type": "http.response.body", "body": body})
-            return
-
         async def wrapped_send(message: dict[str, Any]) -> None:
             if message["type"] == "http.response.start":
                 headers = message.get("headers", [])
                 existing = {key.lower() for key, _value in headers}
                 for key, value in SECURITY_HEADERS.items():
-                    if key.lower() not in existing:
-                        headers.append((key.encode("latin-1"), value.encode("latin-1")))
+                    if key.lower().encode("latin-1") not in existing:
+                        headers.append((key.lower().encode("latin-1"), value.encode("latin-1")))
                 message["headers"] = headers
             await send(message)
 
-        await self.app(scope, receive, wrapped_send)
+        async def reject(status: int, detail: str) -> None:
+            await JSONResponse(status_code=status, content={"detail": detail})(scope, receive, wrapped_send)
+
+        client = scope.get("client")
+        client_host = client[0] if isinstance(client, (tuple, list)) and client else None
+        if not is_loopback_client(client_host):
+            await reject(403, f"{PRODUCT_NAME} 仅允许本机访问")
+            return
+        error = header_error(scope)
+        if error == 400:
+            await reject(400, "本机请求地址无效")
+            return
+
+        # Normalize only Host casing for Starlette's exact allowlist. Do not
+        # change Origin, scheme, server or trust Forwarded/X-Forwarded-*.
+        checked_scope = dict(scope, headers=[
+            (key, value.lower() if key.lower() == b"host" else value)
+            for key, value in scope["headers"]
+        ])
+        entered = False
+
+        async def trusted_app(inner_scope: Any, inner_receive: Any, inner_send: Any) -> None:
+            nonlocal entered
+            entered = True
+            if error is not None:
+                await reject(403, "本机请求来源不受信任")
+                return
+            await self.app(inner_scope, inner_receive, inner_send)
+
+        async def host_send(message: dict[str, Any]) -> None:
+            if entered:
+                await wrapped_send(message)
+            elif message["type"] == "http.response.start":
+                # Replace Starlette's plain-text rejection, not business 400s.
+                await reject(400, "本机请求地址无效")
+
+        await TrustedHostMiddleware(trusted_app, allowed_hosts=LOCAL_HOSTS, www_redirect=False)(
+            checked_scope, receive, host_send
+        )
 
 
 app.add_middleware(LocalSecurityMiddleware)
@@ -359,27 +388,135 @@ async def run_transcription_local(
 
 
 def transcribe_progress_reporter(
-    task: dict[str, Any], model_name: str, page_label: str = ""
+    task: dict[str, Any],
+    model_name: str,
+    page_label: str = "",
+    *,
+    offset_seconds: float = 0,
+    overall_duration: float | None = None,
+    aggregate: bool = False,
 ) -> Any:
     """转写心跳回调：工作线程里只经 call_soon_threadsafe 回主循环改任务状态。
 
     set_progress 会写任务字典并落盘运行时状态，不能在转写线程里直接调。
     """
     loop = asyncio.get_running_loop()
+    started = time.monotonic()
+    token = object()
+    task["_asr_progress_token"] = token
+    last_position = -1.0
 
     def _clock(seconds: float) -> str:
         seconds = max(0, int(seconds))
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
     def report(position: float, duration: float) -> None:
-        total = _clock(duration) if duration > 0 else "未知时长"
+        try:
+            position = float(position)
+        except (TypeError, ValueError, OverflowError):
+            return
+        if not math.isfinite(position) or position < 0 or model_name == "paraformer-zh":
+            return
+        snapshot = asr_progress_snapshot(
+            position=position,
+            duration=duration,
+            elapsed=time.monotonic() - started,
+            offset_seconds=offset_seconds,
+            overall_duration=overall_duration,
+            aggregate=aggregate,
+        )
+        total = _clock(snapshot["total_seconds"]) if snapshot["total_seconds"] > 0 else "未知时长"
         message = (
             f"正在转写{page_label}音频（{model_name}）："
-            f"已推进到 {_clock(position)} / {total}"
+            f"已推进到 {_clock(snapshot['processed_seconds'])} / {total}"
         )
-        loop.call_soon_threadsafe(set_progress, task, 4, "语音转写", 38, message)
+        def apply_snapshot() -> None:
+            nonlocal last_position
+            if (task.get("step") != 4 or task.get("status") != "processing"
+                    or task.get("_cancel_requested")
+                    or task.get("_asr_progress_token") is not token
+                    or position <= last_position):
+                return
+            last_position = position
+            overall_progress = max(
+                int(task.get("progress") or 0), int(snapshot["overall_progress"])
+            )
+            set_progress(
+                task,
+                4,
+                "语音转写",
+                overall_progress,
+                message,
+                phase_progress=snapshot["phase_progress"],
+                processed_seconds=snapshot["processed_seconds"],
+                total_seconds=snapshot["total_seconds"],
+                estimated_remaining_seconds=snapshot["estimated_remaining_seconds"],
+            )
+
+        loop.call_soon_threadsafe(apply_snapshot)
 
     return report
+
+
+def _finite_nonnegative(value: Any) -> float:
+    try:
+        number = float(value or 0)
+        return max(0.0, number) if math.isfinite(number) else 0.0
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+
+
+def asr_progress_snapshot(
+    *,
+    position: float,
+    duration: float,
+    elapsed: float,
+    offset_seconds: float = 0,
+    overall_duration: float | None = None,
+    aggregate: bool = False,
+) -> dict[str, float | int | None]:
+    """Map faster-whisper time progress onto the task's ASR progress band.
+
+    ETA stays absent during the noisy first seconds.  The frontend deliberately
+    renders the estimate as a range rather than an exact countdown.
+    """
+    local_position = _finite_nonnegative(position)
+    local_duration = _finite_nonnegative(duration)
+    if local_duration > 0:
+        local_position = min(local_duration, local_position)
+    known_total = _finite_nonnegative(overall_duration)
+    cumulative = _finite_nonnegative(_finite_nonnegative(offset_seconds) + local_position)
+    if known_total > 0:
+        processed = min(known_total, cumulative)
+        total = known_total
+    elif aggregate:
+        # A known current-page duration cannot stand in for an unknown whole ASR stage.
+        processed, total = cumulative, 0.0
+    else:
+        processed = local_position
+        total = local_duration
+    ratio = min(1.0, processed / total) if total > 0 else 0.0
+    phase_progress = int(round(ratio * 100)) if total > 0 else None
+    overall_progress = int(round(28 + ratio * (49 - 28)))
+    eta: float | None = None
+    elapsed_seconds = _finite_nonnegative(elapsed)
+    if (
+        total > processed
+        and local_position >= 15
+        and elapsed_seconds >= 5
+        and local_position > 0
+    ):
+        rate = local_position / elapsed_seconds
+        if rate > 0 and math.isfinite(rate):
+            estimate = (total - processed) / rate
+            eta = max(0.0, estimate) if math.isfinite(estimate) else None
+    return {
+        "overall_progress": overall_progress,
+        "phase_progress": phase_progress,
+        "processed_seconds": processed,
+        "total_seconds": total,
+        "estimated_remaining_seconds": eta,
+    }
 
 
 bili_login_manager = BiliLoginManager(WORKSPACE_DIR)
@@ -449,6 +586,7 @@ class LLMConfig(BaseModel):
 
 
 class SummarizeRequest(BaseModel):
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     video_url: str = ""
     upload_task_id: str | None = None
     resume_task_id: str | None = None
@@ -478,6 +616,7 @@ class SummarizeRequest(BaseModel):
 class TranscribeRequest(BaseModel):
     """`POST /api/transcribe` 的请求体：刻意没有任何大模型字段。"""
 
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     video_url: str = ""
     upload_task_id: str | None = None
     resume_task_id: str | None = None
@@ -524,6 +663,10 @@ class SourceInspectPayload(BaseModel):
     video_url: str
 
 
+class OpenResultPayload(BaseModel):
+    target: Literal["file", "folder"]
+
+
 def new_task(status: str = "pending", task_id: str | None = None) -> dict[str, Any]:
     return {
         "status": status,
@@ -531,6 +674,10 @@ def new_task(status: str = "pending", task_id: str | None = None) -> dict[str, A
         "step_name": "初始化",
         "progress_message": "等待任务开始",
         "progress": 0,
+        "phase_progress": None,
+        "processed_seconds": None,
+        "total_seconds": None,
+        "estimated_remaining_seconds": None,
         "logs": [],
         "result": None,
         "error": None,
@@ -556,13 +703,44 @@ def finish_task_timing(task: dict[str, Any]) -> float:
     elapsed = task_elapsed_seconds(task)
     task["elapsed_seconds"] = elapsed
     task["finished_at"] = datetime.now(timezone.utc).isoformat()
+    clear_phase_progress(task)
     return elapsed
 
 
+def clear_phase_progress(task: dict[str, Any]) -> None:
+    task.pop("_asr_progress_token", None)
+    for key in (
+        "phase_progress",
+        "processed_seconds",
+        "total_seconds",
+        "estimated_remaining_seconds",
+    ):
+        task[key] = None
+
+
 def set_progress(
-    task: dict[str, Any], step: int, name: str, progress: int, message: str
+    task: dict[str, Any],
+    step: int,
+    name: str,
+    progress: int,
+    message: str,
+    *,
+    phase_progress: int | None = None,
+    processed_seconds: float | None = None,
+    total_seconds: float | None = None,
+    estimated_remaining_seconds: float | None = None,
 ) -> None:
+    if task.get("_cancel_requested") or task.get("status") in {"completed", "failed", "cancelled", "cancelling"}:
+        return
+    if processed_seconds is None:
+        task.pop("_asr_progress_token", None)
     task.update(step=step, step_name=name, progress=progress, progress_message=message)
+    task.update(
+        phase_progress=phase_progress,
+        processed_seconds=processed_seconds,
+        total_seconds=total_seconds,
+        estimated_remaining_seconds=estimated_remaining_seconds,
+    )
     task["logs"].append(message)
     task_id = task.get("_task_id")
     if task_id:
@@ -637,16 +815,7 @@ def get_template_store() -> note_templates.TemplateStore:
 
 
 def _merge_task_manifest(task_id: str, key: str, value: Any) -> None:
-    """把单个键原子合并进 task.json（与 persist_task_runtime 同样的写盘方式）。"""
-    path = task_directory(task_id) / "task.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"task_id": task_id}
-    except (OSError, ValueError, TypeError):
-        payload = {"task_id": task_id}
-    payload[key] = value
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    task_repository.merge(task_directory(task_id) / "task.json", {key: value})
 
 
 def resolve_feishu_target(task_id: str, request: SummarizeRequest) -> str | None:
@@ -693,20 +862,20 @@ def persist_task_runtime(task_id: str) -> None:
     directory = task_directory(task_id)
     if not directory.is_dir():
         return
-    path = directory / "task.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
-    except (OSError, ValueError, TypeError):
-        payload = {"task_id": task_id}
     result = task.get("result")
     result_metadata = None
     if isinstance(result, dict):
         result_metadata = {key: value for key, value in result.items() if key != "markdown"}
-    payload["runtime"] = {
+    runtime = {
         "status": task.get("status"),
         "step": task.get("step", 0),
         "step_name": task.get("step_name", ""),
         "progress": task.get("progress", 0),
+        "progress_message": task.get("progress_message", ""),
+        "phase_progress": task.get("phase_progress"),
+        "processed_seconds": task.get("processed_seconds"),
+        "total_seconds": task.get("total_seconds"),
+        "estimated_remaining_seconds": task.get("estimated_remaining_seconds"),
         "logs": list(task.get("logs", []))[-200:],
         "error": task.get("error"),
         "created_at": task.get("created_at"),
@@ -714,9 +883,18 @@ def persist_task_runtime(task_id: str) -> None:
         "elapsed_seconds": task_elapsed_seconds(task),
         "result": result_metadata,
     }
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    def save(payload: dict[str, Any]) -> None:
+        # Do not let a delayed progress snapshot replace a persisted terminal state.
+        previous = payload.get("runtime")
+        if (
+            isinstance(previous, dict)
+            and previous.get("status") in {"completed", "failed", "cancelled"}
+            and runtime.get("status") in {"pending", "queued", "processing", "cancelling"}
+        ):
+            return
+        payload.setdefault("task_id", task_id)
+        payload["runtime"] = {**(previous if isinstance(previous, dict) else {}), **runtime}
+    task_repository.update(directory / "task.json", save)
 
 
 def raise_if_cancel_requested(task: dict[str, Any]) -> None:
@@ -819,57 +997,121 @@ def _read_history_manifest(task_id: str) -> tuple[Path | None, dict[str, Any]]:
         directory = task_directory(task_id)
     except ValueError:
         return None, {}
-    path = directory / "task.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
-        return directory, {}
-    return directory, payload if isinstance(payload, dict) else {}
+    # Reuse the validated canonical directory; resolving it again does not
+    # provide an atomic filesystem snapshot and doubles per-record path work.
+    return directory, task_repository.read(directory / "task.json")
 
 
-def history_task_summary(task_id: str) -> dict[str, Any] | None:
-    directory, manifest = _read_history_manifest(task_id)
-    task = tasks.get(task_id)
-    if not manifest and not isinstance(task, dict):
-        return None
+def _project_history_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Retain disk summary inputs only, never URLs, bodies, logs or full results."""
+    if not manifest:
+        return {}
     runtime = manifest.get("runtime") if isinstance(manifest.get("runtime"), dict) else {}
-    result = task.get("result") if isinstance(task, dict) else None
-    if not isinstance(result, dict):
-        result = runtime.get("result") if isinstance(runtime.get("result"), dict) else {}
-    status = str((task or {}).get("status") or runtime.get("status") or "failed")
-    output = str((task or {}).get("output") or manifest.get("output") or "note")
-    title = str(
-        result.get("title")
-        or manifest.get("title")
-        or manifest.get("uploaded_filename")
-        or "未命名任务"
-    )
+    result = runtime.get("result") if isinstance(runtime.get("result"), dict) else {}
     snapshot = manifest.get("note_template_snapshot")
-    template_name = (
-        str(snapshot.get("name") or "") if isinstance(snapshot, dict) else ""
-    )
-    created_at = str((task or {}).get("created_at") or runtime.get("created_at") or manifest.get("created_at") or "")
-    finished_at = (task or {}).get("finished_at") or runtime.get("finished_at")
+    return {
+        "title": manifest.get("title") or manifest.get("uploaded_filename") or "未命名任务",
+        "runtime_result_title": result.get("title"),
+        "output": manifest.get("output") or "note",
+        "origin": manifest.get("origin"),
+        "favorite": manifest.get("favorite") is True,
+        "template_name": str(snapshot.get("name") or "") if isinstance(snapshot, dict) else "",
+        "created_at": runtime.get("created_at") or manifest.get("created_at") or "",
+        "finished_at": runtime.get("finished_at"),
+        "status": runtime.get("status") or "failed",
+        "step_name": runtime.get("step_name"),
+        "progress": runtime.get("progress", 0),
+        "elapsed_seconds": runtime.get("elapsed_seconds") or 0,
+        "platform": _history_platform(manifest, None),
+        "needs_live_source": (
+            not manifest.get("subtitle_import")
+            and not str(manifest.get("source_url") or "").strip()
+            and not str(manifest.get("source") or "").strip()
+        ),
+    }
+
+
+def _summarize_history_projection(
+    task_id: str, directory: Path | None, projection: dict[str, Any],
+    task: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not projection and not isinstance(task, dict):
+        return None
+    live = task or {}
+    result = live.get("result")
+    # An explicitly empty live result suppresses the persisted result title too.
+    result_title = result.get("title") if isinstance(result, dict) else projection.get("runtime_result_title")
+    platform = projection.get("platform", "other")
+    if projection.get("needs_live_source", True) and isinstance(result, dict):
+        source = str(result.get("source") or "").strip().lower()
+        if source in {"bilibili", "douyin", "youtube", "local", "subtitle"}:
+            platform = source
     elapsed = (
         task_elapsed_seconds(task)
         if isinstance(task, dict)
-        else float(runtime.get("elapsed_seconds") or 0)
+        else float(projection.get("elapsed_seconds") or 0)
     )
     return {
         "task_id": task_id,
-        "status": status,
-        "step_name": (task or {}).get("step_name") or runtime.get("step_name"),
-        "progress": (task or {}).get("progress", runtime.get("progress", 0)),
-        "output": output,
-        "title": title,
-        "created_at": created_at,
-        "finished_at": finished_at,
+        "status": str(live.get("status") or projection.get("status") or "failed"),
+        "step_name": live.get("step_name") or projection.get("step_name"),
+        "progress": live.get("progress", projection.get("progress", 0)),
+        "output": str(live.get("output") or projection.get("output") or "note"),
+        "title": str(result_title or projection.get("title") or "未命名任务"),
+        "created_at": str(live.get("created_at") or projection.get("created_at") or ""),
+        "finished_at": live.get("finished_at") or projection.get("finished_at"),
         "elapsed_seconds": elapsed,
-        "platform": _history_platform(manifest, task),
-        "template_name": template_name,
-        "favorite": manifest.get("favorite") is True,
+        "platform": platform,
+        "template_name": projection.get("template_name", ""),
+        "favorite": projection.get("favorite") is True,
         "has_transcript": bool(directory and (directory / "transcript.json").is_file()),
     }
+
+
+def _history_task_record(task_id: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Fresh reads for history, eligibility and reuse."""
+    directory, manifest = _read_history_manifest(task_id)
+    return _summarize_history_projection(
+        task_id, directory, _project_history_manifest(manifest), tasks.get(task_id)
+    ), manifest
+
+
+def _cached_history_task_record(task_id: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Experimental reader, enabled only by isolated tests/benchmarks."""
+    directory = None
+    if is_safe_task_id(task_id):
+        try:
+            directory = task_directory(task_id)
+        except ValueError:
+            pass
+    projection: dict[str, Any] = {}
+    if directory is not None:
+        loaded = False
+
+        def load(path: Path) -> dict[str, Any]:
+            nonlocal loaded
+            loaded = True
+            return _project_history_manifest(task_repository.read(path))
+
+        if directory == WORKSPACE_DIR / task_id:
+            projection = history_cache.history_summaries.read(WORKSPACE_DIR, task_id, load)
+        # Cache admission is stricter than the legacy directory reader. When it
+        # declines before loading, retain that reader's behavior and protections.
+        # Never reuse a value rejected by the cache's post-read identity check.
+        if not loaded and not projection:
+            projection = load(directory / "task.json")
+    return _summarize_history_projection(task_id, directory, projection, tasks.get(task_id)), projection
+
+
+def _list_history_task_record(task_id: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    # G5.1's cached reader regressed latency. Keep production on fresh reads;
+    # isolated benchmarks may replace this list-only seam, never eligibility.
+    return _history_task_record(task_id)
+
+
+def history_task_summary(task_id: str) -> dict[str, Any] | None:
+    summary, _ = _history_task_record(task_id)
+    return summary
 
 
 def iter_history_task_ids() -> list[str]:
@@ -901,7 +1143,7 @@ def restore_task_on_demand(task_id: str) -> dict[str, Any] | None:
     status = str(runtime.get("status") or "")
     interrupted = status in {"pending", "queued", "processing", "cancelling"}
     if notes_path.is_file() or (
-        transcript_only and (directory / "transcript.json").is_file()
+        transcript_only and load_transcript_result(directory) is not None
     ):
         status = "completed"
     elif interrupted:
@@ -915,6 +1157,11 @@ def restore_task_on_demand(task_id: str) -> dict[str, Any] | None:
         step=int(runtime.get("step") or 0),
         step_name=str(runtime.get("step_name") or "已恢复"),
         progress=int(runtime.get("progress") or (100 if status == "completed" else 0)),
+        progress_message=str(runtime.get("progress_message") or ""),
+        phase_progress=runtime.get("phase_progress"),
+        processed_seconds=runtime.get("processed_seconds"),
+        total_seconds=runtime.get("total_seconds"),
+        estimated_remaining_seconds=runtime.get("estimated_remaining_seconds"),
         logs=list(runtime.get("logs") or []),
         error=runtime.get("error"),
         created_at=runtime.get("created_at") or manifest.get("created_at"),
@@ -975,7 +1222,7 @@ def source_url_from_task(task_dir: Path) -> str | None:
     manifest_path = task_dir / "task.json"
     if manifest_path.is_file():
         try:
-            value = json.loads(manifest_path.read_text(encoding="utf-8")).get("source_url")
+            value = task_repository.read(manifest_path).get("source_url")
             if value:
                 return str(value)
         except (OSError, ValueError, TypeError):
@@ -1010,7 +1257,7 @@ def find_reusable_task(source_url: str) -> str | None:
         except (OSError, ValueError, RuntimeError):
             continue
     for _mtime, candidate in sorted(candidates, key=lambda item: item[0], reverse=True):
-        if not (candidate / "transcript.json").is_file():
+        if load_transcript_result(candidate) is None:
             continue
         existing_source = source_url_from_task(candidate)
         if existing_source and normalize_source_url(existing_source) == normalized_source:
@@ -1023,13 +1270,25 @@ def load_transcript_result(task_dir: Path) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     try:
+        if path.is_symlink() or getattr(path.lstat(), "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+            return None
         payload = json.loads(path.read_text(encoding="utf-8"))
-        segments = [
-            TranscriptSegment(float(item["start"]), float(item["end"]), str(item["text"]))
-            for item in payload.get("segments", [])
-            if str(item.get("text", "")).strip()
-        ]
-    except (OSError, ValueError, TypeError, KeyError):
+        if not isinstance(payload, dict) or not isinstance(payload.get("segments"), list):
+            return None
+        if any(payload.get(key) is not None and not isinstance(payload[key], str) for key in ("language", "source")):
+            return None
+        segments = []
+        for item in payload["segments"]:
+            if not isinstance(item, dict) or not isinstance(item.get("text"), str):
+                return None
+            if any(isinstance(item.get(key), bool) for key in ("start", "end")):
+                return None
+            start, end = float(item["start"]), float(item["end"])
+            if not all(math.isfinite(value) for value in (start, end)) or start < 0 or end < start:
+                return None
+            if item["text"].strip():
+                segments.append(TranscriptSegment(start, end, item["text"]))
+    except (OSError, ValueError, TypeError, KeyError, OverflowError):
         return None
     if not segments:
         return None
@@ -1050,7 +1309,7 @@ def load_reused_video_info(
     manifest_path = task_dir / "task.json"
     if manifest_path.is_file():
         try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest = task_repository.read(manifest_path)
         except (OSError, ValueError, TypeError):
             pass
 
@@ -1090,12 +1349,7 @@ def load_reused_video_info(
 
 
 def update_task_manifest(task_id: str, info: dict[str, Any]) -> None:
-    path = task_directory(task_id) / "task.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
-        payload = {"task_id": task_id}
-    payload.update(
+    payload = dict(
         title=info.get("title"),
         owner=info.get("owner"),
         duration=info.get("duration"),
@@ -1110,16 +1364,11 @@ def update_task_manifest(task_id: str, info: dict[str, Any]) -> None:
     for key in ("bili_selected_pages", "bili_total_pages"):
         if info.get(key) is not None:
             payload[key] = info[key]
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    task_repository.merge(task_directory(task_id) / "task.json", payload)
 
 
 def read_task_manifest(task_id: str) -> dict[str, Any]:
-    path = task_directory(task_id) / "task.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
+    return task_repository.read(task_directory(task_id) / "task.json")
 
 
 def write_task_manifest(
@@ -1129,6 +1378,7 @@ def write_task_manifest(
     origin: str,
     template_snapshot: dict[str, Any] | None = None,
     feishu_target: dict[str, Any] | None = None,
+    submission: dict[str, Any] | None = None,
 ) -> None:
     uploaded_filename = tasks.get(task_id, {}).get("uploaded_filename")
     payload = {
@@ -1152,6 +1402,15 @@ def write_task_manifest(
         # 分 P 勾选随任务落盘：同一视频重新处理时，/bili-pages 用它预勾上次的范围
         "bilibili_pages": getattr(request, "bilibili_pages", None),
     }
+    if reused_task_id:
+        parent = read_task_manifest(reused_task_id)
+        payload["parent_task_id"] = reused_task_id
+        payload["transcript_ref"] = {"task_id": reused_task_id, "filename": "transcript.json"}
+        if not payload["source_url"]:
+            payload["source_url"] = parent.get("source_url")
+            payload["normalized_source_url"] = parent.get("normalized_source_url")
+        if parent.get("subtitle_import"):
+            payload["subtitle_import"] = True
     if tasks.get(task_id, {}).get("subtitle_import"):
         # 字幕上传任务在 submit 时会重写 manifest：标记必须跟着写回去，
         # 否则服务重启后来源身份丢失，只剩内存里的任务能跑。
@@ -1165,9 +1424,9 @@ def write_task_manifest(
     if feishu_target is not None:
         # 只快照归一后的目标 token；认证状态绝不落盘
         payload["feishu_upload"] = feishu_target
-    (task_directory(task_id) / "task.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    if submission is not None:
+        payload["submission"] = submission
+    task_repository.merge(task_directory(task_id) / "task.json", payload)
 
 
 def write_upload_manifest(
@@ -1181,9 +1440,7 @@ def write_upload_manifest(
     }
     if subtitle_import:
         payload["subtitle_import"] = True
-    (task_directory(task_id) / "task.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    task_repository.merge(task_directory(task_id) / "task.json", payload)
 
 
 def probe_note_destination(path: Path) -> None:
@@ -1227,12 +1484,49 @@ def validate_note_destination(value: str) -> str | None:
 
 
 @app.post("/api/summarize")
-async def start_summarize(request: SummarizeRequest) -> dict[str, str | None]:
+async def start_summarize(request: SummarizeRequest) -> dict[str, Any]:
     return await submit_video_task(request, origin="web")
 
 
+def submission_fingerprint(request: SummarizeRequest, origin: str) -> str:
+    """Compare request intent only. Never hash Key/Cookie values, even indirectly."""
+    values = request.model_dump(exclude={
+        "client_request_id", "bilibili_cookie", "douyin_cookie", "llm_config",
+    })
+    values["llm_config"] = request.llm_config.model_dump(exclude={"api_key"})
+    values["origin"] = origin
+    encoded = json.dumps(values, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def replay_submission(request_id: str, fingerprint: str) -> dict[str, Any] | None:
+    # Manifests remain the source of truth. No unbounded in-memory idempotency index.
+    for task_id in iter_history_task_ids():
+        manifest = read_task_manifest(task_id)
+        submission = manifest.get("submission")
+        if not isinstance(submission, dict) or submission.get("client_request_id") != request_id:
+            continue
+        if submission.get("fingerprint") != fingerprint:
+            raise HTTPException(status_code=409, detail="该请求 ID 已用于不同参数；显式新建任务请使用新的 ID")
+        return {"task_id": task_id, "reused_task_id": manifest.get("reused_task_id"), "replayed": True}
+    return None
+
+
+@app.get("/api/submission/{client_request_id}")
+async def lookup_submission(client_request_id: str) -> dict[str, Any]:
+    """Resolve an uncertain submission without repeating a paid task request."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", client_request_id):
+        raise HTTPException(status_code=422, detail="非法请求 ID")
+    for task_id in iter_history_task_ids():
+        manifest = read_task_manifest(task_id)
+        submission = manifest.get("submission")
+        if isinstance(submission, dict) and submission.get("client_request_id") == client_request_id:
+            return {"task_id": task_id, "reused_task_id": manifest.get("reused_task_id"), "replayed": True}
+    raise HTTPException(status_code=404, detail="未找到该提交；请确认服务和工作区未改变后再新建任务")
+
+
 @app.post("/api/transcribe")
-async def start_transcribe(request: TranscribeRequest) -> dict[str, str | None]:
+async def start_transcribe(request: TranscribeRequest) -> dict[str, Any]:
     """只做「视频 → 带时间轴转录」，全程不调用大模型，本机没有 API Key 也能用。
 
     给自带模型的 agent 用：拿原料自己组织笔记，不必先给本机配一把 Key。
@@ -1249,7 +1543,15 @@ async def start_transcribe(request: TranscribeRequest) -> dict[str, str | None]:
 
 async def submit_video_task(
     request: SummarizeRequest, origin: str
-) -> dict[str, str | None]:
+) -> dict[str, Any]:
+    # There is no await between replay lookup and durable reservation. The single
+    # backend event loop serializes submissions, including MCP in-process calls.
+    request = request.model_copy(deep=True)
+    fingerprint = submission_fingerprint(request, origin) if request.client_request_id else None
+    if request.client_request_id:
+        replay = replay_submission(request.client_request_id, fingerprint)
+        if replay is not None:
+            return replay
     if request.whisper_model not in ASR_MODELS:
         raise HTTPException(status_code=422, detail="不支持的转写模型")
     if request.output == "note" and request.note_destination:
@@ -1260,7 +1562,7 @@ async def submit_video_task(
     if request.upload_task_id:
         # 本地上传的媒体位置记在上传任务上；此时 video_url 是后端目录里的文件路径，
         # 不是链接，不能进链接校验（否则必 422）。
-        uploaded_task = tasks.get(request.upload_task_id)
+        uploaded_task = tasks.get(request.upload_task_id) or restore_task_on_demand(request.upload_task_id)
         if not uploaded_task or uploaded_task.get("status") != "uploaded":
             raise HTTPException(status_code=400, detail="上传任务不存在或已经处理")
         request.video_url = ""
@@ -1279,9 +1581,17 @@ async def submit_video_task(
         reused_task_id = find_reusable_task(request.video_url)
 
     if reused_task_id:
-        resume_dir = task_directory(reused_task_id)
+        try:
+            resume_dir = task_directory(reused_task_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="非法恢复任务 ID") from exc
         if not resume_dir.is_dir():
             raise HTTPException(status_code=404, detail="要继续的任务目录不存在")
+        if load_transcript_result(resume_dir) is None:
+            raise HTTPException(status_code=409, detail="原任务缺少完整可用的转录；请检查历史任务或显式从头处理")
+        original_source = source_url_from_task(resume_dir)
+        if request.video_url and original_source and normalize_source_url(request.video_url) != normalize_source_url(original_source):
+            raise HTTPException(status_code=409, detail="恢复任务的来源与当前链接不同；请打开原任务或显式从头处理")
 
     template_snapshot = None
     if request.output == "note":
@@ -1345,9 +1655,15 @@ async def submit_video_task(
         ).get("uploaded_filename")
         if old_filename:
             tasks[task_id]["uploaded_filename"] = old_filename
+        if read_task_manifest(reused_task_id).get("subtitle_import"):
+            tasks[task_id]["subtitle_import"] = True
+            request.include_screenshots = False
         tasks[task_id]["logs"].append(f"将从任务 {reused_task_id} 复用已有产物")
     write_task_manifest(
-        task_id, request, reused_task_id, origin, template_snapshot, feishu_target
+        task_id, request, reused_task_id, origin, template_snapshot, feishu_target,
+        submission={
+            "client_request_id": request.client_request_id, "fingerprint": fingerprint,
+        } if request.client_request_id else None,
     )
     persist_task_runtime(task_id)
 
@@ -1361,6 +1677,8 @@ def task_status_payload(task_id: str, task: dict[str, Any]) -> dict[str, Any]:
     payload = {key: value for key, value in task.items() if not key.startswith("_")}
     payload["elapsed_seconds"] = task_elapsed_seconds(task)
     manifest = read_task_manifest(task_id)
+    if task.get("status") in {"failed", "cancelled", "completed"}:
+        payload["recovery"] = task_recovery_summary(task_id, task, manifest)
     source_url = str(manifest.get("source_url") or "")
     payload["source_url"] = source_url if source_url.startswith(("http://", "https://")) else None
     payload["uploaded_filename"] = payload.get("uploaded_filename") or manifest.get(
@@ -1377,7 +1695,46 @@ def task_status_payload(task_id: str, task: dict[str, Any]) -> dict[str, Any]:
         manifest,
         str(task.get("output") or manifest.get("output") or "note"),
     )
+    if task.get("status") == "queued":
+        ordered = [
+            current_id
+            for current_id, current in tasks.items()
+            if current.get("status") in {"processing", "cancelling", "queued"}
+        ]
+        try:
+            ahead = ordered.index(task_id)
+        except ValueError:
+            ahead = 0
+        payload.update(
+            queue_ahead=ahead,
+            queue_position=ahead + 1,
+            queue_total=len(ordered),
+        )
     return payload
+
+
+def task_recovery_summary(
+    task_id: str, task: dict[str, Any], manifest: dict[str, Any]
+) -> dict[str, Any]:
+    directory = task_directory(task_id)
+    transcript = load_transcript_result(directory) is not None
+    note = (directory / "notes.md").is_file()
+    output = task.get("output") or manifest.get("output") or "note"
+    retained = (["transcript"] if transcript else []) + (["note"] if note else [])
+    can_resume = transcript and task.get("status") in {"failed", "cancelled", "completed"}
+    redo = ["note_generation"] if transcript and output == "note" else []
+    if not transcript and not note:
+        redo = ["source_processing"] + (["note_generation"] if output == "note" else [])
+    return {
+        "retained": retained, "can_resume": can_resume, "resume_task_id": task_id if can_resume else None,
+        "redo": redo, "requires_explicit_submit": True,
+        "message": (
+            "已保留完整转录；继续将跳过音频下载与 ASR，重新生成笔记会调用所选模型。勾选截图时仍可能下载预览视频。"
+            if transcript and output == "note" else
+            "已保留完整转录；继续可复用转录，不调用大模型。" if transcript else
+            "未找到完整可用转录；从头处理可能重新下载媒体或转写。"
+        ),
+    }
 
 
 @app.get("/api/tasks")
@@ -1391,19 +1748,18 @@ async def list_recent_tasks(
     favorite: bool | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=50),
+    refresh: bool = False,
 ) -> dict[str, Any]:
     """Return manifest-backed local history without loading note bodies."""
-    summaries = [
-        summary
-        for task_id in iter_history_task_ids()
-        if (summary := history_task_summary(task_id)) is not None
-    ]
-
+    if refresh:
+        history_cache.history_summaries.clear()
     # Agent-only transcript material remains hidden from the web history.
     visible: list[dict[str, Any]] = []
-    for summary in summaries:
-        manifest = read_task_manifest(summary["task_id"])
-        live_task = tasks.get(summary["task_id"])
+    for task_id in iter_history_task_ids():
+        summary, manifest = _list_history_task_record(task_id)
+        if summary is None:
+            continue
+        live_task = tasks.get(task_id)
         origin = manifest.get("origin") or (
             live_task.get("_origin") if isinstance(live_task, dict) else None
         )
@@ -1483,11 +1839,28 @@ async def inspect_source(payload: SourceInspectPayload) -> dict[str, Any]:
 
 
 @app.get("/api/task/{task_id}")
-async def get_task_status(task_id: str) -> dict[str, Any]:
+async def get_task_status(task_id: str, refresh_note: bool = False) -> dict[str, Any]:
     task = tasks.get(task_id) or restore_task_on_demand(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在或已被清理")
-    return task_status_payload(task_id, task)
+    payload = task_status_payload(task_id, task)
+    if refresh_note and task.get("status") == "completed" and task.get("output") != "transcript":
+        # Opt-in history read only. Polls/MCP keep their original contract and cached result.
+        if not is_safe_task_id(task_id):
+            raise HTTPException(status_code=400, detail="非法任务 ID")
+        path = WORKSPACE_DIR / task_id / "notes.md"
+        identity = _plain_path_snapshot(path)
+        try:
+            if identity is None:
+                raise OSError
+            markdown = path.read_text(encoding="utf-8")
+            if _plain_path_snapshot(path) != identity:
+                raise OSError
+        except (OSError, ValueError):
+            raise HTTPException(status_code=409, detail="当前笔记缺失或无法安全读取；未返回缓存旧正文") from None
+        result = task.get("result") if isinstance(task.get("result"), dict) else {}
+        payload["result"] = {**result, "markdown": markdown}
+    return payload
 
 
 @app.get("/api/task/{task_id}/transcript")
@@ -1565,6 +1938,82 @@ async def get_task_transcript(
     }
 
 
+@app.get("/api/task/{task_id}/transcript-context")
+async def get_transcript_context(
+    task_id: str,
+    start: float = Query(0, ge=0),
+    end: float | None = Query(None, ge=0),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    transcript_hash: str | None = Query(None, pattern=r"^[a-f0-9]{64}$"),
+    note_hash: str | None = Query(None, pattern=r"^[a-f0-9]{64}$"),
+) -> dict[str, Any]:
+    """Read-only time lookup; hashes bind a lookup/page to the same saved artifacts."""
+    if not math.isfinite(start) or (end is not None and (not math.isfinite(end) or end < start)):
+        raise HTTPException(status_code=422, detail="时间范围无效，终点须不早于起点")
+    if not is_safe_task_id(task_id):
+        raise HTTPException(status_code=400, detail="非法任务 ID")
+    # Inspect the lexical directory before task_directory resolves any components.
+    if _plain_path_snapshot(WORKSPACE_DIR / task_id, directory=True) is None:
+        raise HTTPException(status_code=409, detail="原转录缺失、损坏或无法安全读取；不会自动重新处理")
+    try:
+        directory = task_directory(task_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="非法任务 ID") from None
+    path = directory / "transcript.json"
+    identity = _plain_path_snapshot(path)
+    result = load_transcript_result(directory) if identity else None
+    if result is None or _plain_path_snapshot(path) != identity:
+        raise HTTPException(status_code=409, detail="原转录缺失、损坏或无法安全读取；不会自动重新处理")
+    segments = result["segments"]
+    revision = transcript_revision(segments)
+    if transcript_hash is not None and transcript_hash != revision:
+        raise HTTPException(status_code=409, detail="原转录已变化，请重新读取后定位")
+
+    note_revision = None
+    note_path = directory / "notes.md"
+    note_identity = _plain_path_snapshot(note_path)
+    if note_identity:
+        try:
+            text = note_path.read_text(encoding="utf-8")
+            if _plain_path_snapshot(note_path) == note_identity:
+                note_revision = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        except (OSError, ValueError):
+            pass
+    if note_hash is not None and note_hash != note_revision:
+        raise HTTPException(status_code=409, detail="笔记已变化或无法读取，请从历史重新打开当前笔记")
+
+    matches = locate_transcript(segments, start, end)
+    coverage_start = min(s.start for s in segments)
+    coverage_end = max(s.end for s in segments)
+    range_state = "gap"
+    if matches:
+        range_state = "partial" if start < coverage_start or (end is not None and end > coverage_end) else "matched"
+    elif start >= coverage_end or (end if end is not None else start) < coverage_start:
+        range_state = "outside"
+    manifest = _open_result_manifest(task_id)
+    pages = manifest.get("bili_selected_pages")
+    merged = (isinstance(pages, list) and len(pages) > 1) or any(
+        re.match(r"【P\d+[\s】]", s.text) for s in segments
+    )
+    try:
+        media_retained = any(
+            media_retention.is_owned_media_name(p.name) and _plain_path_snapshot(p)
+            for p in directory.iterdir()
+        )
+    except OSError:
+        media_retained = False
+    return {
+        "task_id": task_id, "transcript_hash": revision, "note_hash": note_revision,
+        "start": start, "end": end, "coverage": {"start": coverage_start, "end": coverage_end},
+        "range_state": range_state, "segments": matches[offset:offset + limit],
+        "total": len(matches), "offset": offset, "limit": limit,
+        "has_more": offset + limit < len(matches),
+        "timeline": "merged" if merged else "single",
+        "media_state": "retained" if media_retained else "not_retained",
+    }
+
+
 @app.get("/api/whisper-models")
 async def whisper_models_status() -> dict[str, Any]:
     """返回各 Whisper 模型在本机的缓存状态（供前端标注下拉框）。"""
@@ -1585,7 +2034,7 @@ class WhisperManualFolderPayload(BaseModel):
 
 
 def _open_in_file_manager(path: Path) -> bool:
-    """用系统文件管理器打开目录；失败时返回 False（前端展示路径兜底）。"""
+    """用系统默认程序打开文件或目录；失败时返回 False（前端展示路径兜底）。"""
     try:
         if sys.platform.startswith("win"):
             os.startfile(str(path))  # type: ignore[attr-defined]
@@ -1596,6 +2045,126 @@ def _open_in_file_manager(path: Path) -> bool:
         return True
     except Exception:
         return False
+
+
+def _plain_path_snapshot(path: Path, *, directory: bool = False) -> tuple | None:
+    """Inspect lexical components before resolution, retaining identities for recheck.
+
+    Match the retention guard's no-reparse/no-hardlink policy. Shell opening is
+    pathname based: this narrows, but cannot eliminate, the final dispatch race.
+    """
+    try:
+        if (not path.is_absolute() or path.drive.startswith("\\\\")
+                or any(part == ".." or ":" in part or "\0" in part
+                       or part.endswith((".", " ")) for part in path.parts[1:])):
+            return None
+        identities = []
+        for component in (*reversed(path.parents), path):
+            is_directory = component != path or directory
+            info = component.stat(follow_symlinks=False)
+            kind_ok = stat.S_ISDIR(info.st_mode) if is_directory else stat.S_ISREG(info.st_mode)
+            if (not kind_ok or getattr(info, "st_file_attributes", 0) & 0x400
+                    or not info.st_ino or (not is_directory and info.st_nlink != 1)):
+                return None
+            identities.append((info.st_dev, info.st_ino))
+        return tuple(identities)
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
+def _open_result_manifest(task_id: str) -> dict[str, Any]:
+    path = WORKSPACE_DIR / task_id / "task.json"
+    identity = _plain_path_snapshot(path)
+    if identity is None:
+        return {}
+    try:
+        if path.stat().st_size > 4 * 1024 * 1024:
+            return {}
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if _plain_path_snapshot(path) != identity:
+            return {}
+    except (OSError, ValueError, RuntimeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _trusted_archived_result(task_id: str, task: dict[str, Any]) -> tuple[Path, tuple] | None:
+    result = task.get("result") if isinstance(task.get("result"), dict) else {}
+    raw_path = result.get("archived_path")
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        return None
+    manifest = _open_result_manifest(task_id)
+    output = str(task.get("output") or manifest.get("output") or "note")
+    try:
+        raw_root = manifest.get("note_destination", "")
+        if raw_root is None:
+            raw_root = ""
+        if output == "note":
+            if not isinstance(raw_root, str):
+                return None
+            root = Path(raw_root) if raw_root else WORKSPACE_DIR / NOTES_DIR_NAME
+        elif output == "transcript":
+            root = WORKSPACE_DIR / TRANSCRIPTS_DIR_NAME
+        else:
+            return None
+        candidate = Path(raw_path)
+        if candidate.suffix.lower() != ".md" or candidate.parent != root:
+            return None
+        identity = _plain_path_snapshot(candidate)
+        return (candidate, identity) if identity is not None else None
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
+def _result_file_for_open(task_id: str, task: dict[str, Any]) -> tuple[Path, tuple] | None:
+    if not is_safe_task_id(task_id):
+        return None
+    archived = _trusted_archived_result(task_id, task)
+    if archived is not None:
+        return archived
+    manifest = _open_result_manifest(task_id)
+    output = str(task.get("output") or manifest.get("output") or "note")
+    if output not in {"note", "transcript"}:
+        return None
+    filename = "transcript.md" if output == "transcript" else "notes.md"
+    try:
+        candidate = WORKSPACE_DIR / task_id / filename
+        identity = _plain_path_snapshot(candidate)
+        return (candidate, identity) if identity is not None else None
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
+@app.post("/api/task/{task_id}/open-result")
+async def open_task_result(task_id: str, payload: OpenResultPayload) -> dict[str, Any]:
+    """Open one completed result without accepting a caller-supplied path."""
+    if (not is_safe_task_id(task_id)
+            or _plain_path_snapshot(WORKSPACE_DIR / task_id, directory=True) is None):
+        raise HTTPException(status_code=404, detail="结果文件不存在或路径不可安全打开")
+    task = tasks.get(task_id)
+    if task is None:
+        # Opening a result needs only a safe manifest summary, never note content
+        # or unrelated runtime fields that may be corrupt in an old task.
+        manifest = _open_result_manifest(task_id)
+        if manifest:
+            runtime = manifest.get("runtime") if isinstance(manifest.get("runtime"), dict) else {}
+            output = str(manifest.get("output") or "note")
+            filename = "transcript.md" if output == "transcript" else "notes.md"
+            inferred = "completed" if _plain_path_snapshot(WORKSPACE_DIR / task_id / filename) else "failed"
+            task = {"status": runtime.get("status") or inferred, "output": output,
+                    "result": runtime.get("result")}
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在或已被清理")
+    if task.get("status") != "completed":
+        raise HTTPException(status_code=409, detail="任务尚未完成")
+    result = _result_file_for_open(task_id, task)
+    if result is None:
+        raise HTTPException(status_code=404, detail="结果文件不存在或路径不可安全打开")
+    result_file, identity = result
+    if _plain_path_snapshot(result_file) != identity:
+        raise HTTPException(status_code=404, detail="结果文件不存在或路径不可安全打开")
+    target = result_file if payload.target == "file" else result_file.parent
+    return {"opened": _open_in_file_manager(target), "target": payload.target}
 
 
 PARAFORMER_IMPORT_LABELS = {
@@ -2385,7 +2954,7 @@ async def retry_feishu_upload(task_id: str) -> dict[str, Any]:
     不覆盖远端已有文件：每次重试都可能再创建一份，超时等结果不确定的
     场景由前端在重试前明确提示。
     """
-    task = tasks.get(task_id)
+    task = tasks.get(task_id) or restore_task_on_demand(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     if task["status"] != "completed":
@@ -2448,6 +3017,7 @@ async def cancel_task(task_id: str) -> dict[str, Any]:
     if cancel_event is not None:
         cancel_event.set()
     task.update(status="cancelling", step_name="取消中", error=None)
+    clear_phase_progress(task)
     task["logs"].append("已收到取消请求；正在尽快停止当前步骤")
     persist_task_runtime(task_id)
     if first_request:
@@ -2475,6 +3045,7 @@ async def delete_task(task_id: str) -> dict[str, bool]:
     running_jobs.pop(task_id, None)
     await video_processor.cleanup(task_id)
     tasks.pop(task_id, None)
+    history_cache.history_summaries.invalidate(WORKSPACE_DIR / task_id / "task.json")
     return {"deleted": True}
 
 
@@ -2587,18 +3158,11 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
 
     try:
         raise_if_cancel_requested(task)
-        bili_cookie = (
-            request.bilibili_cookie.model_dump()
-            if request.bilibili_cookie
-            else config_store.load_bili_credentials()
-        )
         resume_task_id = task.get("resume_task_id")
         resume_dir = task_directory(resume_task_id) if resume_task_id else None
         # 字幕导入与「复用转录」共用这条缝：转录已经在盘上了，第 1~4 步整体跳过。
         # 差别只在从哪个目录读——导入读的是本任务自己的目录（上传当场落好的）。
-        transcript_dir = (
-            task_directory(task_id) if task.get("subtitle_import") else resume_dir
-        )
+        transcript_dir = resume_dir or (task_directory(task_id) if task.get("subtitle_import") else None)
         source_url = request.video_url or (source_url_from_task(resume_dir) if resume_dir else None)
         uploaded_path = task.get("uploaded_file_path")
         if not uploaded_path and resume_dir:
@@ -2610,10 +3174,18 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
         source_kind = (
             video_processor.detect_source(source_url) if source_url else VideoSource.LOCAL
         )
-        cookie = douyin_cookie if source_kind == VideoSource.DOUYIN else bili_cookie
         transcript_result = (
             load_transcript_result(transcript_dir) if transcript_dir else None
         )
+        if transcript_dir is not None and transcript_result is None:
+            raise RuntimeError("恢复转录已丢失或损坏；未执行下载或 ASR，请检查原任务后再提交")
+        bili_cookie = (
+            request.bilibili_cookie.model_dump() if request.bilibili_cookie else
+            config_store.load_bili_credentials()
+            if source_kind == VideoSource.BILIBILI and (not transcript_result or request.include_screenshots)
+            else None
+        )
+        cookie = douyin_cookie if source_kind == VideoSource.DOUYIN else bili_cookie
         bili_pages_to_transcribe: list = []
 
         if transcript_result:
@@ -2741,10 +3313,19 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             if bili_pages_to_transcribe:
                 # 多分 P：对没有 AI 字幕的分 P 逐个下载音频并转写，再按顺序合并
                 whisper_by_page: dict[int, dict] = {}
+                page_durations = [
+                    _finite_nonnegative(page.duration)
+                    for page in bili_pages_to_transcribe
+                ]
+                overall_asr_duration = (
+                    _finite_nonnegative(sum(page_durations)) if page_durations and all(page_durations) else None
+                )
+                completed_asr_duration = 0.0
                 for page in bili_pages_to_transcribe:
                     raise_if_cancel_requested(task)
                     set_progress(
-                        task, 3, "准备音频", 25, f"正在下载分 P {page.page} 音频"
+                        task, 3, "准备音频", max(25, int(task.get("progress") or 0)),
+                        f"正在下载分 P {page.page} 音频"
                     )
                     media_path = await video_processor.download_audio(
                         bilibili_page_url(source_url or "", page.page),
@@ -2760,7 +3341,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                         task,
                         4,
                         "语音转写",
-                        38,
+                        max(28, int(task.get("progress") or 0)),
                         f"正在转写分 P {page.page}（{request.whisper_model} 模型）",
                     )
                     whisper_result = await run_transcription(
@@ -2770,7 +3351,12 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                         title,
                         task.get("_cancel_event"),
                         progress_callback=transcribe_progress_reporter(
-                            task, request.whisper_model, f"分 P {page.page} "
+                            task,
+                            request.whisper_model,
+                            f"分 P {page.page} ",
+                            offset_seconds=completed_asr_duration,
+                            overall_duration=overall_asr_duration,
+                            aggregate=True,
                         ),
                     )
                     raise_if_cancel_requested(task)
@@ -2785,6 +3371,10 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                             f"所选 Whisper {whisper_result['requested_model']} 未缓存或无法加载，"
                             f"已自动降级为本机缓存的 {whisper_result['model']}"
                         )
+                    completed_asr_duration += (
+                        _finite_nonnegative(page.duration)
+                        or _finite_nonnegative(whisper_result.get("duration"))
+                    )
                 if subtitle_outcome is not None and subtitle_outcome.pages:
                     merged_segments, language = merge_bilibili_pages(
                         subtitle_outcome.pages,
@@ -2838,7 +3428,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
                     task,
                     4,
                     "语音转写",
-                    38,
+                    28,
                     f"正在加载 {request.whisper_model}（未缓存时可能下载模型）",
                 )
                 whisper_result = await run_transcription(
@@ -3002,8 +3592,9 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             base_url=base_url,
             model=model,
         )
+        resolved_model = getattr(summarizer, "model", None) or model
         task["logs"].append(
-            f"调用模型：Provider={config.model_type}，Model={model}，"
+            f"调用模型：Provider={config.model_type}，Model={resolved_model}，"
             f"Base URL={base_url}，Key={key_source}"
         )
         task["logs"].append(
@@ -3071,7 +3662,7 @@ async def process_video_task(task_id: str, request: SummarizeRequest) -> None:
             note_text,
             source_url,
             config.model_type,
-            model,
+            resolved_model,
             request.summary_style,
         )
 
@@ -3768,4 +4359,5 @@ if __name__ == "__main__":
         host=os.getenv("HOST", "127.0.0.1"),
         port=port,
         reload=os.getenv("RELOAD", "false").lower() == "true",
+        proxy_headers=False,
     )

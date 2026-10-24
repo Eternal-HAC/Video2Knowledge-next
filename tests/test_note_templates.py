@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
+from local_client import TestClient
 
 from backend import main, note_templates
 from backend.note_templates import (

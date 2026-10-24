@@ -221,8 +221,87 @@ def test_main_workflow_surfaces_templates_destinations_and_export_hint() -> None
         'id="exportHint"',
     ):
         assert marker in source_panel, f"首屏缺少核心选择：{marker}"
-    assert source_panel.index('id="templateChooserSection"') < source_panel.index('class="source-controls"')
-    assert source_panel.index('id="destinationChooserSection"') < source_panel.index('class="source-controls"')
+    assert source_panel.index('class="source-controls"') < source_panel.index('id="templateChooserSection"')
+    assert source_panel.index('class="source-controls"') < source_panel.index('id="destinationChooserSection"')
+
+
+def test_g1_preview_is_explicitly_collapsible_and_reader_controls_are_labelled() -> None:
+    details = re.search(r'<details id="templatePreviewDetails"[^>]*>', PAGE)
+    assert details and "open" not in details.group(0)
+    assert 'id="templatePreviewToggle"' in PAGE
+    for marker in (
+        'id="resultOutline"', 'id="resultOutlineList"',
+        'id="noteSearch"', 'id="noteSearchStatus"',
+        'id="noteSearchPrevBtn"', 'id="noteSearchNextBtn"',
+        'id="noteSearchClearBtn"', 'id="resultExportHint"',
+    ):
+        assert marker in PAGE
+    assert '<label for="noteSearch">' in PAGE
+    assert '含可用截图时为 ZIP' in PAGE
+
+
+def test_g1_export_feedback_uses_the_response_filename() -> None:
+    _run_script_with_dom_stub(r"""
+const hint = __el('resultExportHint');
+updateMarkdownDownloadHint('synthetic.zip');
+assert.ok(hint.textContent.includes('ZIP'));
+assert.ok(hint.textContent.includes('解压'));
+updateMarkdownDownloadHint('synthetic.md');
+assert.ok(hint.textContent.includes('.md'));
+assert.ok(!hint.textContent.includes('已下载 ZIP'));
+""")
+
+
+def test_g3_clock_ranges_are_literal_and_do_not_accept_invalid_times() -> None:
+    _run_script_with_dom_stub(r"""
+assert.equal(parseNoteClock('01:02:03'), 3723);
+assert.equal(parseNoteClock('100:00'), 6000);
+['1:99', '01:60:00', '-01:00', 'javascript:foo', '1', ''].forEach(value => assert.equal(parseNoteClock(value), null));
+const ranges = noteTimeRanges('甲 [00:02-00:07] 乙 [01:02:03] 丙 [00:03 – 00:05] 无效 [00:99] 倒序 [00:09-00:01]');
+assert.deepEqual(JSON.parse(JSON.stringify(ranges.map(item => [item.start, item.end]))), [[2,7],[3723,null],[3,5]]);
+""")
+
+
+def test_g3_context_controls_and_read_only_revision_guards() -> None:
+    for marker in ('viewTranscriptBtn', 'transcriptContextPanel', 'transcriptContextStatus',
+                   'transcriptContextRows', 'transcriptContextMoreBtn', 'transcriptContextCloseBtn',
+                   'transcriptRangeStart', 'transcriptRangeEnd', 'transcriptRangeForm'):
+        assert f'id="{marker}"' in PAGE
+    assert '按时间定位' in PAGE
+    code = SCRIPT.split('async function loadTranscriptContext(', 1)[1].split('\nasync function openCurrentResult(', 1)[0]
+    assert 'transcript-context?' in code and "cache: 'no-store'" in code
+    assert 'transcript_hash' in code and 'note_hash' in code
+    assert 'AbortController' in code and 'epoch' in code
+    assert '.innerHTML' not in code and "method: 'POST'" not in code
+    history = SCRIPT.split('async function openRecentTask(', 1)[1].split('\nfunction showStoppedTask(', 1)[0]
+    assert '?refresh_note=true' in history
+    assert 'transcriptContextReloadNoteBtn' in PAGE
+
+
+def test_g1_template_manager_returns_focus_to_its_entry() -> None:
+    _run_script_with_dom_stub(r"""
+const entry = __el('manageTemplatesBtn');
+const panel = __el('settingsPanel');
+panel.hidden = true;
+let returned = false;
+entry.focus = () => { returned = true; };
+revealTemplateManager();
+assert.equal(panel.hidden, false);
+closeSettingsPanel();
+assert.equal(returned, true);
+""")
+
+
+def test_g1_reader_is_a_dom_only_projection_and_resets_with_tasks() -> None:
+    reader = SCRIPT.split("function initResultReader()", 1)[1].split(
+        "async function openCurrentResult(", 1
+    )[0]
+    assert "currentMarkdown =" not in reader
+    assert "currentHtml =" not in reader
+    assert ".innerHTML" not in reader
+    assert ".textContent" in reader and ".splitText(" in reader
+    reset = SCRIPT.split("function resetTaskView()", 1)[1].split("\n}", 1)[0]
+    assert "clearNoteSearch(false)" in reset
 
 
 def test_beta3_surfaces_template_preview_history_and_source_inspection() -> None:
@@ -248,6 +327,211 @@ def test_beta3_surfaces_template_preview_history_and_source_inspection() -> None
     assert "/source-inspect" in SCRIPT
     assert "/favorite" in SCRIPT
     assert "offset" in SCRIPT and "has_more" in SCRIPT
+
+
+def test_progress_readiness_and_result_open_controls_are_visible() -> None:
+    for marker in (
+        'id="activeTaskStrip"',
+        'id="readinessCard"',
+        'id="progressDetails"',
+        'id="openResultFileBtn"',
+        'id="openResultFolderBtn"',
+    ):
+        assert marker in PAGE, f"任务反馈闭环缺少入口：{marker}"
+    for function_name in (
+        "function renderTaskProgressDetails(",
+        "function updateActiveTaskStrip(",
+        "function updateReadinessCard(",
+        "async function openCurrentResult(",
+    ):
+        assert function_name in SCRIPT
+    assert "/open-result" in SCRIPT
+    assert "estimated_remaining_seconds" in SCRIPT
+    assert "queue_ahead" in SCRIPT
+
+
+def test_progress_details_use_ranges_and_queue_counts() -> None:
+    _run_script_with_dom_stub(r"""
+const details = __el('progressDetails');
+renderTaskProgressDetails({
+    status: 'processing', step: 4, phase_progress: 40,
+    processed_seconds: 40, total_seconds: 100,
+    estimated_remaining_seconds: 180
+});
+assert.equal(details.hidden, false);
+assert.equal(details.children[0].textContent, '转录阶段 00:40 / 01:40');
+assert.ok(details.children[1].textContent.startsWith('转录阶段预计剩余'));
+assert.ok(details.children[1].textContent.includes('2–4 分钟'));
+assert.ok(details.children[1].textContent.includes('随设备速度变化'));
+renderTaskProgressDetails({ status: 'queued', queue_ahead: 2 });
+assert.ok(details.children[0].textContent.includes('前面还有 2 个任务'));
+
+isTaskActive = true;
+updateActiveTaskStrip({
+    status: 'processing', step_name: '语音转写',
+    progress_message: '正在转写音频', progress: 39
+});
+assert.equal(__el('activeTaskStrip').hidden, false);
+assert.equal(__el('activeTaskStep').textContent, '语音转写');
+assert.equal(__el('activeTaskPercent').textContent, '39%');
+""")
+
+
+def test_progress_details_hide_stale_eta_and_show_unknown_total() -> None:
+    _run_script_with_dom_stub(r"""
+const details = __el('progressDetails');
+renderTaskProgressDetails({status: 'processing', step: 4,
+    processed_seconds: 80, total_seconds: 0, phase_progress: null,
+    estimated_remaining_seconds: null});
+assert.equal(details.children.length, 1);
+assert.ok(details.children[0].textContent.includes('01:20'));
+assert.ok(details.children[0].textContent.includes('总时长未知'));
+for (const status of ['cancelling', 'cancelled', 'completed', 'failed']) {
+    renderTaskProgressDetails({status, step: 4, phase_progress: 30,
+        processed_seconds: 30, total_seconds: 100, estimated_remaining_seconds: 90});
+    assert.equal(details.hidden, true);
+}
+renderTaskProgressDetails({status: 'processing', step: 5,
+    processed_seconds: 30, total_seconds: 100, estimated_remaining_seconds: 90});
+assert.equal(details.hidden, true);
+renderTaskProgressDetails({status: 'processing', step: 4,
+    processed_seconds: NaN, total_seconds: Infinity, phase_progress: null,
+    estimated_remaining_seconds: Infinity});
+assert.equal(details.hidden, true);
+""")
+
+
+def test_stopping_task_clears_last_visible_eta_without_waiting_for_poll() -> None:
+    _run_script_with_dom_stub(r"""
+renderTaskProgressDetails({status: 'processing', step: 4,
+    processed_seconds: 40, total_seconds: 100, estimated_remaining_seconds: 180});
+assert.equal(__el('progressDetails').hidden, false);
+setTaskActive(false);
+assert.equal(__el('progressDetails').hidden, true);
+assert.equal(__el('progressDetails').children.length, 0);
+""")
+
+
+def test_readiness_does_not_claim_credentials_paths_or_pending_are_verified() -> None:
+    _run_script_with_dom_stub(r"""
+let networkCalls = 0;
+fetch = async () => { networkCalls++; throw new Error('unexpected request'); };
+const output = __el('outputModeNote'); output.value = 'note';
+const destination = __el('destinationCustom'); destination.value = 'custom';
+document.querySelector = selector => selector.includes('outputMode') ? output
+    : selector.includes('noteDestinationMode') ? destination : null;
+__el('sourceType').value = 'url';
+__el('videoUrl').value = 'https://www.youtube.com/watch?v=synthetic';
+__el('sourceInspectPanel').hidden = true;
+__el('apiKey').value = 'synthetic-value-not-a-credential';
+__el('noteDestination').value = 'Z:/unverified/synthetic';
+noteTemplatesStatus = 'ready';
+const rows = () => __el('readinessList').children.map(row => ({
+    label: row.children[0].textContent, detail: row.children[1].textContent, state: row.className
+}));
+updateReadinessCard();
+assert.ok(rows().some(row => row.label === '笔记模型' && row.detail.includes('未验证') && row.state !== 'ready'));
+assert.ok(rows().some(row => row.label === '保存位置' && row.detail.includes('未验证可写') && row.state !== 'ready'));
+assert.ok(!__el('readinessSummary').textContent.includes('已就绪'));
+assert.ok(__el('readinessSummary').textContent.includes('待确认'));
+
+// A saved key is only an availability signal, not a successful provider call.
+__el('apiKey').value = '';
+keyMatch = {key_state: 'saved'};
+updateReadinessCard();
+assert.ok(rows().find(row => row.label === '笔记模型').detail.includes('未验证'));
+
+// Subtitle import does not need ASR. Transcription-only does not need an LLM key.
+__el('sourceType').value = 'subtitle';
+__el('localFile').files = [{name: 'synthetic.srt'}];
+output.value = 'transcript';
+keyMatch = null;
+updateReadinessCard();
+assert.equal(rows().map(row => row.label).join(','), '来源');
+assert.ok(!__el('readinessSummary').textContent.includes('需要补充'));
+assert.equal(networkCalls, 0);
+""")
+
+
+def test_readiness_templates_loading_and_error_are_not_ready() -> None:
+    _run_script_with_dom_stub(r"""
+__el('sourceType').value = 'subtitle';
+__el('localFile').files = [{name: 'synthetic.srt'}];
+__el('apiKey').value = 'synthetic';
+noteTemplatesStatus = 'loading';
+updateReadinessCard();
+assert.ok(__el('readinessList').children.some(row => row.children[0].textContent === '模板' && row.className === 'pending'));
+noteTemplatesStatus = 'error';
+updateReadinessCard();
+assert.ok(__el('readinessList').children.some(row => row.children[0].textContent === '模板' && row.className === 'missing'));
+""")
+
+
+def test_source_change_clears_previous_platform_readiness_immediately() -> None:
+    _run_script_with_dom_stub(r"""
+__el('sourceType').value = 'url';
+__el('videoUrl').value = 'https://example.invalid/new';
+__el('sourceInspectPanel').hidden = false;
+__el('sourceInspectPanel').dataset.supportLevel = 'focused';
+let aborted = false;
+sourceInspectController = {abort() {aborted = true;}};
+inspectedReusableTask = {task_id: 'old'};
+scheduleSourceInspect();
+assert.equal(aborted, true);
+assert.equal(inspectedReusableTask, null);
+assert.equal(__el('sourceInspectPanel').hidden, true);
+assert.equal(__el('readinessList').children[0].className, 'pending');
+""")
+
+
+def test_source_inspection_ignores_response_after_input_changes() -> None:
+    _run_script_with_dom_stub(r"""
+void (async () => {
+    __el('sourceType').value = 'url';
+    __el('videoUrl').value = 'https://example.invalid/old';
+    __el('sourceInspectPanel').hidden = true;
+    let finish;
+    fetch = () => new Promise(resolve => { finish = resolve; });
+    const pending = inspectCurrentSource();
+    __el('videoUrl').value = 'https://example.invalid/new';
+    scheduleSourceInspect();
+    finish({ok: true, headers: {get() {return 'application/json';}}, json: async () => ({
+        platform_label: '旧平台', support_level: 'focused', reusable_task: {task_id: 'old'}
+    })});
+    await pending;
+    assert.equal(__el('sourceInspectPanel').hidden, true);
+    assert.equal(inspectedReusableTask, null);
+})();
+""")
+
+
+def test_task_strip_position_tracks_actual_header_height() -> None:
+    _run_script_with_dom_stub(r"""
+let height = 142;
+let observerCallback;
+let measured;
+const header = {getBoundingClientRect() {return {height};}};
+document.querySelector = selector => selector === '.app-bar' ? header : null;
+document.documentElement.style = {setProperty(name, value) {measured = [name, value];}};
+globalThis.ResizeObserver = class {
+    constructor(callback) {observerCallback = callback;}
+    observe(target) {assert.equal(target, header);}
+};
+bindTaskStripPosition();
+assert.equal(measured.join(','), '--app-bar-height,142px');
+height = 101.5;
+observerCallback();
+assert.equal(measured[1], '102px');
+""")
+
+
+def test_privacy_copy_distinguishes_local_asr_from_cloud_processing() -> None:
+    assert '云模型会接收转录内容' in PAGE
+    assert '飞书会接收发布内容' in PAGE
+    assert '处理在本机后端完成' not in PAGE
+    assert '所有处理在本机完成' not in DESIGN_DOC
+    release = (REPO_ROOT / '.github/workflows/release.yml').read_text(encoding='utf-8')
+    assert '数据不出本机' not in release
 
 
 def test_destination_mode_migration_preserves_legacy_custom_path() -> None:
@@ -505,6 +789,13 @@ def test_media_retention_preferences_and_request() -> None:
     assert "window.confirm" in manual
 
 
+def test_frontend_health_displays_the_actual_local_service_address() -> None:
+    health = SCRIPT.split("async function loadAppVersion()", 1)[1].split("\n}\n", 1)[0]
+    assert "window.location.host" in health
+    assert "serviceState" in health
+    assert "localhost:8000" not in PAGE
+
+
 def test_retention_browser_behavior_without_network() -> None:
     """Execute the actual JS in DOM/storage/fetch stubs, without network."""
     node = shutil.which("node")
@@ -649,6 +940,7 @@ function __makeElement(id) {
         scrollTop: 0,
         scrollHeight: 0,
         setAttribute(name, value) { this.attrs[name] = String(value); },
+        removeAttribute(name) { delete this.attrs[name]; },
         getAttribute(name) {
             return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null;
         },
@@ -681,7 +973,7 @@ const document = {
 };
 const __storage = {};
 const context = vm.createContext({
-    console, setTimeout, clearTimeout, AbortController,
+    console, setTimeout, clearTimeout, AbortController, URL, URLSearchParams,
     window: {
         addEventListener() {},
         confirm: () => true,
@@ -777,6 +1069,78 @@ assert.equal(isSettingsPanelOpen(), false);
 const focusCount = __focusLog.length;
 document.dispatch('keydown', { key: 'Escape' });
 assert.equal(__focusLog.length, focusCount);
+""")
+
+
+def test_g2_recovery_controls_require_verified_transcript() -> None:
+    _run_script_with_dom_stub(r"""
+renderTaskRecovery({recovery: {can_resume: true, message: '已保留完整转录；将调用所选模型。'}});
+assert.equal(__el('retryBtn').disabled, false);
+assert.equal(__el('taskRecoveryMessage').hidden, false);
+assert.ok(__el('taskRecoveryMessage').textContent.includes('所选模型'));
+renderTaskRecovery({recovery: {can_resume: false, message: '转录损坏'}});
+assert.equal(__el('retryBtn').disabled, true);
+assert.equal(__el('restartBtn').hidden, false);
+renderTaskRecovery(null);
+assert.equal(__el('retryBtn').disabled, true);
+assert.equal(__el('taskRecoveryMessage').hidden, true);
+""")
+
+
+def test_g2_uncertain_submission_lookup_never_posts() -> None:
+    _run_script_with_dom_stub(r"""
+void (async () => {
+    pendingSubmission = {id: 'synthetic-request', transcriptOnly: true};
+    let calls = [];
+    fetch = async (url, options = {}) => {
+        calls.push({url, method: options.method || 'GET'});
+        return {ok: true, json: async () => ({task_id: 'original-task'})};
+    };
+    showUncertainTask('提交结果未知');
+    assert.equal(__el('retryBtn').hidden, true);
+    assert.equal(__el('restartBtn').hidden, true);
+    assert.equal(__el('checkTaskBtn').textContent, '确认提交结果');
+    await checkUncertainTask();
+    assert.equal(currentTaskId, 'original-task');
+    assert.equal(pendingSubmission, null);
+    assert.equal(isTaskActive, true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].method, 'GET');
+    assert.ok(calls[0].url.includes('/submission/synthetic-request'));
+})().catch(error => { console.error(error); throw error; });
+""")
+
+
+def test_g2_uncertain_poll_keeps_original_task_and_only_reconnects() -> None:
+    _run_script_with_dom_stub(r"""
+void (async () => {
+    currentTaskId = 'original-task';
+    isTaskActive = true;
+    showUncertainTask('连接中断');
+    assert.equal(currentTaskId, 'original-task');
+    assert.equal(isTaskActive, true);
+    assert.equal(__el('checkTaskBtn').hidden, false);
+    let calls = 0;
+    fetch = async () => {calls++; throw new Error('must not submit');};
+    await checkUncertainTask();
+    assert.equal(calls, 0);  // schedules a GET poll, no immediate request or POST
+    assert.equal(currentTaskId, 'original-task');
+})().catch(error => { console.error(error); throw error; });
+""")
+
+
+def test_g2_submission_not_found_is_explicit_and_never_auto_resubmits() -> None:
+    _run_script_with_dom_stub(r"""
+void (async () => {
+    pendingSubmission = {id: 'missing-request', transcriptOnly: false};
+    let calls = 0;
+    fetch = async () => {calls++; return {status: 404};};
+    await checkUncertainTask();
+    assert.equal(calls, 1);
+    assert.equal(pendingSubmission, null);
+    assert.equal(isTaskActive, false);
+    assert.ok(__el('taskErrorMessage').textContent.includes('手动新建'));
+})().catch(error => { console.error(error); throw error; });
 """)
 
 
@@ -1104,3 +1468,16 @@ def test_brand_tokens_and_geometry_agree_across_design_script_and_css() -> None:
     for size in ("16", "24", "32", "48", "64", "128", "256"):
         assert size in sizes.group(1).split(", ")
     assert "16/24/32/48/64/128/256" in DESIGN_DOC
+
+
+def test_history_refresh_and_response_ownership_contract() -> None:
+    source = SCRIPT
+    assert "loadRecentTasks(false, false, true)" in source
+    history = source[source.index("async function loadRecentTasks("):source.index("function renderRecentTasks(")]
+    assert "refresh = false" in history
+    assert "params.set('refresh', 'true')" in history
+    assert "historyRequestSequence" in history and "AbortController" in history
+    assert "filters === historyQueryString(0)" in history
+    assert history.index("if (!isCurrent()) return") < history.index("renderRecentTasks(page, append)")
+    assert "sequence === historyRequestSequence" in history[history.index("finally"):]
+    assert "读取历史记录失败，请重试" in history

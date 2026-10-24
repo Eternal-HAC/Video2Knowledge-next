@@ -69,6 +69,31 @@ SAVED_BILI = {"saved": True, "sessdata_masked": "sess****"}
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("tool", ["summarize_video", "transcribe_video"])
+async def test_recovery_and_idempotency_are_forwarded(monkeypatch, tool):
+    fake = FakeBackend()
+    monkeypatch.setattr(mcp_server, "_get_backend", lambda: fake)
+    extra = {"api_key": "synthetic"} if tool == "summarize_video" else {}
+    await getattr(mcp_server, tool)(
+        "", resume_task_id="old-task", client_request_id="request-17", **extra
+    )
+    assert fake.captured["payload"]["resume_task_id"] == "old-task"
+    assert fake.captured["payload"]["client_request_id"] == "request-17"
+
+
+@pytest.mark.asyncio
+async def test_mcp_preserves_backend_recovery_semantics(monkeypatch):
+    recovery = {"can_resume": True, "retained": ["transcript"], "redo": ["note_generation"]}
+    fake = FakeBackend()
+    async def get_task(task_id):
+        return {"status": "failed", "recovery": recovery}
+    fake.get_task = get_task
+    monkeypatch.setattr(mcp_server, "_get_backend", lambda: fake)
+    result = await mcp_server.get_task_status("old-task")
+    assert result["recovery"] == recovery
+
+
+@pytest.mark.asyncio
 async def test_summarize_video_builds_payload_with_optional_fields(monkeypatch) -> None:
     fake = FakeBackend()
     monkeypatch.setattr(mcp_server, "_get_backend", lambda: fake)
