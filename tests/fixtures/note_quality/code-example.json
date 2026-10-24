@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "id": "code-example",
+  "template_id": "builtin-tutorial-howto",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "函数名为 square"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "返回值是 x * x"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "调用 square(3) 得到 9"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "函数名为 square"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "返回值是 x * x"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "调用 square(3) 得到 9"
+      ]
+    }
+  ],
+  "required_literals": [
+    "```python",
+    "def square(x):",
+    "return x * x",
+    "```"
+  ],
+  "forbidden_literals": [
+    "square(3) 得到 6"
+  ],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 代码示例\n\n- [00:00-00:05] 函数名为 square\n- [00:10-00:15] 返回值是 x * x\n- [00:20-00:25] 调用 square(3) 得到 9\n\n```python\ndef square(x):\n    return x * x\n```"
+}

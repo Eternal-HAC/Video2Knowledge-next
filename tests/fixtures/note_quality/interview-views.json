@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "interview-views",
+  "template_id": "builtin-interview-viewpoint",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "甲主张先验证需求"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "乙主张控制试验规模"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "双方同意保留回滚方案"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "甲主张先验证需求"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "乙主张控制试验规模"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "双方同意保留回滚方案"
+      ]
+    }
+  ],
+  "required_literals": [],
+  "forbidden_literals": [],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 观点与分歧\n\n- [00:00-00:05] 甲主张先验证需求\n- [00:10-00:15] 乙主张控制试验规模\n- [00:20-00:25] 双方同意保留回滚方案"
+}

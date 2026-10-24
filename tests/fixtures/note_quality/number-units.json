@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "id": "number-units",
+  "template_id": "builtin-knowledge-essentials",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "采样间隔为 250 ms"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "批次包含 12 条"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "结果校验 CHECK-42"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "采样间隔为 250 ms"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "批次包含 12 条"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "结果校验 CHECK-42"
+      ]
+    }
+  ],
+  "required_literals": [
+    "250 ms",
+    "12 条",
+    "CHECK-42"
+  ],
+  "forbidden_literals": [
+    "采样间隔为 999 ms"
+  ],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 关键数字\n\n- [00:00-00:05] 采样间隔为 250 ms\n- [00:10-00:15] 批次包含 12 条\n- [00:20-00:25] 结果校验 CHECK-42"
+}

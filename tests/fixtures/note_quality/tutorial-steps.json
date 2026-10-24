@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "tutorial-steps",
+  "template_id": "builtin-tutorial-howto",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "先创建隔离目录"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "再导入合成字幕"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "最后检查 Markdown 文件"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "先创建隔离目录"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "再导入合成字幕"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "最后检查 Markdown 文件"
+      ]
+    }
+  ],
+  "required_literals": [],
+  "forbidden_literals": [],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [
+    "frames/example.png"
+  ],
+  "reference_body": "## 操作步骤\n\n- [00:00-00:05] 先创建隔离目录\n- [00:10-00:15] 再导入合成字幕\n- [00:20-00:25] 最后检查 Markdown 文件\n\n![合成示意](frames/example.png)"
+}

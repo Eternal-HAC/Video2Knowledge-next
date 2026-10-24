@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "formula-meaning",
+  "template_id": "builtin-study-lecture",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "能量公式为 $E = m c^2$"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "m 表示质量"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "c 表示真空光速"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "能量公式为 $E = m c^2$"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "m 表示质量"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "c 表示真空光速"
+      ]
+    }
+  ],
+  "required_literals": [
+    "$E = m c^2$"
+  ],
+  "forbidden_literals": [
+    "c 表示声速"
+  ],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 公式与定义\n\n- [00:00-00:05] 能量公式为 $E = m c^2$\n- [00:10-00:15] m 表示质量\n- [00:20-00:25] c 表示真空光速"
+}

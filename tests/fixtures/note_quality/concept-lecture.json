@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "id": "concept-lecture",
+  "template_id": "builtin-general-structured",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "缓存保存可复用的结果"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "命中减少重复计算"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "失效条件是输入改变"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "缓存保存可复用的结果",
+        "缓存保留可复用结果"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "命中减少重复计算"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "失效条件是输入改变"
+      ]
+    }
+  ],
+  "required_literals": [],
+  "forbidden_literals": [],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 核心概念\n\n- [00:00-00:05] 缓存保存可复用的结果\n- [00:10-00:15] 命中减少重复计算\n- [00:20-00:25] 失效条件是输入改变"
+}

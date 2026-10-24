@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "id": "negation-boundary",
+  "template_id": "builtin-cornell-review",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "离线转录不需要云端模型"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "临时 Key 不应写入日志"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "测试通过不代表所有平台兼容"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "离线转录不需要云端模型"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "临时 Key 不应写入日志"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "测试通过不代表所有平台兼容"
+      ]
+    }
+  ],
+  "required_literals": [
+    "不需要",
+    "不应",
+    "不代表"
+  ],
+  "forbidden_literals": [
+    "离线转录需要云端模型"
+  ],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 线索与笔记\n\n- [00:00-00:05] 离线转录不需要云端模型\n- [00:10-00:15] 临时 Key 不应写入日志\n- [00:20-00:25] 测试通过不代表所有平台兼容"
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "bilingual-terms",
+  "template_id": "builtin-study-lecture",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "幂等性对应 idempotency"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "检查点对应 checkpoint"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "可观测性对应 observability"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "幂等性对应 idempotency"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "检查点对应 checkpoint"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "可观测性对应 observability"
+      ]
+    }
+  ],
+  "required_literals": [
+    "idempotency",
+    "checkpoint",
+    "observability"
+  ],
+  "forbidden_literals": [],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 概念对照\n\n- [00:00-00:05] 幂等性对应 idempotency\n- [00:10-00:15] 检查点对应 checkpoint\n- [00:20-00:25] 可观测性对应 observability"
+}

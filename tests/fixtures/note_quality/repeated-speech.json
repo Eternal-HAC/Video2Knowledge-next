@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "repeated-speech",
+  "template_id": "builtin-knowledge-essentials",
+  "segments": [
+    {
+      "start": 0,
+      "end": 5,
+      "text": "嗯先检查输入格式先检查输入格式"
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "text": "那个不要自动重复提交任务"
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "text": "最终只生成一篇 Markdown"
+    }
+  ],
+  "required_points": [
+    {
+      "id": "P01",
+      "any_of": [
+        "检查输入格式"
+      ]
+    },
+    {
+      "id": "P02",
+      "any_of": [
+        "不要自动重复提交任务"
+      ]
+    },
+    {
+      "id": "P03",
+      "any_of": [
+        "只生成一篇 Markdown"
+      ]
+    }
+  ],
+  "required_literals": [],
+  "forbidden_literals": [],
+  "anchors": [
+    {
+      "start": 0,
+      "end": 5,
+      "indices": [
+        0
+      ]
+    },
+    {
+      "start": 10,
+      "end": 15,
+      "indices": [
+        1
+      ]
+    },
+    {
+      "start": 20,
+      "end": 25,
+      "indices": [
+        2
+      ]
+    }
+  ],
+  "available_attachments": [],
+  "reference_body": "## 去重后的要点\n\n- [00:00-00:05] 嗯先检查输入格式先检查输入格式\n- [00:10-00:15] 那个不要自动重复提交任务\n- [00:20-00:25] 最终只生成一篇 Markdown"
+}
