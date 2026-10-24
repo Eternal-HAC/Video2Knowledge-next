@@ -1,6 +1,7 @@
 # Video2Knowledge Design — Knowledge Studio
 
 - Status: Active
+- Beta.4: 来源/开始前置、可信进度、结果打开与阅读/原转录对照沿用已验收交互；发布前重跑三尺寸三主题和键盘合同。截图仅使用合成数据，状态见 PROJECT_STATUS.md。
 - Date: 2026-10-23
 - Applies to: `frontend/` Web UI、`sources/icon.png` / `sources/icon.ico` 品牌资产
 

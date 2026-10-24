@@ -36,7 +36,45 @@ This file holds only the active gap-verification queue. For every item: close it
   7. [x] Push `main`, publish the annotated tag and Pre-release, verify the downloaded assets and rerun packaged smoke checks.
   8. [x] Record remote evidence in this post-release documentation commit without moving the release tag.
 
+## Active development task
+
+- [x] Authorize and create dependency-complete product and offline quality commits, each verified from an independent staged snapshot.
+- [x] Set Beta.4 runtime/page/capture versions, add failure-first Draft/version gates and refresh synthetic browser matrices/screenshots.
+- [ ] Finish the version/document snapshot, rebuild and accept the isolated Beta.4 candidate, then record local evidence. Remote publication remains separately gated.
+
+- [x] Define the [Beta.4 version/commit/release closeout contract](docs/strategy/26-beta4-release-closeout-plan.md).
+- [ ] With explicit local execution/commit authorization, reconcile accumulated files, version Beta.4, validate commit snapshots and rebuild/accept the new portable candidate.
+- [ ] With separate remote authorization, push/tag, accept downloaded Draft assets, publish the Pre-release and record evidence. No default cache speedup or broad Provider compatibility claim.
+
+- [x] G1 source-first composition and lightweight reader: source/start and the selected-plan summary precede templates; long previews collapse by default; heading navigation and literal text-node search preserve original Markdown, formulas, images and exports; download feedback distinguishes actual MD/ZIP responses. `800 passed, 3 skipped`; G1 and G0 each pass 9 browser combinations. See [G1 acceptance](docs/strategy/08-g1-acceptance.md). Source-local only, no new build or release.
+
+- [x] G0 reliability closeout: Markdown-only result opening with ancestor/identity checks; multi-page and unknown-duration progress; callback cancellation/staleness guards; honest readiness and privacy copy; responsive readiness layout and unoccluded sticky strip. Source-local evidence: [G0 acceptance](docs/strategy/07-g0-acceptance.md). No build or publication.
+
+- [x] Post-beta.3 task confidence and result handoff:
+  1. [x] Replace the fixed ASR percentage with measured media-time progress, including cumulative Bilibili multi-page progress.
+  2. [x] Add delayed range-style ETA, queue position and a pinned active-task strip without inventing precision for unsupported stages.
+  3. [x] Add a local readiness card using existing source, model-cache, Key and destination state.
+  4. [x] Add path-constrained open-file/open-folder actions for completed results.
+  5. [x] Complete the full automated and visual acceptance gates; no version bump, build, tag or release is authorized in this task.
+
 ## Later roadmap
+
+- [x] G2 task storage and explicit recovery: single-process atomic manifest merges, complete transcript validation, parent/ref provenance, shared HTTP/MCP recovery summaries and optional persistent request IDs. Unknown submission responses are resolved read-only; no automatic paid retry. `848 passed, 3 skipped`, G2/G1/G0 browser matrices each 9 combinations. See [G2 acceptance](docs/strategy/10-g2-acceptance.md). Uncommitted and unreleased.
+- [x] G3 note/transcript comparison: deterministic time lookup with stable hashes, safe paged original-text rendering, explicit current-note refresh and stale-response guards. `883 passed, 3 skipped`; G3/G1/G2/G0 browser matrices each 9 combinations. See [G3 acceptance](docs/strategy/12-g3-acceptance.md). Uncommitted and unreleased; overlap does not verify claim correctness.
+- [x] G4 offline track: 12 synthetic quality cases, reproducible lexical/format checks, an unscored manual-review sheet, diagnostic whitelist specification/reference projection, observed environment and local four-way asset comparison. See [G4 acceptance](docs/strategy/14-g4-acceptance.md). Developer tooling only, uncommitted and unreleased.
+- [ ] G4 optional real Provider evaluation: separately authorize model/input/request/retry/cost limits; do not infer quality from passing lexical checks. Diagnostic UI/API integration also remains separate future work.
+- [x] G5 measurement and request-local deduplication: synthetic 100/1,000/10,000-task runs, separate timing/read-count/Python-allocation observations, one manifest read and one path canonicalization per task. Paired inputs/results match. See [G5 acceptance](docs/strategy/16-g5-acceptance.md). Uncommitted and unreleased.
+- [x] G5.1 bounded summary-cache design: [implementation contract](docs/strategy/17-history-cache-design.md) specifies list-only caching, capacity, fixed TTL, repository/external-update/deletion/workspace-switch invalidation, uncached safety-sensitive readers and explicit refresh. Design only, not a delivered cache.
+- [x] G5.1-A: failure-first standalone bounded-cache rules implemented; 78 cache cases plus 36 existing history/repository tests passed. See [A acceptance](docs/strategy/18-history-cache-a-acceptance.md). Not connected to product history or repository writes; no measured product speedup.
+- [x] G5.1-B: history-list-only projections and precise successful-write/deletion invalidation, preserving direct readers and legacy summary precedence. See [B acceptance](docs/strategy/19-history-cache-b-acceptance.md). `153 passed` targeted; `1095 passed, 3 skipped` full regression. Public API/frontend unchanged; no timing claim.
+- [x] G5.1-C implementation and measurement: explicit refresh, stale-response guards and 9 browser combinations pass; paired six-mode 100/1,000-task benchmarks completed. `393 passed, 1 skipped` targeted; `1103 passed, 3 skipped` full regression. See [C evidence](docs/strategy/20-history-cache-c-acceptance.md). Performance gate failed; 10,000 stopped by contract, not accepted as a speedup.
+- [x] G5.1-D default rollback: fresh list reads restored after profiling the regressed experimental cache; C refresh/race protection retained. Cache tests/benchmarks explicitly opt in through a list-only seam. See [D evidence](docs/strategy/21-history-cache-default-rollback.md).
+- [ ] History performance gate: D default 1,000-task p95 `742.230ms`, still above the `300ms` reference; separate-run observations do not establish a paired speedup. Cache optimization is not accepted. Any renewed request-local metadata deduplication or rebuildable index needs its own safety/invalidation contract and tests. Do not reduce history coverage, weaken checks or automatically add a database.
+- [x] Host/Origin audit: [18 isolated observations and S0 contract](docs/strategy/22-local-request-security-audit.md) confirm release-blocking REST gaps; installed MCP SDK rejects untrusted origins/hosts separately. Existing API/MCP tests `195 passed, 1 skipped`; no runtime fix yet.
+- [x] S0 source gate: failure-first Host/Origin/Fetch Metadata, unknown-peer protection and disabled proxy-header trust. Native no-Origin callers, dynamic loopback ports, SSE and uploads preserved. [Acceptance](docs/strategy/23-local-request-security-acceptance.md): `1367 passed, 3 skipped`, cross-port browser rejection and nine UI combinations. The audit above is historical.
+- [x] Prioritized cumulative-source review and real native HTTP/MCP SDK SSE compatibility: [evidence](docs/strategy/24-source-review-client-acceptance.md), `1381 passed, 3 skipped`. Fixed smoke instance misidentification with owned-process listener discovery; actual Windows verification touches only the synthetic owned service. This is scoped review, not every-line audit or packaged acceptance.
+- [x] Isolated development candidate: [packaged acceptance](docs/strategy/25-isolated-portable-acceptance.md) covers templates/history/favorite restart, request security, native HTTP, SDK SSE and cached small/CPU ASR. Current candidate still says beta.3 and has its own hash; original dist/release assets were not replaced. This does not authorize or complete a new release.
+- [ ] Beta.4 release preparation: agree version/commit boundaries and final review, then rebuild the versioned candidate with new input/EXE hashes and repeat required release gates. Do not rename the beta.3 development candidate or automatically push/tag/release.
 
 1. [x] Optional age-based cleanup of failed/cancelled-task media: implemented locally.
 2. ~~On-demand real checks for YouTube, Bilibili, and Douyin.~~ Completed as a one-off real validation milestone (see PROJECT_STATUS.md): YouTube platform subtitles, Bilibili audio download plus local ASR, and Douyin login through local ASR all passed. Automated tests remain the durable evidence; live results are point-in-time and do not guarantee ongoing platform availability.

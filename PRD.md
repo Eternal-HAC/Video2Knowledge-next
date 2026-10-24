@@ -1,6 +1,18 @@
 # Video2Knowledge Product Baseline
 
+> Beta.4 本地收口已获授权，版本目标 `1.0.0-beta.4`。累计能力按 [收口合同](docs/strategy/26-beta4-release-closeout-plan.md) 整理提交并重建验收；源码、候选、公开发布分开记录。Beta.3 仍是现有下载版本，未公开 Beta.4。历史性能目标及真实 Provider 普遍兼容不列为达成。
+
+> 2026-10-24 打包验收更新：[隔离开发候选](docs/strategy/25-isolated-portable-acceptance.md) 已验证请求边界、模板/历史/收藏、HTTP/MCP 和离线 small/CPU 转录。该候选暂保留 Beta.3 版本，原 Release 未替换；下一阶段先确定 Beta.4 版本与提交边界，不能把本地通过写成已发布或全平台兼容。
+
+> 2026-10-24 S0 更新：[请求边界修复](docs/strategy/23-local-request-security-acceptance.md) 已完成源码本地验收，1367 passed、3 个原有权限跳过；真实跨端口简单 POST/GET 均被拒绝，同源、原生请求与流式回归保留。下方审查缺口属于修复前状态。当前 beta.3 发布资产未变，打包兼容和发布验收仍待独立进行。
+
+> 2026-10-24 安全审查更新：[本机请求边界](docs/strategy/22-local-request-security-audit.md) 已确认 REST Host/Origin 缺口，列为下一次发布前阻断项，尚未修复。回环 peer、响应 CSP 或缺少 CORS 放行不能单独证明浏览器来源安全；MCP SDK 已有独立检查，需保留其兼容性。已有 beta.3 Release 未因本轮审查被更新。
+
+> 2026-10-23：[下一阶段产品与架构设计](docs/strategy/README.md) 中 G0–G3 已完成源码本地验收，详见 [G0](docs/strategy/07-g0-acceptance.md)、[G1](docs/strategy/08-g1-acceptance.md)、[G2](docs/strategy/10-g2-acceptance.md) 和 [G3](docs/strategy/12-g3-acceptance.md)。来源前置、阅读器、原子清单、显式恢复、受限提交幂等及原转录对照已经落地；时间命中不代表观点已核验。[G4 离线轨](docs/strategy/14-g4-acceptance.md) 提供合成质量案例、规则/人工评阅与诊断/发布证据工具，未真实模型评分或上线诊断入口。[G5 基准与请求内去重](docs/strategy/16-g5-acceptance.md) 已完成；[G5.1-C](docs/strategy/20-history-cache-c-acceptance.md) 完成刷新/乱序验证，但缓存性能退化，300ms 目标及性能门禁未通过，没有索引。没有提交、构建或发布新版本。
+
 ## Brand and version line
+
+历史性能实验遵循 [G5.1 缓存设计合同](docs/strategy/17-history-cache-design.md)，A/B 规则与 [C 刷新/浏览器验证](docs/strategy/20-history-cache-c-acceptance.md) 已完成；C 复测发现缓存整体变慢。[G5.1-D](docs/strategy/21-history-cache-default-rollback.md) 已回退默认缓存接线，历史列表恢复每任务单次新鲜清单读取，收藏资格、恢复和文件访问保持原读取路径。缓存仅用于显式隔离实验，没有产品开关；30 秒 TTL 不再是默认列表的同步期限。可选 refresh=true、保留筛选和迟到响应保护继续保留。300ms 参考目标仍未达到，不为指标削弱路径检查，也不自动增加索引。
 
 - The user-visible product is **Video2Knowledge**; `VideoToNo` appears only in protocol-compatibility positions (for example the `/api/health` `service` field) and in attribution.
 - From `v1.0.0-beta.1` the project uses an **independent version line**: `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0`. The transitional `v1.4.2-v2k.N` line always sorts below the independent line in update checks. `product_info.py` is the single source for the product name, version, environment-variable prefixes, and release metadata consumed by the launcher, backend, build script, and release workflow.
@@ -21,7 +33,7 @@ The rename must not break existing integrations:
 
 ## Knowledge Studio UI principles
 
-The redesigned workspace ("Knowledge Studio") follows [DESIGN.md](DESIGN.md) as the single design baseline: task-first flow (output type → template → destination → source → start), low-frequency model and integration settings collected into a slide-out panel, state conveyed by text and badges rather than color alone, local-trust copy that states where data goes, and restrained motion honoring `prefers-reduced-motion`. Six built-in templates and saved custom templates are visible before submission. Local Markdown always remains the primary artifact; Feishu is an opt-in additional publication. The brand mark is an original geometric logo generated reproducibly by repository scripts (`scripts/make_brand_assets.py`); no third-party icon sets or upstream-derived artwork are used. The rebrand does not change backend APIs, task semantics, or the element-ID contract guarded by `tests/test_frontend_hygiene.py`.
+The redesigned workspace ("Knowledge Studio") follows [DESIGN.md](DESIGN.md) as the single design baseline: task-first flow (output type → source and start entry → current-plan summary → template and destination choices), low-frequency model and integration settings collected into a slide-out panel, state conveyed by text and badges rather than color alone, local-trust copy that states where data goes, and restrained motion honoring `prefers-reduced-motion`. Six built-in templates and saved custom templates remain directly selectable; long synthetic previews are collapsed by default. The result reader adds a safe heading outline and literal text search without altering source Markdown, copy, or exports. Local Markdown always remains the primary artifact; Feishu is an opt-in additional publication. The brand mark is an original geometric logo generated reproducibly by repository scripts (`scripts/make_brand_assets.py`); no third-party icon sets or upstream-derived artwork are used. The rebrand does not change backend APIs, task semantics, or the element-ID contract guarded by `tests/test_frontend_hygiene.py`.
 
 ## User goal
 
@@ -118,6 +130,7 @@ The note-template milestone is complete locally with the following contract:
 | Brand and workspace UI | Product metadata is centralized in `product_info.py`; the frontend implements the Knowledge Studio layout per `DESIGN.md` with the element-ID contract guarded by `tests/test_frontend_hygiene.py`; brand assets are generated reproducibly by repository scripts. | Brand baseline released in `v1.0.0-beta.1`; beta.2 adds task-flow discoverability; beta.3 adds template previews, local history/favorites, and offline source/reuse guidance. |
 | Local history and favorites | `GET /api/tasks` queries compact summaries from persisted task manifests with filters and pagination; one old task is restored only when opened. Completed note tasks can store a local `favorite` flag atomically in `task.json`. | Implemented for beta.3 without a database or Markdown-body scan. Favorites are local metadata, not platform-account collections. |
 | Offline source guidance | `POST /api/source-inspect` classifies the URL host and looks for an existing reusable transcript without contacting the platform, reading cookies, or starting download/ASR. | Bilibili, Douyin, and YouTube are labelled focused; TikTok, Xiaohongshu, and other URLs remain generic compatibility only. |
+| Task confidence and result handoff | The task status payload exposes queue position plus optional phase progress, processed/total media seconds, and a conservative ETA. The UI keeps the active task visible, runs a local readiness check before submission, and opens only manifest-backed completed files or folders. | Implemented on the post-beta.3 development branch. ETA is intentionally delayed and approximate; unsupported stages remain indeterminate rather than showing fabricated precision. |
 
 ## Ordered successor roadmap
 
@@ -134,6 +147,7 @@ The note-template milestone is complete locally with the following contract:
 11. `v1.0.0-beta.1` release: **complete**. The final local gate passed with `693 passed, 3 skipped`; the branded EXE, cached-model packaged ASR, legacy-environment/static-resource smoke and candidate SHA-256 passed. `main`, the annotated tag and GitHub Pre-release are published; the downloaded EXE matched its checksum and GitHub digest and passed the same offline ASR smoke. Repository Description and Topics were read back successfully.
 12. `v1.0.0-beta.2` template and export discoverability: **released and remotely re-verified**. Six built-in templates and custom templates are selectable on the main page; default/custom/Obsidian Markdown destinations are explicit; Feishu remains an opt-in additional publication; export labels identify Markdown, SRT, HTML, JSON, plain text and PNG without changing request fields or task formats.
 13. `v1.0.0-beta.3` history and template experience: **released and remotely re-verified**. Deterministic previews use synthetic content; history reads compact manifest summaries with filters/pagination and lazy task opening; favorites are local completed-note metadata; source inspection is offline and only guides the existing reuse/restart behavior. The downloaded Release assets matched GitHub digests and `SHA256SUMS.txt`, then passed the packaged Beta.3 workflow smoke and cached-model offline ASR smoke.
+14. Post-beta.3 task confidence: **implemented locally, not released**. Local ASR now advances from real processed media time, multi-page transcription uses cumulative progress, queue position is visible, ETA appears only after a stable sample, and completed results can be opened through a path-constrained local endpoint.
 
 ## Non-goals for the current phase
 

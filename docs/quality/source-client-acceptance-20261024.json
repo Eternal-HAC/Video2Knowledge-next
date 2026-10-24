@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-24",
+  "scope": "prioritized-source-and-local-client",
+  "head": "7ff61e7568a324b9d2e7a31161ff0b7927ca3f9b",
+  "version": "1.0.0-beta.3",
+  "dirty_workspace": true,
+  "selected_source_sha256": {
+    "backend/main.py": "e2977c910c9af7166609f8b54716929d4300e99124b49bfed7944ea5fe2b827d",
+    "backend/local_security.py": "576363424a7f0df27b902dcc0d0a688d5fd2b20e26b0187cd2afe991d2f4030d",
+    "backend/task_repository.py": "dc610479dcf0d76f1dc6454f7bca1fc8d88cc1fcf174844b7e5bd60cf93c69b5",
+    "backend/history_cache.py": "5601ca4fb711ad6117e28e24c23904c1a6b6a1893a51e73388b2f23f4d327996",
+    "backend/transcript.py": "304835b5483922b3aedad9ade265668157d63d25fdd25150295797734a8d167f",
+    "backend/mcp_server.py": "1a90f9de0f7d4b185a2d0296f33e28746ae89f10b4cb865e5b9b0d2f3384bf5d",
+    "frontend/script.js": "9810d8ffc6bfa0961f37ecff2b54df2efc27dbba1ca9579c4f688891a30a2c96",
+    "launcher.py": "f8734c98e7372e2724a1953bee09def1a278353e122b6eb6c622ee8c2a64b6c2",
+    "scripts/portable_smoke_common.ps1": "3d155cc1f20ec5bddd379b1afc3203cb632c0098cc39afc005c8428c39805d9d",
+    "scripts/smoke_portable_asr.ps1": "1c2b62ac26e3b4b0394e72ecdbcf9c1cd9ae15121f0fcb615cb3274e36c3d5ca",
+    "scripts/smoke_portable_beta3.ps1": "339654ad6db6ccd3ab1643dce1af4f4f34f3d46b9a83cfe5c035dbb0cb80d593",
+    "tests/test_local_transport.py": "9df91471d9a4b37e08629bc9fa0bb6eb0d44ec607d8f8243d54dd6c5d12e2d65",
+    "tests/test_portable_smoke_ownership.py": "4d5e47b59b0441e6acbcfcf541b28fe8c4f58bf05138a0e28e3dca9f4ce3a1ea"
+  },
+  "s0_runtime_hashes_unchanged": true,
+  "tests": {
+    "full": {
+      "passed": 1381,
+      "skipped": 3,
+      "seconds": 83.64
+    },
+    "new_cases": 14,
+    "skip_reasons_unchanged": true,
+    "launcher_and_ownership": {
+      "passed": 41,
+      "seconds": 8.49
+    },
+    "real_local_transport": {
+      "passed": 3,
+      "seconds": 3.37
+    }
+  },
+  "actual_windows_listener_probe": {
+    "owned_health_gets": 1,
+    "unrelated_health_gets": 0,
+    "user_8000_probed": false,
+    "children_stopped": true
+  },
+  "native_clients": [
+    "HTTP multipart subtitle upload and SRT read",
+    "MCP BackendClient HTTP",
+    "SDK SSE initialize/list/read without Origin",
+    "SDK SSE initialize/list/read same-origin"
+  ],
+  "limits": [
+    "no candidate build",
+    "no packaged ASR",
+    "no new UI matrix",
+    "no external host application",
+    "no claim of every-line audit",
+    "selected hashes are not complete build inputs",
+    "no commit or release",
+    "no credentials or external provider calls"
+  ]
+}

@@ -17,7 +17,7 @@ PRODUCT_NAME = "Video2Knowledge"
 # 旧服务 ID：/api/health 的 service 字段继续原样返回它，既有启动器 / MCP /
 # Skill 的发现逻辑因此仍能认出改名后的服务
 LEGACY_SERVICE_ID = "VideoToNo"
-VERSION = "1.0.0-beta.3"
+VERSION = "1.0.0-beta.4"
 # 健康接口兼容级别：只加字段不 bump，破坏旧字段语义时才 +1
 API_COMPAT = 1
 GITHUB_REPO = "Eternal-HAC/Video2Knowledge-next"

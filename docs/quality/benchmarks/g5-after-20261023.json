@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "schema_version": 1,
+    "product": "Video2Knowledge",
+    "version": "1.0.0-beta.3",
+    "os": "Windows",
+    "os_major": 11,
+    "python": "3.13.7",
+    "packages": {
+      "fastapi": "0.142.2",
+      "uvicorn": "0.54.0",
+      "yt-dlp": "2026.8.19",
+      "faster-whisper": "1.2.1",
+      "sherpa-onnx": "1.13.8",
+      "openai": "2.54.0",
+      "av": "16.1.0",
+      "Pillow": "12.3.0",
+      "mcp": "1.30.0",
+      "PyInstaller": "6.22.3",
+      "pytest": "9.1.1",
+      "PyYAML": "6.0.3"
+    }
+  },
+  "backend_main_sha256": "4a8e758d4b8035ad44a970ae90046688ae73ea425b388b3fc123e3cc921bdd45",
+  "repository_sha256": "bee63a373cfe453db78cb3f4d19f69880fe819ece6d9432c97acedd96d8a8522",
+  "benchmark_sha256": "8bc421fbaeb64132e6db2e0cc5eecda7a66462dfc4039004b3cb20d8e8a36b83",
+  "measurement": "direct_handler_no_http_no_os_cache_eviction",
+  "memory": "separate_python_tracemalloc_not_rss",
+  "reads": "separate_successful_path_open_not_stat_or_physical_io",
+  "empty_backend_import_ms": 1196.718,
+  "results": [
+    {
+      "task_count": 100,
+      "dataset_sha256": "9fc73aec53ba8a8c34da9701265caca161642e3d3a39a5fe5711722fadf5d66b",
+      "manifest_bytes": 272014,
+      "file_content_bytes": 469554,
+      "warm_repeats": 7,
+      "preload_limit": 100,
+      "startup": {
+        "restore_ms": 84.699,
+        "restored_tasks": 100,
+        "reads": {
+          "manifests": 100,
+          "notes": 40,
+          "transcripts": 20,
+          "other": 0
+        },
+        "python_traced_peak_bytes": 494302
+      },
+      "all_query_python_traced_peak_bytes": 79247,
+      "queries": {
+        "all": {
+          "first_ms": 50.689,
+          "raw_ms": [
+            53.678,
+            56.086,
+            51.674,
+            55.185,
+            58.812,
+            57.216,
+            54.978
+          ],
+          "p50_ms": 55.185,
+          "p95_ms": 58.812,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 90,
+          "page_items": 20,
+          "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67"
+        },
+        "filtered": {
+          "first_ms": 59.03,
+          "raw_ms": [
+            58.218,
+            55.37,
+            53.075,
+            51.841,
+            56.031,
+            56.194,
+            51.811
+          ],
+          "p50_ms": 55.37,
+          "p95_ms": 58.218,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 10,
+          "page_items": 10,
+          "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13"
+        },
+        "favorites": {
+          "first_ms": 63.471,
+          "raw_ms": [
+            63.485,
+            56.71,
+            58.868,
+            56.575,
+            79.571,
+            91.324,
+            87.602
+          ],
+          "p50_ms": 63.485,
+          "p95_ms": 91.324,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 6,
+          "page_items": 6,
+          "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45"
+        },
+        "page_two": {
+          "first_ms": 89.685,
+          "raw_ms": [
+            89.899,
+            95.452,
+            94.369,
+            96.907,
+            100.596,
+            103.32,
+            93.236
+          ],
+          "p50_ms": 95.452,
+          "p95_ms": 103.32,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 90,
+          "page_items": 20,
+          "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485"
+        }
+      }
+    },
+    {
+      "task_count": 1000,
+      "dataset_sha256": "e6dc6c89fe9e6da919439355c2ae5f71c5e0ad47275a750f5826a63fea7a7145",
+      "manifest_bytes": 2720142,
+      "file_content_bytes": 4695542,
+      "warm_repeats": 7,
+      "preload_limit": 100,
+      "startup": {
+        "restore_ms": 241.883,
+        "restored_tasks": 100,
+        "reads": {
+          "manifests": 100,
+          "notes": 40,
+          "transcripts": 20,
+          "other": 0
+        },
+        "python_traced_peak_bytes": 502218
+      },
+      "all_query_python_traced_peak_bytes": 879911,
+      "queries": {
+        "all": {
+          "first_ms": 895.317,
+          "raw_ms": [
+            903.759,
+            932.297,
+            1011.433,
+            873.266,
+            834.264,
+            860.669,
+            857.599
+          ],
+          "p50_ms": 873.266,
+          "p95_ms": 1011.433,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 900,
+          "page_items": 20,
+          "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb"
+        },
+        "filtered": {
+          "first_ms": 889.076,
+          "raw_ms": [
+            868.226,
+            856.165,
+            615.029,
+            634.456,
+            595.947,
+            606.317,
+            588.88
+          ],
+          "p50_ms": 615.029,
+          "p95_ms": 868.226,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 100,
+          "page_items": 20,
+          "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86"
+        },
+        "favorites": {
+          "first_ms": 587.906,
+          "raw_ms": [
+            584.402,
+            582.554,
+            579.108,
+            578.283,
+            571.371,
+            573.549,
+            572.454
+          ],
+          "p50_ms": 578.283,
+          "p95_ms": 584.402,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 58,
+          "page_items": 20,
+          "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62"
+        },
+        "page_two": {
+          "first_ms": 606.726,
+          "raw_ms": [
+            569.037,
+            567.791,
+            560.236,
+            587.174,
+            602.181,
+            622.494,
+            603.546
+          ],
+          "p50_ms": 587.174,
+          "p95_ms": 622.494,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 900,
+          "page_items": 20,
+          "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1"
+        }
+      }
+    },
+    {
+      "task_count": 10000,
+      "dataset_sha256": "5baaf1d2e51f974ff3396e440445c1ca1df753867473337cb1088361a8acc440",
+      "manifest_bytes": 27201428,
+      "file_content_bytes": 46955428,
+      "warm_repeats": 7,
+      "preload_limit": 100,
+      "startup": {
+        "restore_ms": 1630.888,
+        "restored_tasks": 100,
+        "reads": {
+          "manifests": 100,
+          "notes": 40,
+          "transcripts": 20,
+          "other": 0
+        },
+        "python_traced_peak_bytes": 3679988
+      },
+      "all_query_python_traced_peak_bytes": 9343363,
+      "queries": {
+        "all": {
+          "first_ms": 8960.776,
+          "raw_ms": [
+            8736.624,
+            8763.43,
+            8834.461,
+            8492.266,
+            7805.973,
+            7155.006,
+            6968.208
+          ],
+          "p50_ms": 8492.266,
+          "p95_ms": 8834.461,
+          "reads": {
+            "manifests": 10000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 9000,
+          "page_items": 20,
+          "response_sha256": "aa348924bceaa2655c351d0c99b9545b787846d1de98c045d454b96f36ea4b3f"
+        },
+        "filtered": {
+          "first_ms": 6970.095,
+          "raw_ms": [
+            6486.861,
+            6132.206,
+            5982.278,
+            5772.084,
+            5957.888,
+            6551.184,
+            5747.504
+          ],
+          "p50_ms": 5982.278,
+          "p95_ms": 6551.184,
+          "reads": {
+            "manifests": 10000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 1000,
+          "page_items": 20,
+          "response_sha256": "274d2d9ea28060359ea794f9f828315eb314c78d5546f13f52588cba477e15a0"
+        },
+        "favorites": {
+          "first_ms": 5906.926,
+          "raw_ms": [
+            5816.321,
+            5891.371,
+            5899.866,
+            7712.297,
+            8765.373,
+            8439.314,
+            7867.702
+          ],
+          "p50_ms": 7712.297,
+          "p95_ms": 8765.373,
+          "reads": {
+            "manifests": 10000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 572,
+          "page_items": 20,
+          "response_sha256": "04db3cafc2cc60dc82cb340a265fd2ac00f636ed2c1bf2bb19b08064ee6804fc"
+        },
+        "page_two": {
+          "first_ms": 7812.811,
+          "raw_ms": [
+            8135.447,
+            8176.473,
+            7912.198,
+            7809.311,
+            7916.979,
+            7902.59,
+            7985.322
+          ],
+          "p50_ms": 7916.979,
+          "p95_ms": 8176.473,
+          "reads": {
+            "manifests": 10000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 9000,
+          "page_items": 20,
+          "response_sha256": "8a56cc27e95f59c91201b1ef7c986019f4c7ed88f2c30a075ceccb7397f4f734"
+        }
+      }
+    }
+  ]
+}

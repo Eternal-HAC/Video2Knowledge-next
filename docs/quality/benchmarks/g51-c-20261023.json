@@ -1,0 +1,5361 @@
+{
+  "schema_version": 2,
+  "environment": {
+    "schema_version": 1,
+    "product": "Video2Knowledge",
+    "version": "1.0.0-beta.3",
+    "os": "Windows",
+    "os_major": 11,
+    "python": "3.13.7",
+    "packages": {
+      "fastapi": "0.142.2",
+      "uvicorn": "0.54.0",
+      "yt-dlp": "2026.8.19",
+      "faster-whisper": "1.2.1",
+      "sherpa-onnx": "1.13.8",
+      "openai": "2.54.0",
+      "av": "16.1.0",
+      "Pillow": "12.3.0",
+      "mcp": "1.30.0",
+      "PyInstaller": "6.22.3",
+      "pytest": "9.1.1",
+      "PyYAML": "6.0.3"
+    }
+  },
+  "cache_mode": "six_paired_modes",
+  "requested_sizes": [
+    100,
+    1000,
+    10000
+  ],
+  "cache_sha256": "5601ca4fb711ad6117e28e24c23904c1a6b6a1893a51e73388b2f23f4d327996",
+  "backend_main_sha256": "f665556c9969899fbbaa358094711103556e86e42dbdc791f7b03f6254c00cbd",
+  "repository_sha256": "dc610479dcf0d76f1dc6454f7bca1fc8d88cc1fcf174844b7e5bd60cf93c69b5",
+  "benchmark_sha256": "23a3826e8316fb509ead9da1d080036aed606d89f2694508cec65864f2b14c9a",
+  "measurement": "direct_handler_no_http_no_os_cache_eviction",
+  "memory": "separate_python_tracemalloc_not_rss",
+  "reads": "separate_successful_path_open_not_stat_or_physical_io",
+  "empty_backend_import_ms": 1249.077,
+  "results": [
+    {
+      "task_count": 100,
+      "dataset_sha256": "9fc73aec53ba8a8c34da9701265caca161642e3d3a39a5fe5711722fadf5d66b",
+      "manifest_bytes": 272014,
+      "file_content_bytes": 469554,
+      "warm_repeats": 7,
+      "ttl_seconds": 30.0,
+      "max_bytes": 16777216,
+      "max_entry_bytes": 65536,
+      "queries": {
+        "all": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 52.485,
+                "monotonic_start": 99334.1797543,
+                "monotonic_end": 99334.2322543,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 51.972,
+                "monotonic_start": 99334.2324774,
+                "monotonic_end": 99334.2844675,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 55.367,
+                "monotonic_start": 99334.2846689,
+                "monotonic_end": 99334.34005,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 52.399,
+                "monotonic_start": 99334.34025,
+                "monotonic_end": 99334.3926692,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 54.616,
+                "monotonic_start": 99334.3928444,
+                "monotonic_end": 99334.4474725,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 52.27,
+                "monotonic_start": 99334.4476162,
+                "monotonic_end": 99334.4998974,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 52.795,
+                "monotonic_start": 99334.500041,
+                "monotonic_end": 99334.5528475,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 52.485,
+            "p95_ms": 55.367,
+            "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 400,
+              "lstat": 100,
+              "resolve": 100,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 79151
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 158.872,
+                "monotonic_start": 99334.7133047,
+                "monotonic_end": 99334.8721916,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 159.192,
+                "monotonic_start": 99334.8724726,
+                "monotonic_end": 99335.0316771,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 254.139,
+                "monotonic_start": 99335.0318547,
+                "monotonic_end": 99335.2860058,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 251.724,
+                "monotonic_start": 99335.2861807,
+                "monotonic_end": 99335.5379314,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 299.605,
+                "monotonic_start": 99335.5382932,
+                "monotonic_end": 99335.8379134,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 285.288,
+                "monotonic_start": 99335.8381477,
+                "monotonic_end": 99336.123447,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 173.012,
+                "monotonic_start": 99336.1236248,
+                "monotonic_end": 99336.2966653,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 251.724,
+            "p95_ms": 299.605,
+            "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176314
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 108.373,
+                "monotonic_start": 99336.9968479,
+                "monotonic_end": 99337.1052422,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 99.19,
+                "monotonic_start": 99337.283826,
+                "monotonic_end": 99337.3830308,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 97.536,
+                "monotonic_start": 99337.5525137,
+                "monotonic_end": 99337.6500623,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 99.657,
+                "monotonic_start": 99337.8230131,
+                "monotonic_end": 99337.9226832,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 124.989,
+                "monotonic_start": 99338.1109597,
+                "monotonic_end": 99338.2359755,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 99.861,
+                "monotonic_start": 99338.4047418,
+                "monotonic_end": 99338.5046221,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 109.832,
+                "monotonic_start": 99338.6765448,
+                "monotonic_end": 99338.7864003,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 99.861,
+            "p95_ms": 124.989,
+            "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 600,
+              "lstat": 300,
+              "resolve": 300,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 100,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 900,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176316
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 182.282,
+                "monotonic_start": 99339.7530053,
+                "monotonic_end": 99339.9353075,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 181.419,
+                "monotonic_start": 99340.115246,
+                "monotonic_end": 99340.2966867,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 168.98,
+                "monotonic_start": 99340.4714104,
+                "monotonic_end": 99340.6404029,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 172.239,
+                "monotonic_start": 99340.8098585,
+                "monotonic_end": 99340.9821108,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 166.104,
+                "monotonic_start": 99341.1538905,
+                "monotonic_end": 99341.3200093,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 176.758,
+                "monotonic_start": 99341.4927803,
+                "monotonic_end": 99341.6695594,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 176.888,
+                "monotonic_start": 99341.8472793,
+                "monotonic_end": 99342.0241811,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 176.758,
+            "p95_ms": 182.282,
+            "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 178927
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 119.058,
+                "monotonic_start": 99343.2673411,
+                "monotonic_end": 99343.3864213,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 109.243,
+                "monotonic_start": 99343.5850885,
+                "monotonic_end": 99343.6943541,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 109.642,
+                "monotonic_start": 99343.8877715,
+                "monotonic_end": 99343.9974351,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 113.309,
+                "monotonic_start": 99344.1993497,
+                "monotonic_end": 99344.3126814,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 115.68,
+                "monotonic_start": 99344.5067741,
+                "monotonic_end": 99344.6224821,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 122.658,
+                "monotonic_start": 99344.8515626,
+                "monotonic_end": 99344.9742469,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 116.124,
+                "monotonic_start": 99345.1824883,
+                "monotonic_end": 99345.2986333,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 115.68,
+            "p95_ms": 122.658,
+            "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 604,
+              "lstat": 304,
+              "resolve": 302,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 99,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 891,
+              "misses": 909,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 178454
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 181.56,
+                "monotonic_start": 99346.3271493,
+                "monotonic_end": 99346.5087302,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 178.595,
+                "monotonic_start": 99346.6918121,
+                "monotonic_end": 99346.8704217,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 186.956,
+                "monotonic_start": 99347.0552095,
+                "monotonic_end": 99347.2421846,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 177.948,
+                "monotonic_start": 99347.4183084,
+                "monotonic_end": 99347.5962824,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 183.592,
+                "monotonic_start": 99347.7806841,
+                "monotonic_end": 99347.9643033,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 172.59,
+                "monotonic_start": 99348.1438404,
+                "monotonic_end": 99348.3164451,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 171.086,
+                "monotonic_start": 99348.4914639,
+                "monotonic_end": 99348.6625623,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 178.595,
+            "p95_ms": 186.956,
+            "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 100
+            },
+            "cache": {
+              "entries": 25,
+              "payload_bytes": 8925,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 1575
+            },
+            "capacity_entries": 25,
+            "prepare_and_query_python_peak_bytes": 105607
+          }
+        },
+        "filtered": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 59.229,
+                "monotonic_start": 99349.7125891,
+                "monotonic_end": 99349.7718293,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 61.985,
+                "monotonic_start": 99349.7719376,
+                "monotonic_end": 99349.8339358,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 58.295,
+                "monotonic_start": 99349.8341189,
+                "monotonic_end": 99349.8924275,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 59.839,
+                "monotonic_start": 99349.8925809,
+                "monotonic_end": 99349.9524337,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 68.44,
+                "monotonic_start": 99349.9527609,
+                "monotonic_end": 99350.0212128,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 61.107,
+                "monotonic_start": 99350.0213614,
+                "monotonic_end": 99350.08249,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 69.286,
+                "monotonic_start": 99350.0827251,
+                "monotonic_end": 99350.152024,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 61.107,
+            "p95_ms": 69.286,
+            "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 400,
+              "lstat": 100,
+              "resolve": 100,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 79544
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 200.366,
+                "monotonic_start": 99350.3581586,
+                "monotonic_end": 99350.5585363,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 198.395,
+                "monotonic_start": 99350.5587709,
+                "monotonic_end": 99350.7571806,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 216.674,
+                "monotonic_start": 99350.7574018,
+                "monotonic_end": 99350.9740922,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 207.415,
+                "monotonic_start": 99350.9743611,
+                "monotonic_end": 99351.1817893,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 182.125,
+                "monotonic_start": 99351.1819564,
+                "monotonic_end": 99351.3640934,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 213.588,
+                "monotonic_start": 99351.3643363,
+                "monotonic_end": 99351.5779371,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 206.477,
+                "monotonic_start": 99351.5781554,
+                "monotonic_end": 99351.7846507,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 206.477,
+            "p95_ms": 216.674,
+            "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176412
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 133.932,
+                "monotonic_start": 99352.7184849,
+                "monotonic_end": 99352.8524302,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 130.287,
+                "monotonic_start": 99353.0949672,
+                "monotonic_end": 99353.2252668,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 124.52,
+                "monotonic_start": 99353.4845566,
+                "monotonic_end": 99353.6090875,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 112.662,
+                "monotonic_start": 99353.8267801,
+                "monotonic_end": 99353.9394576,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 131.552,
+                "monotonic_start": 99354.1687177,
+                "monotonic_end": 99354.3002813,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 134.569,
+                "monotonic_start": 99354.5298359,
+                "monotonic_end": 99354.6644173,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 130.667,
+                "monotonic_start": 99354.8725803,
+                "monotonic_end": 99355.0032593,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 130.667,
+            "p95_ms": 134.569,
+            "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 600,
+              "lstat": 300,
+              "resolve": 300,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 100,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 900,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176589
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 238.182,
+                "monotonic_start": 99356.237346,
+                "monotonic_end": 99356.4755379,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 239.668,
+                "monotonic_start": 99356.7075693,
+                "monotonic_end": 99356.9472532,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 203.667,
+                "monotonic_start": 99357.1813356,
+                "monotonic_end": 99357.3850218,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 200.056,
+                "monotonic_start": 99357.6071099,
+                "monotonic_end": 99357.8071798,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 158.849,
+                "monotonic_start": 99357.995291,
+                "monotonic_end": 99358.1541502,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 169.134,
+                "monotonic_start": 99358.3056999,
+                "monotonic_end": 99358.474843,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 155.181,
+                "monotonic_start": 99358.6244253,
+                "monotonic_end": 99358.7796154,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 200.056,
+            "p95_ms": 239.668,
+            "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 179367
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 93.248,
+                "monotonic_start": 99359.8360246,
+                "monotonic_end": 99359.9292847,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 96.274,
+                "monotonic_start": 99360.1142518,
+                "monotonic_end": 99360.2105365,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 90.899,
+                "monotonic_start": 99360.3819593,
+                "monotonic_end": 99360.4728676,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 97.86,
+                "monotonic_start": 99360.6375929,
+                "monotonic_end": 99360.7354621,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 91.708,
+                "monotonic_start": 99360.9159674,
+                "monotonic_end": 99361.0076857,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 99.797,
+                "monotonic_start": 99361.1868951,
+                "monotonic_end": 99361.2867017,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 99.631,
+                "monotonic_start": 99361.4650949,
+                "monotonic_end": 99361.5647424,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 96.274,
+            "p95_ms": 99.797,
+            "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 604,
+              "lstat": 304,
+              "resolve": 302,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 99,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 891,
+              "misses": 909,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 179065
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 161.669,
+                "monotonic_start": 99362.5325715,
+                "monotonic_end": 99362.6942607,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 182.864,
+                "monotonic_start": 99362.8612042,
+                "monotonic_end": 99363.0440785,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 166.176,
+                "monotonic_start": 99363.2215648,
+                "monotonic_end": 99363.3877498,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 161.816,
+                "monotonic_start": 99363.5594649,
+                "monotonic_end": 99363.7212902,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 172.672,
+                "monotonic_start": 99363.8835859,
+                "monotonic_end": 99364.0562684,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 189.381,
+                "monotonic_start": 99364.2251216,
+                "monotonic_end": 99364.4145167,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 169.151,
+                "monotonic_start": 99364.5889154,
+                "monotonic_end": 99364.7580766,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 169.151,
+            "p95_ms": 189.381,
+            "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 100
+            },
+            "cache": {
+              "entries": 25,
+              "payload_bytes": 8925,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 1575
+            },
+            "capacity_entries": 25,
+            "prepare_and_query_python_peak_bytes": 105919
+          }
+        },
+        "favorites": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 57.878,
+                "monotonic_start": 99365.6878929,
+                "monotonic_end": 99365.7457808,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 50.466,
+                "monotonic_start": 99365.7458763,
+                "monotonic_end": 99365.7963514,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 48.109,
+                "monotonic_start": 99365.7964456,
+                "monotonic_end": 99365.8445619,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 52.719,
+                "monotonic_start": 99365.8446488,
+                "monotonic_end": 99365.8973777,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 56.484,
+                "monotonic_start": 99365.89758,
+                "monotonic_end": 99365.9540736,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 61.069,
+                "monotonic_start": 99365.9541684,
+                "monotonic_end": 99366.0152518,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 59.328,
+                "monotonic_start": 99366.015397,
+                "monotonic_end": 99366.074735,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 56.484,
+            "p95_ms": 61.069,
+            "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 400,
+              "lstat": 100,
+              "resolve": 100,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 79987
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 146.729,
+                "monotonic_start": 99366.2319224,
+                "monotonic_end": 99366.3786603,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 150.444,
+                "monotonic_start": 99366.3787791,
+                "monotonic_end": 99366.5292307,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 148.068,
+                "monotonic_start": 99366.5293556,
+                "monotonic_end": 99366.6774324,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 152.371,
+                "monotonic_start": 99366.6779174,
+                "monotonic_end": 99366.8302969,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 157.944,
+                "monotonic_start": 99366.8304208,
+                "monotonic_end": 99366.9883726,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 158.858,
+                "monotonic_start": 99366.9884986,
+                "monotonic_end": 99367.1473653,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 153.993,
+                "monotonic_start": 99367.1475363,
+                "monotonic_end": 99367.3015383,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 152.371,
+            "p95_ms": 158.858,
+            "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176737
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 87.067,
+                "monotonic_start": 99367.9023013,
+                "monotonic_end": 99367.9893768,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 92.074,
+                "monotonic_start": 99368.1416213,
+                "monotonic_end": 99368.233706,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 89.994,
+                "monotonic_start": 99368.3880423,
+                "monotonic_end": 99368.4780495,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 84.045,
+                "monotonic_start": 99368.6421423,
+                "monotonic_end": 99368.726195,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 100.992,
+                "monotonic_start": 99368.8850925,
+                "monotonic_end": 99368.9860922,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 98.504,
+                "monotonic_start": 99369.171966,
+                "monotonic_end": 99369.2704788,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 102.935,
+                "monotonic_start": 99369.4463565,
+                "monotonic_end": 99369.5493028,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 92.074,
+            "p95_ms": 102.935,
+            "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 600,
+              "lstat": 300,
+              "resolve": 300,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 100,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 900,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176326
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 151.347,
+                "monotonic_start": 99370.3877971,
+                "monotonic_end": 99370.539155,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 170.694,
+                "monotonic_start": 99370.690993,
+                "monotonic_end": 99370.8616961,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 148.798,
+                "monotonic_start": 99371.0202515,
+                "monotonic_end": 99371.1690585,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 149.47,
+                "monotonic_start": 99371.3247674,
+                "monotonic_end": 99371.4742465,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 159.881,
+                "monotonic_start": 99371.6312763,
+                "monotonic_end": 99371.7911657,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 160.462,
+                "monotonic_start": 99371.9667475,
+                "monotonic_end": 99372.127219,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 160.163,
+                "monotonic_start": 99372.2935126,
+                "monotonic_end": 99372.453685,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 159.881,
+            "p95_ms": 170.694,
+            "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 179758
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 95.222,
+                "monotonic_start": 99373.6027262,
+                "monotonic_end": 99373.6979637,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 101.782,
+                "monotonic_start": 99373.8762389,
+                "monotonic_end": 99373.9780355,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 98.03,
+                "monotonic_start": 99374.1504799,
+                "monotonic_end": 99374.2485233,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 101.002,
+                "monotonic_start": 99374.4185285,
+                "monotonic_end": 99374.5195399,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 94.894,
+                "monotonic_start": 99374.6949783,
+                "monotonic_end": 99374.789881,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 96.942,
+                "monotonic_start": 99374.9684464,
+                "monotonic_end": 99375.0654011,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 95.165,
+                "monotonic_start": 99375.239464,
+                "monotonic_end": 99375.334638,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 96.942,
+            "p95_ms": 101.782,
+            "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 604,
+              "lstat": 304,
+              "resolve": 302,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 99,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 891,
+              "misses": 909,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 178862
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 161.568,
+                "monotonic_start": 99376.2340526,
+                "monotonic_end": 99376.3956301,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 161.182,
+                "monotonic_start": 99376.5596906,
+                "monotonic_end": 99376.7208841,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 187.409,
+                "monotonic_start": 99376.880923,
+                "monotonic_end": 99377.068341,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 165.52,
+                "monotonic_start": 99377.2345946,
+                "monotonic_end": 99377.4001232,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 170.116,
+                "monotonic_start": 99377.5778725,
+                "monotonic_end": 99377.7479982,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 183.57,
+                "monotonic_start": 99377.9167594,
+                "monotonic_end": 99378.1003426,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 161.232,
+                "monotonic_start": 99378.2714153,
+                "monotonic_end": 99378.4326568,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 165.52,
+            "p95_ms": 187.409,
+            "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 100
+            },
+            "cache": {
+              "entries": 25,
+              "payload_bytes": 8925,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 1575
+            },
+            "capacity_entries": 25,
+            "prepare_and_query_python_peak_bytes": 105838
+          }
+        },
+        "page_two": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 57.752,
+                "monotonic_start": 99379.4570915,
+                "monotonic_end": 99379.5148541,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 66.308,
+                "monotonic_start": 99379.5150257,
+                "monotonic_end": 99379.5813807,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 73.889,
+                "monotonic_start": 99379.5816428,
+                "monotonic_end": 99379.6555574,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 63.859,
+                "monotonic_start": 99379.6558186,
+                "monotonic_end": 99379.7197022,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 64.912,
+                "monotonic_start": 99379.7199874,
+                "monotonic_end": 99379.7849118,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 56.697,
+                "monotonic_start": 99379.7851234,
+                "monotonic_end": 99379.8418424,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 58.201,
+                "monotonic_start": 99379.8420635,
+                "monotonic_end": 99379.9003042,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 63.859,
+            "p95_ms": 73.889,
+            "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 400,
+              "lstat": 100,
+              "resolve": 100,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 79928
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 184.867,
+                "monotonic_start": 99380.0811086,
+                "monotonic_end": 99380.2659916,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 175.489,
+                "monotonic_start": 99380.2661815,
+                "monotonic_end": 99380.4416828,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 165.1,
+                "monotonic_start": 99380.4418892,
+                "monotonic_end": 99380.607002,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 173.717,
+                "monotonic_start": 99380.6071905,
+                "monotonic_end": 99380.7809275,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 180.558,
+                "monotonic_start": 99380.7812146,
+                "monotonic_end": 99380.96179,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 177.676,
+                "monotonic_start": 99380.9620609,
+                "monotonic_end": 99381.1397486,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 181.781,
+                "monotonic_start": 99381.1399348,
+                "monotonic_end": 99381.3217273,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 177.676,
+            "p95_ms": 184.867,
+            "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176560
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 101.264,
+                "monotonic_start": 99381.9843003,
+                "monotonic_end": 99382.0855853,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 94.555,
+                "monotonic_start": 99382.2561913,
+                "monotonic_end": 99382.3507616,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 91.661,
+                "monotonic_start": 99382.5148652,
+                "monotonic_end": 99382.6065395,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 90.499,
+                "monotonic_start": 99382.7867686,
+                "monotonic_end": 99382.8772798,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 92.66,
+                "monotonic_start": 99383.0479164,
+                "monotonic_end": 99383.1405889,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 91.423,
+                "monotonic_start": 99383.3042623,
+                "monotonic_end": 99383.3956969,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 89.703,
+                "monotonic_start": 99383.5668078,
+                "monotonic_end": 99383.6565223,
+                "cache_delta": {
+                  "hits": 100,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 91.661,
+            "p95_ms": 101.264,
+            "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 600,
+              "lstat": 300,
+              "resolve": 300,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 100,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 900,
+              "misses": 900,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 176385
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 158.675,
+                "monotonic_start": 99384.5556689,
+                "monotonic_end": 99384.7143558,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 175.276,
+                "monotonic_start": 99384.8807853,
+                "monotonic_end": 99385.0560748,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 166.58,
+                "monotonic_start": 99385.2427015,
+                "monotonic_end": 99385.4093085,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 172.363,
+                "monotonic_start": 99385.5754015,
+                "monotonic_end": 99385.7477857,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 173.329,
+                "monotonic_start": 99385.9198835,
+                "monotonic_end": 99386.093226,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 192.854,
+                "monotonic_start": 99386.2832137,
+                "monotonic_end": 99386.4760788,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 173.291,
+                "monotonic_start": 99386.6485976,
+                "monotonic_end": 99386.8219019,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 173.291,
+            "p95_ms": 192.854,
+            "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 178932
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 97.838,
+                "monotonic_start": 99387.9597908,
+                "monotonic_end": 99388.057641,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 95.453,
+                "monotonic_start": 99388.2349998,
+                "monotonic_end": 99388.3304666,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 94.279,
+                "monotonic_start": 99388.509656,
+                "monotonic_end": 99388.6039483,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 97.282,
+                "monotonic_start": 99388.7817504,
+                "monotonic_end": 99388.8790604,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 100.317,
+                "monotonic_start": 99389.0559616,
+                "monotonic_end": 99389.1562932,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 94.821,
+                "monotonic_start": 99389.3290786,
+                "monotonic_end": 99389.4239205,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 90.048,
+                "monotonic_start": 99389.5970194,
+                "monotonic_end": 99389.6870802,
+                "cache_delta": {
+                  "hits": 99,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 95.453,
+            "p95_ms": 100.317,
+            "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 604,
+              "lstat": 304,
+              "resolve": 302,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 99,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 100,
+              "payload_bytes": 35594,
+              "hits": 891,
+              "misses": 909,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 179216
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 157.18,
+                "monotonic_start": 99390.5357808,
+                "monotonic_end": 99390.6930244,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 160.451,
+                "monotonic_start": 99390.8424904,
+                "monotonic_end": 99391.0029533,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 149.206,
+                "monotonic_start": 99391.1646034,
+                "monotonic_end": 99391.3138219,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 155.054,
+                "monotonic_start": 99391.4640003,
+                "monotonic_end": 99391.6190667,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 153.526,
+                "monotonic_start": 99391.7737509,
+                "monotonic_end": 99391.9272896,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 149.849,
+                "monotonic_start": 99392.0843403,
+                "monotonic_end": 99392.234202,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 158.75,
+                "monotonic_start": 99392.3869596,
+                "monotonic_end": 99392.545722,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 100,
+                  "evictions": 100
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 155.054,
+            "p95_ms": 160.451,
+            "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485",
+            "reads": {
+              "manifests": 100,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 1000,
+              "lstat": 700,
+              "resolve": 500,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 100,
+              "evictions": 100
+            },
+            "cache": {
+              "entries": 25,
+              "payload_bytes": 8925,
+              "hits": 0,
+              "misses": 1800,
+              "evictions": 1575
+            },
+            "capacity_entries": 25,
+            "prepare_and_query_python_peak_bytes": 105720
+          }
+        }
+      }
+    },
+    {
+      "task_count": 1000,
+      "dataset_sha256": "e6dc6c89fe9e6da919439355c2ae5f71c5e0ad47275a750f5826a63fea7a7145",
+      "manifest_bytes": 2720142,
+      "file_content_bytes": 4695542,
+      "warm_repeats": 7,
+      "ttl_seconds": 30.0,
+      "max_bytes": 16777216,
+      "max_entry_bytes": 65536,
+      "queries": {
+        "all": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 772.989,
+                "monotonic_start": 99394.7803351,
+                "monotonic_end": 99395.5533327,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 809.647,
+                "monotonic_start": 99395.5534805,
+                "monotonic_end": 99396.3631536,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 805.789,
+                "monotonic_start": 99396.3635423,
+                "monotonic_end": 99397.1693479,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 810.114,
+                "monotonic_start": 99397.1694996,
+                "monotonic_end": 99397.9796416,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 793.863,
+                "monotonic_start": 99397.9799242,
+                "monotonic_end": 99398.7738112,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 807.875,
+                "monotonic_start": 99398.7740152,
+                "monotonic_end": 99399.5819034,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 779.163,
+                "monotonic_start": 99399.5820522,
+                "monotonic_end": 99400.361232,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 805.789,
+            "p95_ms": 810.114,
+            "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 4000,
+              "lstat": 1000,
+              "resolve": 1000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 877464
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 2437.299,
+                "monotonic_start": 99402.6825068,
+                "monotonic_end": 99405.1198205,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1754.42,
+                "monotonic_start": 99405.1202348,
+                "monotonic_end": 99406.8746682,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1644.358,
+                "monotonic_start": 99406.8753619,
+                "monotonic_end": 99408.5197378,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1607.286,
+                "monotonic_start": 99408.5204271,
+                "monotonic_end": 99410.1277276,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1641.69,
+                "monotonic_start": 99410.1284464,
+                "monotonic_end": 99411.7701486,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1699.974,
+                "monotonic_start": 99411.7706916,
+                "monotonic_end": 99413.4706888,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1673.966,
+                "monotonic_start": 99413.4717065,
+                "monotonic_end": 99415.145689,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1673.966,
+            "p95_ms": 2437.299,
+            "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1878799
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 1125.629,
+                "monotonic_start": 99422.7589809,
+                "monotonic_end": 99423.8846248,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1096.749,
+                "monotonic_start": 99425.80297,
+                "monotonic_end": 99426.8997423,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1068.234,
+                "monotonic_start": 99428.8039726,
+                "monotonic_end": 99429.8722371,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1160.164,
+                "monotonic_start": 99431.7594812,
+                "monotonic_end": 99432.9196668,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1189.446,
+                "monotonic_start": 99434.9825666,
+                "monotonic_end": 99436.1720257,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1033.421,
+                "monotonic_start": 99438.0144686,
+                "monotonic_end": 99439.0479068,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1107.148,
+                "monotonic_start": 99440.9316518,
+                "monotonic_end": 99442.0388278,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 1107.148,
+            "p95_ms": 1189.446,
+            "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6000,
+              "lstat": 3000,
+              "resolve": 3000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 1000,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 9000,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 5728893
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 1826.569,
+                "monotonic_start": 99452.7009606,
+                "monotonic_end": 99454.5275434,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1981.441,
+                "monotonic_start": 99456.3990523,
+                "monotonic_end": 99458.3805172,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1905.769,
+                "monotonic_start": 99460.3073956,
+                "monotonic_end": 99462.2131784,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1949.431,
+                "monotonic_start": 99464.2285226,
+                "monotonic_end": 99466.1779706,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2152.194,
+                "monotonic_start": 99468.2195506,
+                "monotonic_end": 99470.3717643,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1921.946,
+                "monotonic_start": 99472.3077968,
+                "monotonic_end": 99474.229773,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1870.889,
+                "monotonic_start": 99476.1775681,
+                "monotonic_end": 99478.0484749,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1921.946,
+            "p95_ms": 2152.194,
+            "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1893312
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 1039.84,
+                "monotonic_start": 99491.1235507,
+                "monotonic_end": 99492.1634087,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 913.219,
+                "monotonic_start": 99493.8178663,
+                "monotonic_end": 99494.7311088,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1149.26,
+                "monotonic_start": 99496.3684748,
+                "monotonic_end": 99497.5177539,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1039.643,
+                "monotonic_start": 99499.5343325,
+                "monotonic_end": 99500.5739954,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1057.391,
+                "monotonic_start": 99502.5235472,
+                "monotonic_end": 99503.5809544,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1171.716,
+                "monotonic_start": 99505.5343942,
+                "monotonic_end": 99506.7061306,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1005.331,
+                "monotonic_start": 99508.689925,
+                "monotonic_end": 99509.6952745,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1039.84,
+            "p95_ms": 1171.716,
+            "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6004,
+              "lstat": 3004,
+              "resolve": 3002,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 999,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 8991,
+              "misses": 9009,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1882561
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 1610.531,
+                "monotonic_start": 99519.011023,
+                "monotonic_end": 99520.6215668,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1587.044,
+                "monotonic_start": 99522.2044668,
+                "monotonic_end": 99523.7915231,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1567.977,
+                "monotonic_start": 99525.3316612,
+                "monotonic_end": 99526.8996522,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1690.446,
+                "monotonic_start": 99528.5935924,
+                "monotonic_end": 99530.2840519,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1700.443,
+                "monotonic_start": 99532.055799,
+                "monotonic_end": 99533.7562549,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1576.174,
+                "monotonic_start": 99535.3350239,
+                "monotonic_end": 99536.9112138,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1561.135,
+                "monotonic_start": 99538.4886718,
+                "monotonic_end": 99540.0498212,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1587.044,
+            "p95_ms": 1700.443,
+            "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 1000
+            },
+            "cache": {
+              "entries": 250,
+              "payload_bytes": 88983,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 15750
+            },
+            "capacity_entries": 250,
+            "prepare_and_query_python_peak_bytes": 1159585
+          }
+        },
+        "filtered": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 558.506,
+                "monotonic_start": 99549.5374096,
+                "monotonic_end": 99550.0959295,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 566.527,
+                "monotonic_start": 99550.096084,
+                "monotonic_end": 99550.6626243,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 564.05,
+                "monotonic_start": 99550.6627702,
+                "monotonic_end": 99551.2268438,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 568.738,
+                "monotonic_start": 99551.2270502,
+                "monotonic_end": 99551.7958035,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 563.599,
+                "monotonic_start": 99551.7960235,
+                "monotonic_end": 99552.3596467,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 555.847,
+                "monotonic_start": 99552.359859,
+                "monotonic_end": 99552.9157193,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 558.893,
+                "monotonic_start": 99552.915866,
+                "monotonic_end": 99553.4747757,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 563.599,
+            "p95_ms": 568.738,
+            "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 4000,
+              "lstat": 1000,
+              "resolve": 1000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 880415
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 1700.903,
+                "monotonic_start": 99555.175702,
+                "monotonic_end": 99556.8766298,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1741.086,
+                "monotonic_start": 99556.8779552,
+                "monotonic_end": 99558.6190568,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1647.412,
+                "monotonic_start": 99558.6196356,
+                "monotonic_end": 99560.2670604,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1556.311,
+                "monotonic_start": 99560.267591,
+                "monotonic_end": 99561.8239145,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1576.97,
+                "monotonic_start": 99561.8242615,
+                "monotonic_end": 99563.4012476,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1543.851,
+                "monotonic_start": 99563.402087,
+                "monotonic_end": 99564.9459524,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1541.451,
+                "monotonic_start": 99564.9464927,
+                "monotonic_end": 99566.4879576,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1576.97,
+            "p95_ms": 1741.086,
+            "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1880511
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 937.446,
+                "monotonic_start": 99572.9022525,
+                "monotonic_end": 99573.8397184,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 888.705,
+                "monotonic_start": 99575.523744,
+                "monotonic_end": 99576.4124631,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 899.445,
+                "monotonic_start": 99577.9767371,
+                "monotonic_end": 99578.8761963,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 887.256,
+                "monotonic_start": 99580.4242585,
+                "monotonic_end": 99581.3115374,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 940.667,
+                "monotonic_start": 99582.9248114,
+                "monotonic_end": 99583.865493,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 952.219,
+                "monotonic_start": 99585.668288,
+                "monotonic_end": 99586.620521,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 968.921,
+                "monotonic_start": 99588.3555725,
+                "monotonic_end": 99589.3245085,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 937.446,
+            "p95_ms": 968.921,
+            "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6000,
+              "lstat": 3000,
+              "resolve": 3000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 1000,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 9000,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1881219
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 1609.328,
+                "monotonic_start": 99598.5751277,
+                "monotonic_end": 99600.1844711,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1548.631,
+                "monotonic_start": 99601.7631396,
+                "monotonic_end": 99603.3117833,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1530.061,
+                "monotonic_start": 99604.8485117,
+                "monotonic_end": 99606.3785962,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1686.969,
+                "monotonic_start": 99607.9229091,
+                "monotonic_end": 99609.6098922,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1616.18,
+                "monotonic_start": 99611.1828934,
+                "monotonic_end": 99612.7990879,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1694.383,
+                "monotonic_start": 99614.5526436,
+                "monotonic_end": 99616.2470419,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1593.171,
+                "monotonic_start": 99618.0075358,
+                "monotonic_end": 99619.600721,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1609.328,
+            "p95_ms": 1694.383,
+            "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1894454
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 962.956,
+                "monotonic_start": 99630.4928585,
+                "monotonic_end": 99631.4558298,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 917.54,
+                "monotonic_start": 99633.1530093,
+                "monotonic_end": 99634.0705643,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 931.116,
+                "monotonic_start": 99635.7120985,
+                "monotonic_end": 99636.6432292,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 955.605,
+                "monotonic_start": 99638.3265091,
+                "monotonic_end": 99639.28213,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 930.536,
+                "monotonic_start": 99641.0369942,
+                "monotonic_end": 99641.9675436,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 869.317,
+                "monotonic_start": 99643.5466909,
+                "monotonic_end": 99644.4160216,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 867.445,
+                "monotonic_start": 99645.9677185,
+                "monotonic_end": 99646.8351766,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 930.536,
+            "p95_ms": 962.956,
+            "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6004,
+              "lstat": 3004,
+              "resolve": 3002,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 999,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 8991,
+              "misses": 9009,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1883933
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 1662.605,
+                "monotonic_start": 99656.0202261,
+                "monotonic_end": 99657.6828548,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1642.659,
+                "monotonic_start": 99659.3631501,
+                "monotonic_end": 99661.0058219,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1527.876,
+                "monotonic_start": 99662.6177504,
+                "monotonic_end": 99664.1456407,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1693.822,
+                "monotonic_start": 99665.6813971,
+                "monotonic_end": 99667.3752467,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1736.153,
+                "monotonic_start": 99669.1331028,
+                "monotonic_end": 99670.8692757,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1709.72,
+                "monotonic_start": 99672.5587429,
+                "monotonic_end": 99674.268479,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1730.808,
+                "monotonic_start": 99676.0565198,
+                "monotonic_end": 99677.7873494,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1693.822,
+            "p95_ms": 1736.153,
+            "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 1000
+            },
+            "cache": {
+              "entries": 250,
+              "payload_bytes": 88983,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 15750
+            },
+            "capacity_entries": 250,
+            "prepare_and_query_python_peak_bytes": 5006379
+          }
+        },
+        "favorites": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 528.742,
+                "monotonic_start": 99687.2692516,
+                "monotonic_end": 99687.7980307,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 550.242,
+                "monotonic_start": 99687.7981937,
+                "monotonic_end": 99688.3484511,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 565.51,
+                "monotonic_start": 99688.3486039,
+                "monotonic_end": 99688.9141416,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 537.402,
+                "monotonic_start": 99688.9145128,
+                "monotonic_end": 99689.4519286,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 536.979,
+                "monotonic_start": 99689.4520769,
+                "monotonic_end": 99689.989068,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 534.279,
+                "monotonic_start": 99689.9893087,
+                "monotonic_end": 99690.5236014,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 527.652,
+                "monotonic_start": 99690.5237488,
+                "monotonic_end": 99691.0514139,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 536.979,
+            "p95_ms": 565.51,
+            "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 4000,
+              "lstat": 1000,
+              "resolve": 1000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 877472
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 1711.524,
+                "monotonic_start": 99692.6169302,
+                "monotonic_end": 99694.3284686,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1758.445,
+                "monotonic_start": 99694.3289987,
+                "monotonic_end": 99696.0874588,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1799.667,
+                "monotonic_start": 99696.0883725,
+                "monotonic_end": 99697.8880545,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1984.842,
+                "monotonic_start": 99697.8886654,
+                "monotonic_end": 99699.8735245,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2470.786,
+                "monotonic_start": 99699.8739994,
+                "monotonic_end": 99702.3448043,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2214.566,
+                "monotonic_start": 99702.3456113,
+                "monotonic_end": 99704.5601954,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1741.268,
+                "monotonic_start": 99704.5609,
+                "monotonic_end": 99706.3021845,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1799.667,
+            "p95_ms": 2470.786,
+            "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1879869
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 1073.769,
+                "monotonic_start": 99714.5999369,
+                "monotonic_end": 99715.6737265,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1043.025,
+                "monotonic_start": 99717.7341598,
+                "monotonic_end": 99718.7772049,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 960.67,
+                "monotonic_start": 99720.548579,
+                "monotonic_end": 99721.5092663,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1050.044,
+                "monotonic_start": 99723.2779288,
+                "monotonic_end": 99724.3279882,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1009.55,
+                "monotonic_start": 99726.264302,
+                "monotonic_end": 99727.2738672,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1017.437,
+                "monotonic_start": 99729.1561906,
+                "monotonic_end": 99730.1736423,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 913.85,
+                "monotonic_start": 99731.9527838,
+                "monotonic_end": 99732.8666578,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 1017.437,
+            "p95_ms": 1073.769,
+            "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6000,
+              "lstat": 3000,
+              "resolve": 3000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 1000,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 9000,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1881877
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 1709.435,
+                "monotonic_start": 99742.6840776,
+                "monotonic_end": 99744.3935269,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1605.908,
+                "monotonic_start": 99745.9848278,
+                "monotonic_end": 99747.5907502,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1662.341,
+                "monotonic_start": 99749.1738059,
+                "monotonic_end": 99750.8361723,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1758.845,
+                "monotonic_start": 99752.5625549,
+                "monotonic_end": 99754.3214211,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1712.947,
+                "monotonic_start": 99756.0252522,
+                "monotonic_end": 99757.738221,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1840.73,
+                "monotonic_start": 99759.5535816,
+                "monotonic_end": 99761.3943286,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1915.087,
+                "monotonic_start": 99763.2869246,
+                "monotonic_end": 99765.202031,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1712.947,
+            "p95_ms": 1915.087,
+            "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1892811
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 1740.837,
+                "monotonic_start": 99777.9774118,
+                "monotonic_end": 99779.718276,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1328.877,
+                "monotonic_start": 99782.4578065,
+                "monotonic_end": 99783.7867057,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1157.271,
+                "monotonic_start": 99785.9702086,
+                "monotonic_end": 99787.1275029,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1263.468,
+                "monotonic_start": 99789.3449076,
+                "monotonic_end": 99790.6083925,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 981.001,
+                "monotonic_start": 99792.5939076,
+                "monotonic_end": 99793.5749242,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1068.162,
+                "monotonic_start": 99795.4446339,
+                "monotonic_end": 99796.5128095,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1028.594,
+                "monotonic_start": 99798.3434328,
+                "monotonic_end": 99799.3720408,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1157.271,
+            "p95_ms": 1740.837,
+            "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6004,
+              "lstat": 3004,
+              "resolve": 3002,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 999,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 8991,
+              "misses": 9009,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1881641
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 2018.138,
+                "monotonic_start": 99810.3812979,
+                "monotonic_end": 99812.3994571,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2046.548,
+                "monotonic_start": 99814.3312585,
+                "monotonic_end": 99816.3778472,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1973.733,
+                "monotonic_start": 99818.3998064,
+                "monotonic_end": 99820.3735607,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2050.646,
+                "monotonic_start": 99822.3978622,
+                "monotonic_end": 99824.4485256,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2167.414,
+                "monotonic_start": 99826.5659015,
+                "monotonic_end": 99828.7333367,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2061.654,
+                "monotonic_start": 99830.8476606,
+                "monotonic_end": 99832.9093358,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2076.668,
+                "monotonic_start": 99834.9742767,
+                "monotonic_end": 99837.0509657,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 2050.646,
+            "p95_ms": 2167.414,
+            "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 1000
+            },
+            "cache": {
+              "entries": 250,
+              "payload_bytes": 88983,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 15750
+            },
+            "capacity_entries": 250,
+            "prepare_and_query_python_peak_bytes": 1160349
+          }
+        },
+        "page_two": {
+          "direct": {
+            "samples": [
+              {
+                "ms": 664.307,
+                "monotonic_start": 99848.6824192,
+                "monotonic_end": 99849.3467436,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 644.072,
+                "monotonic_start": 99849.3468998,
+                "monotonic_end": 99849.990986,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 670.602,
+                "monotonic_start": 99849.9911279,
+                "monotonic_end": 99850.661747,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 646.016,
+                "monotonic_start": 99850.6619665,
+                "monotonic_end": 99851.3079967,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 675.272,
+                "monotonic_start": 99851.3081627,
+                "monotonic_end": 99851.9834487,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 649.938,
+                "monotonic_start": 99851.9835878,
+                "monotonic_end": 99852.6335407,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 650.772,
+                "monotonic_start": 99852.633707,
+                "monotonic_end": 99853.2844982,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 650.772,
+            "p95_ms": 675.272,
+            "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 4000,
+              "lstat": 1000,
+              "resolve": 1000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 0,
+              "payload_bytes": 0,
+              "hits": 0,
+              "misses": 0,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 877818
+          },
+          "cache_empty": {
+            "samples": [
+              {
+                "ms": 1901.057,
+                "monotonic_start": 99855.1612955,
+                "monotonic_end": 99857.0623723,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1771.817,
+                "monotonic_start": 99857.0630717,
+                "monotonic_end": 99858.8349012,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1803.587,
+                "monotonic_start": 99858.8354002,
+                "monotonic_end": 99860.6390051,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1794.684,
+                "monotonic_start": 99860.6398293,
+                "monotonic_end": 99862.4345299,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1816.584,
+                "monotonic_start": 99862.4349963,
+                "monotonic_end": 99864.2515934,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1688.731,
+                "monotonic_start": 99864.2521385,
+                "monotonic_end": 99865.9408862,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1703.923,
+                "monotonic_start": 99865.941624,
+                "monotonic_end": 99867.645559,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1794.684,
+            "p95_ms": 1901.057,
+            "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1879153
+          },
+          "hit": {
+            "samples": [
+              {
+                "ms": 875.896,
+                "monotonic_start": 99874.0175052,
+                "monotonic_end": 99874.8934173,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 938.537,
+                "monotonic_start": 99876.500682,
+                "monotonic_end": 99877.4392346,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1157.12,
+                "monotonic_start": 99879.1455917,
+                "monotonic_end": 99880.3027341,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 1089.901,
+                "monotonic_start": 99882.1720678,
+                "monotonic_end": 99883.2619873,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 976.51,
+                "monotonic_start": 99885.1163229,
+                "monotonic_end": 99886.0928469,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 940.708,
+                "monotonic_start": 99887.947408,
+                "monotonic_end": 99888.8881283,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              },
+              {
+                "ms": 945.51,
+                "monotonic_start": 99890.605125,
+                "monotonic_end": 99891.5506504,
+                "cache_delta": {
+                  "hits": 1000,
+                  "misses": 0,
+                  "evictions": 0
+                },
+                "pure_hit": true
+              }
+            ],
+            "p50_ms": 945.51,
+            "p95_ms": 1157.12,
+            "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1",
+            "reads": {
+              "manifests": 0,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6000,
+              "lstat": 3000,
+              "resolve": 3000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 1000,
+              "misses": 0,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 9000,
+              "misses": 9000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1881733
+          },
+          "refresh": {
+            "samples": [
+              {
+                "ms": 1545.017,
+                "monotonic_start": 99900.6664358,
+                "monotonic_end": 99902.2114833,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1581.994,
+                "monotonic_start": 99903.966337,
+                "monotonic_end": 99905.5483437,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1769.903,
+                "monotonic_start": 99907.304057,
+                "monotonic_end": 99909.0739881,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2018.391,
+                "monotonic_start": 99911.3323713,
+                "monotonic_end": 99913.3507757,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1974.924,
+                "monotonic_start": 99915.2695134,
+                "monotonic_end": 99917.2444505,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2441.141,
+                "monotonic_start": 99919.2742494,
+                "monotonic_end": 99921.7154107,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2013.633,
+                "monotonic_start": 99923.7972651,
+                "monotonic_end": 99925.8109203,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1974.924,
+            "p95_ms": 2441.141,
+            "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 5734454
+          },
+          "invalidated": {
+            "samples": [
+              {
+                "ms": 1144.386,
+                "monotonic_start": 99939.3789665,
+                "monotonic_end": 99940.523367,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1137.198,
+                "monotonic_start": 99942.5259089,
+                "monotonic_end": 99943.6631297,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1046.97,
+                "monotonic_start": 99945.6438979,
+                "monotonic_end": 99946.6908826,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1196.168,
+                "monotonic_start": 99948.7230425,
+                "monotonic_end": 99949.9192288,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1204.962,
+                "monotonic_start": 99952.0013659,
+                "monotonic_end": 99953.2063603,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1215.794,
+                "monotonic_start": 99955.3078276,
+                "monotonic_end": 99956.5236351,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1169.909,
+                "monotonic_start": 99958.6294456,
+                "monotonic_end": 99959.7993731,
+                "cache_delta": {
+                  "hits": 999,
+                  "misses": 1,
+                  "evictions": 0
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1169.909,
+            "p95_ms": 1215.794,
+            "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1",
+            "reads": {
+              "manifests": 1,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 6004,
+              "lstat": 3004,
+              "resolve": 3002,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 999,
+              "misses": 1,
+              "evictions": 0
+            },
+            "cache": {
+              "entries": 1000,
+              "payload_bytes": 355942,
+              "hits": 8991,
+              "misses": 9009,
+              "evictions": 0
+            },
+            "capacity_entries": 12000,
+            "prepare_and_query_python_peak_bytes": 1883741
+          },
+          "capacity": {
+            "samples": [
+              {
+                "ms": 2169.412,
+                "monotonic_start": 99971.5795043,
+                "monotonic_end": 99973.7489301,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1997.631,
+                "monotonic_start": 99975.8897808,
+                "monotonic_end": 99977.8874237,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2216.258,
+                "monotonic_start": 99979.9732214,
+                "monotonic_end": 99982.189493,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1985.495,
+                "monotonic_start": 99984.2909509,
+                "monotonic_end": 99986.2764644,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1959.997,
+                "monotonic_start": 99988.2380708,
+                "monotonic_end": 99990.1980817,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 2346.233,
+                "monotonic_start": 99992.2505274,
+                "monotonic_end": 99994.5967874,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              },
+              {
+                "ms": 1986.906,
+                "monotonic_start": 99996.9918334,
+                "monotonic_end": 99998.9787586,
+                "cache_delta": {
+                  "hits": 0,
+                  "misses": 1000,
+                  "evictions": 1000
+                },
+                "pure_hit": false
+              }
+            ],
+            "p50_ms": 1997.631,
+            "p95_ms": 2346.233,
+            "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1",
+            "reads": {
+              "manifests": 1000,
+              "notes": 0,
+              "transcripts": 0,
+              "other": 0
+            },
+            "metadata_calls": {
+              "stat": 10000,
+              "lstat": 7000,
+              "resolve": 5000,
+              "iterdir": 1
+            },
+            "io_cache_delta": {
+              "hits": 0,
+              "misses": 1000,
+              "evictions": 1000
+            },
+            "cache": {
+              "entries": 250,
+              "payload_bytes": 88983,
+              "hits": 0,
+              "misses": 18000,
+              "evictions": 15750
+            },
+            "capacity_entries": 250,
+            "prepare_and_query_python_peak_bytes": 1161060
+          }
+        }
+      }
+    }
+  ]
+}

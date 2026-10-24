@@ -1,7 +1,7 @@
 <p align="center">
   <img src="sources/icon.png" width="96" alt="Video2Knowledge 图标">
 </p>
-<h1 align="center">Video2Knowledge v1.0.0-beta.3</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.4</h1>
 
 <p align="center"><em>本机知识工作台：把视频沉淀为可回看的 Markdown 笔记</em></p>
 
@@ -11,6 +11,18 @@
 
 项目文档：[产品基线](PRD.md) · [当前状态](PROJECT_STATUS.md) · [当前任务](TODO.md) · [长期决定](DECISIONS.md) · [界面设计基线](DESIGN.md) · [开发约定](AGENTS.md)
 
+> **当前状态**：本分支正在收口 `1.0.0-beta.4`，尚未公开发布；下方下载入口仍指向已发布 Beta.3。源码、新版本候选与远端发布的验收状态分别记录在 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+
+## Beta.4 带来什么
+
+- **看得懂处理过程**：来源与开始入口前置，展示排队、真实转录进度和有依据的 ETA；无可靠估计时保留阶段提示。
+- **失败后接着整理**：说明保留了哪些产物，明确选择复用转录；提交响应不明时先查询原任务，不自动再次发起付费生成。
+- **对照原文阅读**：笔记目录、正文查找、时间戳与原转录区间对照，复制和导出保留原始 Markdown。时间命中不代表陈述已核实。
+- **知道文件在哪里**：结果区提供受限的文件/目录打开入口、Markdown 与附件 ZIP 导出；历史刷新保留筛选并防止迟到响应覆盖当前页面。
+- **收紧本机访问边界**：校验请求来源、Host 和浏览器请求元数据，继续支持原生 HTTP 与 MCP SSE。仅支持本机访问，不提供远程部署模式。
+
+已有六套模板、自定义模板、Obsidian 目的地和飞书附加发布继续保留。[开发设计与验收记录](docs/strategy/README.md) 和 [离线质量工具](docs/quality/README.md) 面向贡献者，内部规则检查不代表模型准确率。
+
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
 <p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3"><strong>⬇️ 下载 Windows 便携版（v1.0.0-beta.3）</strong></a></p>
@@ -19,13 +31,13 @@
 
 Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖音、YouTube 链接或本地音视频文件，优先读取平台字幕（含 B 站 AI 字幕），无字幕时用本机模型离线转写（中文首选 paraformer，也可选 Whisper 系），再由你选择的大模型生成带时间轴的 Markdown 笔记；也可以只要一份带时间轴的字幕稿，全程不调用大模型。
 
-它不是视频下载器，也不是通用 AI 控制台：所有下载、转写和文件生成都发生在本机，服务默认只监听 `127.0.0.1`；首屏直接选择笔记模板、保存位置、来源和产物，模型与接入等低频配置统一收纳进设置面板。界面与品牌的设计基线见 [DESIGN.md](DESIGN.md)。
+媒体下载、本地转写和文件生成在本机完成，云模型会接收转录内容，飞书会接收发布内容。服务默认只监听 `127.0.0.1`；首屏直接选择来源、产物、笔记模板和保存位置，模型与接入等配置收纳进设置面板。界面设计见 [DESIGN.md](DESIGN.md)。
 
 > 🤖 **Agent Skill**：把仓库里的 `skills/video-to-note/` 目录复制到 agent 的技能目录（如 `~/.agents/skills/`），即可让 Claude Code、pi 等直接一句话生成视频笔记。详见该目录下的 `SKILL.md`。
 
 ## 🖼️ Knowledge Studio 界面
 
-以下截图由 `scripts/capture_readme_screenshots.mjs` 使用隔离 workspace 与合成数据从真实页面生成，不包含真实凭据、私人路径或用户任务标题。
+以下为 Beta.4 开发版界面。首页/历史/模板由 `scripts/capture_readme_screenshots.mjs` 生成，进度/结果由 `scripts/verify_g0_browser.mjs` 生成；均使用隔离 workspace 与合成数据从真实页面截图，不包含真实凭据、私人路径或用户任务标题。
 
 ### 工作台首页
 
@@ -50,9 +62,25 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 - 👁️ **无需调用模型的模板预览**：选择模板即可查看固定合成内容的成品与 Markdown 示例；预览不产生费用，也不读取已有笔记。
 - 🗂️ **本地历史与收藏**：按标题、状态、产物和平台筛选任务，分页查看全部本地清单；已完成笔记可加本地星标，旧任务只在打开时读取正文。
 - 🔎 **平台与复用提示**：粘贴链接后在本机识别平台并提示支持等级；发现已有转录时可打开历史、复用转录或重新处理，不会自动提交。
+- ⏱️ **可信任务反馈（开发版）**：开始前汇总来源、模型缓存、Key 与保存位置；运行中显示队列位置、真实 ASR 时间进度和保守的剩余时间范围，滚动页面时仍可从顶部任务条返回进度。
 - 🖼️ **多格式输出**：结果区直接提供 Markdown 导出，并可切换 SRT、HTML、JSON、纯文本和 PNG；可选提取视频截图作为附件。
 - 🤖 **给 agent 留了原料出口**：接入的 agent 只要「带时间轴转录」，可以不走大模型、不需要给本机配 API Key，笔记风格由 agent 自己定。
-- 🛡️ **本地优先**：媒体下载、转录和文件生成在本机完成；服务默认只监听 `127.0.0.1`。
+- 🛡️ **本地优先**：媒体下载、本地 ASR 和文件保存在本机完成；云模型会接收转录内容，启用飞书会发送发布内容。服务默认只监听 `127.0.0.1`。
+
+### 处理进度与结果出口
+
+<p align="center"><img src="sources/knowledge-studio-progress.png" alt="Beta.4 合成转录进度、已处理时间和保守 ETA 示例" width="100%"></p>
+
+<p align="center"><img src="sources/knowledge-studio-result.png" alt="Beta.4 合成结果：打开文件、目录、复制和 Markdown 导出" width="100%"></p>
+
+## 已知限制
+
+- Beta.4 尚未公开发布；下方安装说明对应 Beta.3。新版本候选的本地验收不代表 Release 已更新。
+- ETA 只在转录已有足够样本时显示；Key 已提供、路径已填写都不代表认证和写入权限已验证。
+- 重新生成笔记会调用所选模型，启用截图仍可能下载预览视频；原转录对照本身不额外调用模型。
+- 历史缓存性能实验未通过，默认使用新鲜读取；没有数据库或已达成的 300ms 保证。
+- 真实云模型证据仅来自上一阶段短合成字幕的 DeepSeek 有限验收，不覆盖本版所有 Provider、长视频和网络条件。
+- 仅接受回环地址与同源浏览器请求；自定义 hostname、跨源网页和反向代理部署不在支持范围。本机安全边界不等于对恶意本机程序进行身份认证。
 
 ## 🚀 安装（Windows 便携版）
 
@@ -76,7 +104,7 @@ Video2Knowledge 是一个**本地优先**的知识工作台：输入 B 站、抖
 3. 选择默认 Markdown、自定义目录或 Obsidian Vault；需要时再开启「同时发布到飞书」，本地 Markdown 始终保留；
 4. 在设置中选择模型档案、笔记风格和转录参数并填写 API Key；
 5. 粘贴视频链接，或切换为本地文件 / 字幕文件上传；链接会在本机显示平台支持等级，发现已有转录时可明确选择打开、复用或重做；
-6. 生成完成后预览、复制或使用明确的「导出 Markdown」按钮；“更多导出格式”可切换 SRT、HTML、JSON、纯文本和 PNG。所有网页端任务会进入可筛选、分页的「历史记录」，已完成笔记可添加本地收藏。
+6. 提交前查看「开始前检查」；运行时可查看队列位置、真实转写进度和保守 ETA。生成完成后可直接打开文件/文件夹、预览、复制或使用「导出 Markdown」；“更多导出格式”可切换 SRT、HTML、JSON、纯文本和 PNG。所有网页端任务会进入可筛选、分页的「历史记录」，已完成笔记可添加本地收藏。
 
 ## 🔁 处理流程
 

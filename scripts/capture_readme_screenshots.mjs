@@ -394,7 +394,7 @@ async function main() {
         // 等待应用完成初始化：脚本就绪标记 + 版本号回写 + 字体就绪。
         await waitFor(cdp, 'window.__videoToNoReady === true');
         await waitFor(cdp,
-            "document.getElementById('appVersion')?.textContent === 'v1.0.0-beta.3'",
+            "document.getElementById('appVersion')?.textContent === 'v1.0.0-beta.4'",
             { timeoutMs: 10000 });
         await waitFor(cdp,
             "document.querySelectorAll('#templateCards .template-card').length >= 6",

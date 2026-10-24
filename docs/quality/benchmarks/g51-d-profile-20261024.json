@@ -1,0 +1,318 @@
+{
+  "schema_version": 1,
+  "measurement": "cprofile_instrumented_not_latency_slo",
+  "dataset": {
+    "task_count": 1000,
+    "dataset_sha256": "e6dc6c89fe9e6da919439355c2ae5f71c5e0ad47275a750f5826a63fea7a7145",
+    "manifest_bytes": 2720142,
+    "file_content_bytes": 4695542
+  },
+  "modes": {
+    "default": {
+      "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+      "profile_total_seconds": 0.9035643000000001,
+      "cache_delta": {
+        "hits": 0,
+        "misses": 0
+      },
+      "top_cumulative": [
+        {
+          "file": "benchmark_history.py",
+          "function": "run_query",
+          "calls": 1,
+          "own_seconds": 1.9e-05,
+          "cumulative_seconds": 0.903546
+        },
+        {
+          "file": "~",
+          "function": "<method 'send' of 'coroutine' objects>",
+          "calls": 1,
+          "own_seconds": 0.000476,
+          "cumulative_seconds": 0.903527
+        },
+        {
+          "file": "main.py",
+          "function": "list_recent_tasks",
+          "calls": 1,
+          "own_seconds": 0.004453,
+          "cumulative_seconds": 0.90305
+        },
+        {
+          "file": "main.py",
+          "function": "_list_history_task_record",
+          "calls": 1000,
+          "own_seconds": 0.000994,
+          "cumulative_seconds": 0.781653
+        },
+        {
+          "file": "main.py",
+          "function": "_history_task_record",
+          "calls": 1000,
+          "own_seconds": 0.002635,
+          "cumulative_seconds": 0.780658
+        },
+        {
+          "file": "main.py",
+          "function": "_read_history_manifest",
+          "calls": 1000,
+          "own_seconds": 0.003692,
+          "cumulative_seconds": 0.663468
+        },
+        {
+          "file": "main.py",
+          "function": "task_directory",
+          "calls": 1000,
+          "own_seconds": 0.00437,
+          "cumulative_seconds": 0.421274
+        },
+        {
+          "file": "_local.py",
+          "function": "resolve",
+          "calls": 1000,
+          "own_seconds": 0.002279,
+          "cumulative_seconds": 0.377514
+        },
+        {
+          "file": "<frozen ntpath>",
+          "function": "realpath",
+          "calls": 1000,
+          "own_seconds": 0.007237,
+          "cumulative_seconds": 0.36504
+        },
+        {
+          "file": "~",
+          "function": "<built-in method nt._getfinalpathname>",
+          "calls": 2000,
+          "own_seconds": 0.326053,
+          "cumulative_seconds": 0.326053
+        },
+        {
+          "file": "task_repository.py",
+          "function": "read",
+          "calls": 1000,
+          "own_seconds": 0.000801,
+          "cumulative_seconds": 0.228857
+        },
+        {
+          "file": "task_repository.py",
+          "function": "_load",
+          "calls": 1000,
+          "own_seconds": 0.003478,
+          "cumulative_seconds": 0.228056
+        },
+        {
+          "file": "_local.py",
+          "function": "stat",
+          "calls": 4000,
+          "own_seconds": 0.001884,
+          "cumulative_seconds": 0.220776
+        },
+        {
+          "file": "~",
+          "function": "<built-in method nt.stat>",
+          "calls": 4000,
+          "own_seconds": 0.160386,
+          "cumulative_seconds": 0.218893
+        },
+        {
+          "file": "_local.py",
+          "function": "read_text",
+          "calls": 1000,
+          "own_seconds": 0.002922,
+          "cumulative_seconds": 0.132287
+        },
+        {
+          "file": "_abc.py",
+          "function": "read_text",
+          "calls": 1000,
+          "own_seconds": 0.003061,
+          "cumulative_seconds": 0.129084
+        },
+        {
+          "file": "_abc.py",
+          "function": "is_file",
+          "calls": 2000,
+          "own_seconds": 0.002427,
+          "cumulative_seconds": 0.128137
+        },
+        {
+          "file": "main.py",
+          "function": "iter_history_task_ids",
+          "calls": 1,
+          "own_seconds": 0.003982,
+          "cumulative_seconds": 0.114169
+        },
+        {
+          "file": "main.py",
+          "function": "_summarize_history_projection",
+          "calls": 1000,
+          "own_seconds": 0.008964,
+          "cumulative_seconds": 0.098775
+        },
+        {
+          "file": "_local.py",
+          "function": "__fspath__",
+          "calls": 6000,
+          "own_seconds": 0.003671,
+          "cumulative_seconds": 0.080303
+        }
+      ]
+    },
+    "experimental_hit": {
+      "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb",
+      "profile_total_seconds": 1.9077617000000007,
+      "cache_delta": {
+        "hits": 1000,
+        "misses": 0
+      },
+      "top_cumulative": [
+        {
+          "file": "benchmark_history.py",
+          "function": "run_query",
+          "calls": 1,
+          "own_seconds": 2.1e-05,
+          "cumulative_seconds": 1.907716
+        },
+        {
+          "file": "~",
+          "function": "<method 'send' of 'coroutine' objects>",
+          "calls": 1,
+          "own_seconds": 0.000874,
+          "cumulative_seconds": 1.907694
+        },
+        {
+          "file": "main.py",
+          "function": "list_recent_tasks",
+          "calls": 1,
+          "own_seconds": 0.00557,
+          "cumulative_seconds": 1.90682
+        },
+        {
+          "file": "main.py",
+          "function": "_cached_history_task_record",
+          "calls": 1000,
+          "own_seconds": 0.009543,
+          "cumulative_seconds": 1.766472
+        },
+        {
+          "file": "history_cache.py",
+          "function": "read",
+          "calls": 1000,
+          "own_seconds": 0.014223,
+          "cumulative_seconds": 1.159943
+        },
+        {
+          "file": "_local.py",
+          "function": "resolve",
+          "calls": 3000,
+          "own_seconds": 0.006756,
+          "cumulative_seconds": 1.088781
+        },
+        {
+          "file": "<frozen ntpath>",
+          "function": "realpath",
+          "calls": 3000,
+          "own_seconds": 0.021789,
+          "cumulative_seconds": 1.049302
+        },
+        {
+          "file": "history_cache.py",
+          "function": "_snapshot",
+          "calls": 1000,
+          "own_seconds": 0.018993,
+          "cumulative_seconds": 1.045083
+        },
+        {
+          "file": "~",
+          "function": "<built-in method nt._getfinalpathname>",
+          "calls": 6000,
+          "own_seconds": 0.970782,
+          "cumulative_seconds": 0.970782
+        },
+        {
+          "file": "main.py",
+          "function": "task_directory",
+          "calls": 1000,
+          "own_seconds": 0.004602,
+          "cumulative_seconds": 0.449463
+        },
+        {
+          "file": "_local.py",
+          "function": "stat",
+          "calls": 6000,
+          "own_seconds": 0.003459,
+          "cumulative_seconds": 0.35946
+        },
+        {
+          "file": "~",
+          "function": "<built-in method nt.stat>",
+          "calls": 6000,
+          "own_seconds": 0.270511,
+          "cumulative_seconds": 0.356002
+        },
+        {
+          "file": "history_cache.py",
+          "function": "_plain_stat",
+          "calls": 3000,
+          "own_seconds": 0.019048,
+          "cumulative_seconds": 0.225025
+        },
+        {
+          "file": "_abc.py",
+          "function": "lstat",
+          "calls": 3000,
+          "own_seconds": 0.002139,
+          "cumulative_seconds": 0.187018
+        },
+        {
+          "file": "_local.py",
+          "function": "__str__",
+          "calls": 19001,
+          "own_seconds": 0.02818,
+          "cumulative_seconds": 0.181176
+        },
+        {
+          "file": "_local.py",
+          "function": "drive",
+          "calls": 11000,
+          "own_seconds": 0.023048,
+          "cumulative_seconds": 0.156613
+        },
+        {
+          "file": "_abc.py",
+          "function": "is_file",
+          "calls": 2000,
+          "own_seconds": 0.002841,
+          "cumulative_seconds": 0.142248
+        },
+        {
+          "file": "main.py",
+          "function": "iter_history_task_ids",
+          "calls": 1,
+          "own_seconds": 0.004381,
+          "cumulative_seconds": 0.13136
+        },
+        {
+          "file": "_local.py",
+          "function": "__fspath__",
+          "calls": 12000,
+          "own_seconds": 0.007645,
+          "cumulative_seconds": 0.127867
+        },
+        {
+          "file": "main.py",
+          "function": "_summarize_history_projection",
+          "calls": 1000,
+          "own_seconds": 0.011517,
+          "cumulative_seconds": 0.108637
+        }
+      ]
+    }
+  },
+  "source_sha256": {
+    "backend/main.py": "56bf25412c3197defa02f981e165d8ab318f50c84f0c9485b3ea624587efb0f5",
+    "backend/history_cache.py": "5601ca4fb711ad6117e28e24c23904c1a6b6a1893a51e73388b2f23f4d327996",
+    "backend/task_repository.py": "dc610479dcf0d76f1dc6454f7bca1fc8d88cc1fcf174844b7e5bd60cf93c69b5",
+    "scripts/benchmark_history.py": "606ebd780cccb4ce606dee0bf89cac1470f17611d2318cd9bc03cf9ca75671d7"
+  }
+}

@@ -95,7 +95,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub Release
+    name: Prepare draft GitHub Pre-release
     needs: build-windows
     runs-on: ubuntu-latest
     steps:
@@ -114,12 +114,12 @@ jobs:
           if [ -z "$product" ]; then echo "Could not read PRODUCT_NAME from product_info.py" >&2; exit 1; fi
           echo "PRODUCT_NAME=$product" >> "$GITHUB_ENV"
 
-      - name: Create release
+      - name: Create draft release for artifact acceptance
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # heredoc 不带引号：正文里的 $ 必须写成 \$，否则 $$ 会被展开成 shell 进程号（v1.4.0 实测踩到）
-          # tag 推送 -> 本工作流创建 prerelease；全程只有这一条发布命令，不与人工/其它步骤抢建
+          # tag 推送只创建 Draft；下载实际 CI 资产并通过独立验收后，才可另行公开。
           NOTES=$(cat <<EOF
           ## $PRODUCT_NAME $GITHUB_REF_NAME
 
@@ -128,16 +128,21 @@ jobs:
           本版本沿用 Video2Knowledge 的独立品牌与版本线（1.0.0-beta → rc → stable）：
           - Knowledge Studio 首屏直接提供六个内置模板、自定义模板、默认/自定义/Obsidian 本地 Markdown 目的地与可选飞书附加发布
           - 结果区明确提供“导出 Markdown”和 SRT、HTML、JSON、纯文本、PNG 等已有格式，不改变任务与导出 API
+          - Beta.4：来源与开始入口前置，队列/转录进度和有依据的 ETA，文件与文件夹打开、阅读目录及文本查找
+          - 显式转录恢复、提交结果不明时查询原任务、原转录时间区间对照；不会自动重新发起付费生成
+          - 历史手动刷新与迟到响应保护；默认使用新鲜读取，实验缓存未通过性能门禁，不宣称加速
+          - 本机请求校验 peer、Host、Origin 与 Fetch Metadata，关闭代理头信任；保留原生 HTTP 与 MCP SSE，无远程访问模式
           - 品牌标志继续使用仓库脚本可复现生成的原创图形
           - 兼容迁移：/api/health 继续返回旧服务标识（同时携带 product 与 api_compat）；VIDEO2KNOWLEDGE_* 环境变量优先、旧名 VIDEOTONOTES_* 继续生效；浏览器偏好从 vtn_prefs 迁移到 v2k_prefs 并保留旧键；workspace 布局、MCP 工具与 Agent Skill 继续兼容
           - 视频下载、平台字幕与本地 ASR 等子系统沿用上游成熟实现，非本项目从零重写
           - 便携版 EXE：解压即用，下载后可用随附的 SHA256SUMS.txt 校验完整性
 
           验收边界（发布前必读）：
+          - 本工作流只创建 Draft Pre-release，不自动公开；必须验收本 Draft 下载资产的摘要、客户端与离线 ASR 后再公开
           - 打包态离线 ASR 验收是本版本发布前的独立验收项，结果以 PROJECT_STATUS.md 的记录为准
           - 上一阶段的真实链路证据仅限一条短合成字幕 + DeepSeek 单模型的笔记任务，不构成对其他 Provider、长视频、公开平台或网络环境的兼容保证
           - beta 版本可能存在未发现问题，欢迎到 Issues 反馈
 
           EOF
           )
-          gh release create "$GITHUB_REF_NAME" release-assets/* --notes "$NOTES" --title "$PRODUCT_NAME $GITHUB_REF_NAME" --prerelease
+          gh release create "$GITHUB_REF_NAME" release-assets/* --notes "$NOTES" --title "$PRODUCT_NAME $GITHUB_REF_NAME" --draft --prerelease

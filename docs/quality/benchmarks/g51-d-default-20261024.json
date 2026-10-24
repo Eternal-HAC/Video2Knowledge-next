@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "schema_version": 1,
+    "product": "Video2Knowledge",
+    "version": "1.0.0-beta.3",
+    "os": "Windows",
+    "os_major": 11,
+    "python": "3.13.7",
+    "packages": {
+      "fastapi": "0.142.2",
+      "uvicorn": "0.54.0",
+      "yt-dlp": "2026.8.19",
+      "faster-whisper": "1.2.1",
+      "sherpa-onnx": "1.13.8",
+      "openai": "2.54.0",
+      "av": "16.1.0",
+      "Pillow": "12.3.0",
+      "mcp": "1.30.0",
+      "PyInstaller": "6.22.3",
+      "pytest": "9.1.1",
+      "PyYAML": "6.0.3"
+    }
+  },
+  "cache_mode": "production_direct",
+  "requested_sizes": [
+    100,
+    1000
+  ],
+  "cache_sha256": "5601ca4fb711ad6117e28e24c23904c1a6b6a1893a51e73388b2f23f4d327996",
+  "backend_main_sha256": "56bf25412c3197defa02f981e165d8ab318f50c84f0c9485b3ea624587efb0f5",
+  "repository_sha256": "dc610479dcf0d76f1dc6454f7bca1fc8d88cc1fcf174844b7e5bd60cf93c69b5",
+  "benchmark_sha256": "606ebd780cccb4ce606dee0bf89cac1470f17611d2318cd9bc03cf9ca75671d7",
+  "measurement": "direct_handler_no_http_no_os_cache_eviction",
+  "memory": "separate_python_tracemalloc_not_rss",
+  "reads": "separate_successful_path_open_not_stat_or_physical_io",
+  "empty_backend_import_ms": 1286.308,
+  "results": [
+    {
+      "task_count": 100,
+      "dataset_sha256": "9fc73aec53ba8a8c34da9701265caca161642e3d3a39a5fe5711722fadf5d66b",
+      "manifest_bytes": 272014,
+      "file_content_bytes": 469554,
+      "warm_repeats": 7,
+      "preload_limit": 100,
+      "startup": {
+        "restore_ms": 89.143,
+        "restored_tasks": 100,
+        "reads": {
+          "manifests": 100,
+          "notes": 40,
+          "transcripts": 20,
+          "other": 0
+        },
+        "python_traced_peak_bytes": 499053
+      },
+      "all_query_python_traced_peak_bytes": 77764,
+      "queries": {
+        "all": {
+          "first_ms": 56.401,
+          "raw_ms": [
+            62.304,
+            56.53,
+            59.417,
+            53.789,
+            55.619,
+            60.0,
+            57.423
+          ],
+          "p50_ms": 57.423,
+          "p95_ms": 62.304,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 90,
+          "page_items": 20,
+          "response_sha256": "cce916b084570eaba9a31d737dd8a4f97acf4ce009e65480dbb1efb934615f67"
+        },
+        "filtered": {
+          "first_ms": 62.608,
+          "raw_ms": [
+            64.261,
+            59.002,
+            57.873,
+            57.551,
+            58.1,
+            55.421,
+            54.341
+          ],
+          "p50_ms": 57.873,
+          "p95_ms": 64.261,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 10,
+          "page_items": 10,
+          "response_sha256": "03df51c550a83e4db3962fff09a6a75b502d0df5a61d4f28a59448596bebad13"
+        },
+        "favorites": {
+          "first_ms": 63.487,
+          "raw_ms": [
+            58.711,
+            77.709,
+            83.105,
+            80.553,
+            76.41,
+            75.15,
+            73.963
+          ],
+          "p50_ms": 76.41,
+          "p95_ms": 83.105,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 6,
+          "page_items": 6,
+          "response_sha256": "99ae174a97791537f946fed3e9e8a53b24afba37f70dd4b8ff927e152fdcfc45"
+        },
+        "page_two": {
+          "first_ms": 75.285,
+          "raw_ms": [
+            80.049,
+            73.781,
+            76.415,
+            68.553,
+            72.924,
+            70.505,
+            71.346
+          ],
+          "p50_ms": 72.924,
+          "p95_ms": 80.049,
+          "reads": {
+            "manifests": 100,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 90,
+          "page_items": 20,
+          "response_sha256": "0d14e19b029d34e2cd70fe2c6a372129283cfadbe07354f41a2ea12c22a60485"
+        }
+      }
+    },
+    {
+      "task_count": 1000,
+      "dataset_sha256": "e6dc6c89fe9e6da919439355c2ae5f71c5e0ad47275a750f5826a63fea7a7145",
+      "manifest_bytes": 2720142,
+      "file_content_bytes": 4695542,
+      "warm_repeats": 7,
+      "preload_limit": 100,
+      "startup": {
+        "restore_ms": 197.614,
+        "restored_tasks": 100,
+        "reads": {
+          "manifests": 100,
+          "notes": 40,
+          "transcripts": 20,
+          "other": 0
+        },
+        "python_traced_peak_bytes": 504205
+      },
+      "all_query_python_traced_peak_bytes": 874661,
+      "queries": {
+        "all": {
+          "first_ms": 628.933,
+          "raw_ms": [
+            725.795,
+            735.406,
+            734.372,
+            714.669,
+            742.23,
+            718.218,
+            729.181
+          ],
+          "p50_ms": 729.181,
+          "p95_ms": 742.23,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 900,
+          "page_items": 20,
+          "response_sha256": "4f07cfe738891ff91b8f76210312fdf5f6a1daeff5898decdd7bf5602ed5abfb"
+        },
+        "filtered": {
+          "first_ms": 740.074,
+          "raw_ms": [
+            750.663,
+            758.919,
+            736.273,
+            773.721,
+            774.141,
+            763.893,
+            588.442
+          ],
+          "p50_ms": 758.919,
+          "p95_ms": 774.141,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 100,
+          "page_items": 20,
+          "response_sha256": "60f611eaf834079c72fd201944bb7a23571d67dd0b9e8b0454ec865789b02d86"
+        },
+        "favorites": {
+          "first_ms": 604.484,
+          "raw_ms": [
+            560.435,
+            575.994,
+            577.604,
+            560.575,
+            531.492,
+            533.213,
+            544.837
+          ],
+          "p50_ms": 560.435,
+          "p95_ms": 577.604,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 58,
+          "page_items": 20,
+          "response_sha256": "9171f14eb137c03bab17d9dcc5a6d170aa05b8e3f3ba1c07b7cff093a595af62"
+        },
+        "page_two": {
+          "first_ms": 606.495,
+          "raw_ms": [
+            572.274,
+            572.19,
+            582.963,
+            573.167,
+            565.336,
+            538.549,
+            570.405
+          ],
+          "p50_ms": 572.19,
+          "p95_ms": 582.963,
+          "reads": {
+            "manifests": 1000,
+            "notes": 0,
+            "transcripts": 0,
+            "other": 0
+          },
+          "total_matches": 900,
+          "page_items": 20,
+          "response_sha256": "5840826a9f44183ca12ad4386cbfdcd4356cba803a2f9b22e96058d1cc9763e1"
+        }
+      }
+    }
+  ]
+}

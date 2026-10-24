@@ -69,10 +69,13 @@ def live(tmp_path, monkeypatch):
 def test_real_http_native_client_and_subtitle_upload(live):
     with httpx.Client(base_url=live.url, trust_env=False, timeout=5) as client:
         assert client.get('/api/health').json()['product'] == 'Video2Knowledge'
+        before_rejection = sorted(p.name for p in live.workspace.iterdir())
         blocked = client.post('/api/upload', headers={'Origin': 'https://untrusted.example'},
                               files={'file': ('synthetic.srt', b'unused', 'text/plain')})
         assert blocked.status_code == 403
-        assert sorted(p.name for p in live.workspace.iterdir()) == ['synthetic-note']
+        # Cold module import may create _model_cache. A rejected request must
+        # preserve the exact pre-request directory set regardless of test order.
+        assert sorted(p.name for p in live.workspace.iterdir()) == before_rejection
         uploaded = client.post('/api/upload', files={'file': (
             'synthetic.srt', b'1\n00:00:00,000 --> 00:00:02,000\nLOCAL-UPLOAD-42\n', 'text/plain')})
         assert uploaded.status_code == 200

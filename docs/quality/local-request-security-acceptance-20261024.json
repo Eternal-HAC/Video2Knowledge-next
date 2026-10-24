@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-24",
+  "stage": "S0",
+  "scope": "local-source-only",
+  "version": "1.0.0-beta.3",
+  "head": "7ff61e7568a324b9d2e7a31161ff0b7927ca3f9b",
+  "tests": {
+    "passed": 1367,
+    "skipped": 3,
+    "seconds": 73.82,
+    "new_security_cases": 261,
+    "skip_reasons_unchanged": true
+  },
+  "source_sha256": {
+    "backend/main.py": "e2977c910c9af7166609f8b54716929d4300e99124b49bfed7944ea5fe2b827d",
+    "backend/local_security.py": "576363424a7f0df27b902dcc0d0a688d5fd2b20e26b0187cd2afe991d2f4030d",
+    "launcher.py": "f8734c98e7372e2724a1953bee09def1a278353e122b6eb6c622ee8c2a64b6c2",
+    "tests/local_client.py": "0f8e6c802fbb793f6a293a210904423a5acc24f8526741d2c4b63c90079f2e85",
+    "tests/test_local_security.py": "c3c5ce7054dfa06c3a0aa46a698abed578ce894c4afe7713d8473798e1b9306b"
+  },
+  "browser": {
+    "cross_port": {
+      "same": {
+        "product": "Video2Knowledge",
+        "status": "synthetic_stub_only"
+      },
+      "attempts": [
+        {
+          "route": "/api/douyin-login/start",
+          "outcome": "opaque"
+        },
+        {
+          "route": "/api/health",
+          "outcome": "opaque"
+        }
+      ],
+      "diagnostics": {
+        "stub_calls": 1,
+        "events": [
+          {
+            "path": "/api/health",
+            "method": "GET",
+            "status": 200,
+            "foreign_origin": false
+          },
+          {
+            "path": "/api/douyin-login/start",
+            "method": "POST",
+            "status": 200,
+            "foreign_origin": false
+          },
+          {
+            "path": "/api/douyin-login/start",
+            "method": "POST",
+            "status": 403,
+            "foreign_origin": true
+          },
+          {
+            "path": "/api/health",
+            "method": "GET",
+            "status": 403,
+            "foreign_origin": false
+          }
+        ]
+      },
+      "navigation": "passed",
+      "passed": true
+    },
+    "ui_combinations": 9,
+    "ui_all_passed": true,
+    "final_source_retested": true
+  },
+  "limits": [
+    "not packaged",
+    "not released",
+    "no real DNS rebinding",
+    "no real login or credentials",
+    "no full external MCP client session"
+  ]
+}

@@ -2,7 +2,7 @@
   <img src="sources/icon.png" width="96" alt="Video2Knowledge icon">
 </p>
 
-<h1 align="center">Video2Knowledge v1.0.0-beta.3</h1>
+<h1 align="center">Video2Knowledge v1.0.0-beta.4</h1>
 
 <p align="center"><em>A local knowledge studio: turn videos into Markdown notes you can revisit</em></p>
 
@@ -12,6 +12,18 @@
 
 Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS.md) · [Current tasks](TODO.md) · [Decisions](DECISIONS.md) · [UI design baseline](DESIGN.md) · [Development rules](AGENTS.md)
 
+> **Current status**: this branch is preparing `1.0.0-beta.4`; it is not publicly released. The download below remains the published Beta.3. [PROJECT_STATUS.md](PROJECT_STATUS.md) separates source, candidate and public-release acceptance.
+
+## What Beta.4 adds
+
+- **Understand progress**: source-first composition, queue position, measured transcription progress and conservative ETA when enough evidence exists. Other stages remain indeterminate.
+- **Continue after failure**: see retained artifacts and explicitly reuse a transcript. Query an uncertain submission before deciding what to do; no automatic paid resubmission.
+- **Read against the source**: heading outline, literal text search and timestamp/range comparison with saved transcripts. Copy/export preserve Markdown; time overlap does not establish factual correctness.
+- **Find your files**: constrained file/folder opening, Markdown and attachment ZIP export, filter-preserving history refresh and stale-response guards.
+- **Tighter local access**: peer, Host, Origin and browser request metadata validation while preserving native HTTP and MCP SSE. Remote deployment is not supported.
+
+Six built-in templates, custom templates, Obsidian destinations and optional Feishu publication remain available. [Development evidence](docs/strategy/README.md) and [offline quality tools](docs/quality/README.md) are contributor resources, not model-accuracy scores.
+
 <p align="center"><span style="white-space: nowrap;"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/v/release/Eternal-HAC/Video2Knowledge-next?include_prereleases&display_name=tag&style=flat-square&label=release&color=2563eb" alt="Release"></a>&nbsp;<a href="LICENSE"><img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/github/license/Eternal-HAC/Video2Knowledge-next?style=flat-square&label=license&color=22c55e" alt="MIT License"></a>&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/frontend-Vanilla%20JS-E34F26?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Backend">&nbsp;<img style="display: inline-block; vertical-align: middle;" src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"></span></p>
 
 <p align="center"><a href="https://github.com/Eternal-HAC/Video2Knowledge-next/releases/tag/v1.0.0-beta.3"><strong>⬇️ Download the Windows portable build (v1.0.0-beta.3)</strong></a></p>
@@ -20,13 +32,13 @@ Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS
 
 Video2Knowledge is a **local-first knowledge studio**: give it a Bilibili, Douyin, YouTube link or a local media file; it prefers platform captions (including Bilibili AI captions), falls back to on-device transcription when none exist (paraformer is the fast default for Chinese, the Whisper family stays available), then has your chosen LLM write timestamped Markdown notes — or stops at a timestamped transcript without calling any LLM.
 
-It is neither a video downloader nor a general AI console: every download, transcription and file write happens on your machine, and the service listens on `127.0.0.1` by default. Templates, destinations, sources and output type are visible in the main workflow; lower-frequency model and integration settings live in a slide-out panel. The UI and brand design baseline is documented in [DESIGN.md](DESIGN.md).
+Media downloads, local ASR and file writes run on your machine. Cloud models receive transcript content; enabling Feishu sends publication content. The service listens on `127.0.0.1` by default. Sources, output type, templates and destinations are visible in the main workflow; model and integration settings live in a slide-out panel. See [DESIGN.md](DESIGN.md).
 
 > 🤖 **Agent Skill**: copy the `skills/video-to-note/` directory from this repo into your agent's skills directory (e.g. `~/.agents/skills/`) and coding agents like Claude Code or pi can generate video notes from a single sentence. See `SKILL.md` inside that directory.
 
 ## 🖼️ Knowledge Studio UI
 
-These screenshots are generated from the real page by `scripts/capture_readme_screenshots.mjs` with an isolated workspace and synthetic data. They contain no real credentials, private paths, or user task titles.
+These show the Beta.4 development UI. Home/history/template screenshots come from `scripts/capture_readme_screenshots.mjs`; progress/results come from `scripts/verify_g0_browser.mjs`. Both use real page rendering, isolated workspaces and synthetic data, without real credentials, private paths or user task titles.
 
 ### Studio home
 
@@ -51,9 +63,25 @@ These screenshots are generated from the real page by `scripts/capture_readme_sc
 - 👁️ **No-cost template previews**: selecting a template shows a rendered result and Markdown sample made from fixed synthetic content; previews never call an LLM or read an existing note.
 - 🗂️ **Local history and favorites**: search and filter all local task manifests, load them in pages, and star completed notes locally. Older Markdown bodies are read only when opened.
 - 🔎 **Platform and reuse guidance**: a pasted URL is classified locally; when a reusable transcript exists, the UI offers explicit open, reuse, or restart actions without automatic submission.
+- ⏱️ **Trustworthy task feedback (development build)**: preflight summarizes source, model cache, key and destination readiness; running jobs show queue position, measured ASR media-time progress, and a conservative ETA range, with a pinned shortcut back to details.
 - 🖼️ **Discoverable exports**: the result panel leads with Export Markdown and visibly offers SRT, HTML, JSON, plain text, and PNG, with optional video screenshots as note attachments.
 - 🤖 **Raw material for agents**: a connected agent can stop at the timestamped transcript — no LLM call and no API key for this machine, and it writes the notes in its own structure and style.
-- 🛡️ **Local-first**: media downloads, transcription, and file generation happen locally; the service listens on `127.0.0.1` by default.
+- 🛡️ **Local-first**: media downloads, local ASR, and file storage happen locally. Cloud LLMs receive transcript content; optional Feishu publishing sends the published content. The service listens on `127.0.0.1` by default.
+
+### Progress and result actions
+
+<p align="center"><img src="sources/knowledge-studio-progress.png" alt="Beta.4 synthetic transcription progress and conservative ETA" width="100%"></p>
+
+<p align="center"><img src="sources/knowledge-studio-result.png" alt="Beta.4 synthetic result with file/folder opening, copy and Markdown export" width="100%"></p>
+
+## Known limits
+
+- Beta.4 is not publicly released; installation below still refers to Beta.3. Local candidate acceptance does not update Release assets.
+- ETA requires enough transcription samples. A provided key or destination does not establish authentication or write permission.
+- Regenerating notes calls the selected model; enabled screenshots may download preview media. Transcript comparison itself makes no extra model calls.
+- Experimental history caching failed its performance gate. Default queries use fresh reads; there is no database or 300ms guarantee.
+- Real cloud-model evidence is limited to a previous short synthetic DeepSeek acceptance, not all Beta.4 Providers, long videos or networks.
+- Loopback and same-origin browser access only. Custom hostnames, cross-origin pages and reverse-proxy deployment are unsupported. This boundary does not authenticate malicious native processes.
 
 ## 🚀 Install (Windows portable build)
 
@@ -77,7 +105,7 @@ After starting the app:
 3. Choose the default Markdown folder, a custom directory, or an Obsidian Vault. Enable Feishu only as an additional publication; local Markdown is always retained;
 4. In Settings, choose the model profile, note style, transcription options, and API key;
 5. Paste a video URL or upload a local / subtitle file. URL classification happens locally, and an existing transcript produces explicit open, reuse, and restart choices;
-6. Preview and copy the result, use the explicit **Export Markdown** action, or choose SRT, HTML, JSON, plain text, or PNG under **More export formats**. Web tasks stay available in searchable, paginated local history, and completed notes can be starred locally.
+6. Review the readiness card before submission and the queue/measured-transcription feedback while running. When complete, open the file or folder directly, preview and copy the result, use **Export Markdown**, or choose SRT, HTML, JSON, plain text, or PNG under **More export formats**. Web tasks stay available in searchable, paginated local history, and completed notes can be starred locally.
 
 ## 🔁 Processing pipeline
 

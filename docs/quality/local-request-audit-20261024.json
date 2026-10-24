@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-24",
+  "method": "direct_asgi_no_browser_no_tcp_stubbed_login_no_credentials",
+  "observations": {
+    "middleware": [
+      {
+        "case": "cli_no_origin",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "same_origin",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "foreign_origin",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "opaque_origin",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "other_loopback_port",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "untrusted_host",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "missing_host",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "duplicate_host",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "fetch_cross_site",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "fetch_same_site_other_port",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      },
+      {
+        "case": "non_loopback_peer",
+        "status": 403,
+        "cors_allow_origin": false,
+        "csp": false,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": false
+      },
+      {
+        "case": "spoofed_forwarded_peer",
+        "status": 403,
+        "cors_allow_origin": false,
+        "csp": false,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": false
+      },
+      {
+        "case": "missing_peer",
+        "status": 204,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "downstream_reached": true
+      }
+    ],
+    "real_route_stubbed": [
+      {
+        "case": "simple_foreign_post",
+        "status": 200,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "stub_handler_reached": true
+      },
+      {
+        "case": "simple_foreign_preflight",
+        "status": 405,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "stub_handler_reached": false
+      },
+      {
+        "case": "untrusted_host_post",
+        "status": 200,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": null,
+        "response_starts": 1,
+        "stub_handler_reached": true
+      }
+    ],
+    "mounted_mcp_rejections": [
+      {
+        "case": "untrusted_host",
+        "status": 421,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": "ValueError",
+        "response_starts": 1
+      },
+      {
+        "case": "foreign_origin",
+        "status": 403,
+        "cors_allow_origin": false,
+        "csp": true,
+        "post_response_exception": "ValueError",
+        "response_starts": 1
+      }
+    ]
+  },
+  "versions": {
+    "fastapi": "0.142.2",
+    "starlette": "1.7.0",
+    "mcp": "1.30.0"
+  },
+  "source_sha256": {
+    "backend/main.py": "56bf25412c3197defa02f981e165d8ab318f50c84f0c9485b3ea624587efb0f5",
+    "backend/mcp_server.py": "1a90f9de0f7d4b185a2d0296f33e28746ae89f10b4cb865e5b9b0d2f3384bf5d"
+  }
+}

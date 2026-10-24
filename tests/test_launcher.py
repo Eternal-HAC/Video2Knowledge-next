@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def test_version_metadata_has_single_canonical_source() -> None:
     assert product_info.PRODUCT_NAME == "Video2Knowledge"
     assert product_info.LEGACY_SERVICE_ID == "VideoToNo"
-    assert product_info.VERSION == "1.0.0-beta.3"
+    assert product_info.VERSION == "1.0.0-beta.4"
     assert product_info.GITHUB_REPO == "Eternal-HAC/Video2Knowledge-next"
     assert launcher.VERSION == product_info.VERSION
     assert launcher.APP_NAME == f"Video2Knowledge v{product_info.VERSION}"
@@ -341,7 +341,7 @@ def test_version_info_keeps_numeric_file_and_full_product_version() -> None:
     )
     assert "filevers=(1, 0, 0, 0)" in rendered
     assert "StringStruct(u'FileVersion', u'1.0.0.0')" in rendered
-    assert "StringStruct(u'ProductVersion', u'1.0.0-beta.3')" in rendered
+    assert "StringStruct(u'ProductVersion', u'1.0.0-beta.4')" in rendered
     assert "__" not in rendered, "模板渲染后不得残留占位符"
 
 
@@ -357,6 +357,10 @@ def test_release_workflow_pins_pyinstaller_and_publishes_prerelease() -> None:
     assert "SHA256SUMS.txt" in workflow
     assert workflow.count("gh release create") == 1
     assert "--prerelease" in workflow
+    # The exact CI artifact must be downloaded and accepted before public release.
+    create = next(line for line in workflow.splitlines() if line.strip().startswith('gh release create'))
+    assert '--draft' in create and '--prerelease' in create
+    assert 'gh release edit' not in workflow
     # 上传路径要同时覆盖版本化 EXE 与校验文件
     upload = workflow.split("Upload Windows asset", 1)[1].split("if-no-files-found", 1)[0]
     assert "dist/${{ env.PRODUCT_NAME }}-${{ env.VERSION }}-portable.exe" in upload
@@ -365,6 +369,14 @@ def test_release_workflow_pins_pyinstaller_and_publishes_prerelease() -> None:
     notes = workflow.split("NOTES=$(cat <<EOF", 1)[1].split("EOF", 1)[0]
     assert "v1.4.2 更新" not in notes
     assert "beta" in notes
+
+
+def test_beta4_page_and_capture_match_runtime_version() -> None:
+    page = (PROJECT_ROOT / 'frontend/index.html').read_text(encoding='utf-8')
+    capture = (PROJECT_ROOT / 'scripts/capture_readme_screenshots.mjs').read_text(encoding='utf-8')
+    assert f'>v{product_info.VERSION}</span>' in page
+    assert f"=== 'v{product_info.VERSION}'" in capture
+    assert 'script.js?v=20261024-4' in page
 
 
 def test_check_for_updates_opens_new_release_after_confirmation(monkeypatch) -> None:
