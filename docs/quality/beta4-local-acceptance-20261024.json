@@ -1,0 +1,436 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-24",
+  "scope": "beta4-local-candidate-only",
+  "source_commit": "7df3d51f04f140ec11624abd6c43fb06167c9076",
+  "version": "1.0.0-beta.4",
+  "artifact": {
+    "name": "Video2Knowledge-1.0.0-beta.4-portable.exe",
+    "bytes": 133248935,
+    "sha256": "f78ed36f707ff8d302f6e721b7b4f18067b0dcd3d64e63ed1f6afa190968dc5b",
+    "relative_directory": ".test-tmp/beta4-closeout-20261024/source/dist",
+    "independent_hash_tools": [
+      "hashlib",
+      "certutil"
+    ],
+    "remote_digest": null
+  },
+  "version_info": {
+    "product": "Video2Knowledge",
+    "product_version": "1.0.0-beta.4",
+    "file_version": "1.0.0.0",
+    "original_filename": "Video2Knowledge.exe",
+    "icon": true,
+    "group_icon": true,
+    "version_info": true
+  },
+  "environment": {
+    "schema_version": 1,
+    "product": "Video2Knowledge",
+    "version": "1.0.0-beta.4",
+    "os": "Windows",
+    "os_major": 11,
+    "python": "3.13.7",
+    "packages": {
+      "fastapi": "0.142.2",
+      "uvicorn": "0.54.0",
+      "yt-dlp": "2026.8.19",
+      "faster-whisper": "1.2.1",
+      "sherpa-onnx": "1.13.8",
+      "openai": "2.54.0",
+      "av": "16.1.0",
+      "Pillow": "12.3.0",
+      "mcp": "1.30.0",
+      "PyInstaller": "6.22.3",
+      "pytest": "9.1.1",
+      "PyYAML": "6.0.3"
+    },
+    "pyinstaller_hooks": "2026.8"
+  },
+  "build_inputs": {
+    "LICENSE": {
+      "sha256": "f01231c7dfdade234ad7d7a39d5cef2117b19bb324ac90ff01ccb6241f7bbb49",
+      "bytes": 1069
+    },
+    "UPSTREAM.md": {
+      "sha256": "3a94c52708a504f211171f842871460c52a03b050fd590ddc34ae2a1046ba675",
+      "bytes": 981
+    },
+    "backend/__init__.py": {
+      "sha256": "166010883db412b98a75414a9e207278238efd3a8aea277b8926470b3d02a549",
+      "bytes": 39
+    },
+    "backend/asr_process.py": {
+      "sha256": "768b7fb67245263d9ed41b0423fc85afd2baeba56721111cf18cc63f12ee6d0f",
+      "bytes": 27465
+    },
+    "backend/bili_login.py": {
+      "sha256": "0b2e5220b8b5abda733a83105795046f6ea79689e86c8ab4558517bd1536cd9b",
+      "bytes": 12369
+    },
+    "backend/config_store.py": {
+      "sha256": "121805ca3ac67a4b4b60b17a337c40158b1a9f03aa15d4a25aa240ebd771cea9",
+      "bytes": 18468
+    },
+    "backend/douyin_login.py": {
+      "sha256": "16cf5896063569a71d24140b2ab9667ee6d3eb67c0011a0d6453d588d042158b",
+      "bytes": 15317
+    },
+    "backend/download.py": {
+      "sha256": "ae4d9399841e682e3fe38261e4e370447db448636eb8dcefd393ebd9c04fb64d",
+      "bytes": 3308
+    },
+    "backend/history_cache.py": {
+      "sha256": "5601ca4fb711ad6117e28e24c23904c1a6b6a1893a51e73388b2f23f4d327996",
+      "bytes": 10437
+    },
+    "backend/llm_summarizer.py": {
+      "sha256": "c6e24f5d8d88a57fc7fdc4a2d9180a6fe7980e1362115d7e67dc0d17655ca519",
+      "bytes": 89929
+    },
+    "backend/local_security.py": {
+      "sha256": "576363424a7f0df27b902dcc0d0a688d5fd2b20e26b0187cd2afe991d2f4030d",
+      "bytes": 2334
+    },
+    "backend/main.py": {
+      "sha256": "e2977c910c9af7166609f8b54716929d4300e99124b49bfed7944ea5fe2b827d",
+      "bytes": 187576
+    },
+    "backend/mcp_server.py": {
+      "sha256": "1a90f9de0f7d4b185a2d0296f33e28746ae89f10b4cb865e5b9b0d2f3384bf5d",
+      "bytes": 28204
+    },
+    "backend/media_retention.py": {
+      "sha256": "4afc847fe74f2b6fee75c5046cc1b4dd447a3adaae607b33080a6a88abe89fb7",
+      "bytes": 11244
+    },
+    "backend/note_integrations.py": {
+      "sha256": "8f4364d2a017ff45e463137b72f64589d8919e1e111e220f56c424ca9d0c65f1",
+      "bytes": 19414
+    },
+    "backend/note_templates.py": {
+      "sha256": "7453d86efc877c2dc655356befb5853bb6038410a1a629f7d9019e4127622778",
+      "bytes": 22071
+    },
+    "backend/paraformer_asr.py": {
+      "sha256": "b4da8be00e181e889f4b688c8cb0a3365965495693900dcf09bd1e0254f80f3e",
+      "bytes": 12587
+    },
+    "backend/secret_box.py": {
+      "sha256": "3f1146e0ffca1e374beb466322e0423f7d2d6785a898496991ec8d8e5615a398",
+      "bytes": 9202
+    },
+    "backend/task_repository.py": {
+      "sha256": "dc610479dcf0d76f1dc6454f7bca1fc8d88cc1fcf174844b7e5bd60cf93c69b5",
+      "bytes": 2982
+    },
+    "backend/transcript.py": {
+      "sha256": "304835b5483922b3aedad9ade265668157d63d25fdd25150295797734a8d167f",
+      "bytes": 9520
+    },
+    "backend/video_processor.py": {
+      "sha256": "e5b38be809806da0151091c05fd9c7faecc6dd28c714365ae058d30dc47f8e44",
+      "bytes": 55662
+    },
+    "backend/whisper_asr.py": {
+      "sha256": "aa1147ba887b5534d75798ea206ed776b0cd6d657d35d372670cb85a32719254",
+      "bytes": 27073
+    },
+    "frontend/index.html": {
+      "sha256": "5dae29df6292c75433c114ad6e762b8e38bfd5ec6c34d7d0e492d40705a251c7",
+      "bytes": 46041
+    },
+    "frontend/script.js": {
+      "sha256": "9810d8ffc6bfa0961f37ecff2b54df2efc27dbba1ca9579c4f688891a30a2c96",
+      "bytes": 204367
+    },
+    "frontend/style.css": {
+      "sha256": "19b6ca0f5f03dba3ca505c31ca141b3512ea491f91c05ff92a3f4aba9192f58f",
+      "bytes": 48767
+    },
+    "frontend/theme-bootstrap.js": {
+      "sha256": "36736c5d921ff3af90003c8a580187b374101bc96267efd17d4705afaf8d02e2",
+      "bytes": 2172
+    },
+    "frontend/vendor/LICENSE.dompurify.txt": {
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    "frontend/vendor/LICENSE.html2canvas.txt": {
+      "sha256": "86200ce4e92d9a22c41c8647a55f7a5fddff304ff89b4d36ecc699ed8c123d2c",
+      "bytes": 1061
+    },
+    "frontend/vendor/LICENSE.marked.txt": {
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c",
+      "bytes": 2942
+    },
+    "frontend/vendor/dompurify-3.4.13.min.js": {
+      "sha256": "9ab3d44d73c3e3947f9ab72e0f0bc15c7f1931d60b365ba261fc85fe59013c56",
+      "bytes": 29474
+    },
+    "frontend/vendor/html2canvas-1.4.1.min.js": {
+      "sha256": "e87e550794322e574a1fda0c1549a3c70dae5a93d9113417a429016838eab8cb",
+      "bytes": 198689
+    },
+    "frontend/vendor/katex/fonts/KaTeX_AMS-Regular.woff2": {
+      "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "bytes": 28076
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2": {
+      "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "bytes": 6912
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2": {
+      "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "bytes": 6908
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2": {
+      "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "bytes": 11348
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2": {
+      "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "bytes": 11316
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Main-Bold.woff2": {
+      "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "bytes": 25324
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2": {
+      "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "bytes": 16780
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Main-Italic.woff2": {
+      "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "bytes": 16988
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Main-Regular.woff2": {
+      "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "bytes": 26272
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2": {
+      "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "bytes": 16400
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Math-Italic.woff2": {
+      "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "bytes": 16440
+    },
+    "frontend/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2": {
+      "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "bytes": 12216
+    },
+    "frontend/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2": {
+      "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "bytes": 12028
+    },
+    "frontend/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2": {
+      "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "bytes": 10344
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Script-Regular.woff2": {
+      "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "bytes": 9644
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Size1-Regular.woff2": {
+      "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "bytes": 5468
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Size2-Regular.woff2": {
+      "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "bytes": 5208
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Size3-Regular.woff2": {
+      "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+      "bytes": 3624
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Size4-Regular.woff2": {
+      "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "bytes": 4928
+    },
+    "frontend/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2": {
+      "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "bytes": 13568
+    },
+    "frontend/vendor/katex/katex.min.css": {
+      "sha256": "50d9c78e03da144a021001b7de679133355179bcb06fd11e9e309223056a03dd",
+      "bytes": 24788
+    },
+    "frontend/vendor/katex/katex.min.js": {
+      "sha256": "10a91b479cd927446ceb60409fb0d72b5d0d05eaf446c9e52fafd64058c84540",
+      "bytes": 272715
+    },
+    "frontend/vendor/marked-18.0.9.umd.js": {
+      "sha256": "ba65f1c8948e6b01321399800843e9048b31e1c197652d4b0fafae840b30e32b",
+      "bytes": 43821
+    },
+    "launcher.py": {
+      "sha256": "f8734c98e7372e2724a1953bee09def1a278353e122b6eb6c622ee8c2a64b6c2",
+      "bytes": 14510
+    },
+    "product_info.py": {
+      "sha256": "b9acd4a8bf2042b384dd4b8fcac7cbff8c3905003cdf3ca8fb70d7d6bbf02bea",
+      "bytes": 4651
+    },
+    "scripts/build_exe.ps1": {
+      "sha256": "46c80dfc53ca1b9b7dd51838f470931abe691a43a426519b623d482a249db767",
+      "bytes": 4131
+    },
+    "scripts/version_info.txt.template": {
+      "sha256": "c700c66a09edca1232d9b1916dd2ae86323adb32aee50a89e974dad6bc81b152",
+      "bytes": 994
+    },
+    "sources/icon.ico": {
+      "sha256": "e2fad89c39700777241a032e84b52a09132989bbabd15012741e7e1f902370ea",
+      "bytes": 116556
+    },
+    "sources/icon.png": {
+      "sha256": "4fa3a378bc3718c971c9335d72733c1f1fc46ff200b6a04d751f254cc916c167",
+      "bytes": 110409
+    }
+  },
+  "build_input_set_sha256": "bcd537853b77d6bca2e66a6a82ec525240c80769eade0d3f5b88d2593e174278",
+  "snapshot_regressions": {
+    "product": {
+      "passed": 1329,
+      "skipped": 3
+    },
+    "tools": {
+      "passed": 1381,
+      "skipped": 3
+    },
+    "beta4": {
+      "passed": 1382,
+      "skipped": 3
+    }
+  },
+  "skip_reasons_unchanged": "three existing Windows symlink-creation permission skips",
+  "targeted_beta4_tests": 102,
+  "browser_matrices": {
+    "g0": {
+      "passed": true,
+      "cases": 9,
+      "data": "synthetic",
+      "real_llm": false
+    },
+    "g1": {
+      "passed": true,
+      "cases": 9,
+      "data": "synthetic",
+      "real_llm": false
+    },
+    "g2": {
+      "passed": true,
+      "cases": 9,
+      "data": "synthetic",
+      "real_llm": false
+    },
+    "g3": {
+      "passed": true,
+      "cases": 9,
+      "data": "synthetic",
+      "real_llm": false
+    },
+    "history-seeded": {
+      "passed": true,
+      "cases": 9,
+      "data": "synthetic",
+      "real_llm": false
+    }
+  },
+  "packaged_clients": {
+    "new": {
+      "passed": true,
+      "version": "1.0.0-beta.4",
+      "mode": "portable",
+      "templates": 6,
+      "boundaries_rejected": 5,
+      "same_origin_upload": true,
+      "sdk_sse_sessions": 2,
+      "native_backend_http": true,
+      "static_icons": true,
+      "transcript_context": true,
+      "explicit_recovery": true,
+      "uncertain_lookup": true,
+      "real_llm": false,
+      "feishu": false
+    },
+    "legacy": {
+      "passed": true,
+      "version": "1.0.0-beta.4",
+      "mode": "portable",
+      "templates": 6,
+      "boundaries_rejected": 5,
+      "same_origin_upload": true,
+      "sdk_sse_sessions": 2,
+      "native_backend_http": true,
+      "static_icons": true,
+      "transcript_context": true,
+      "explicit_recovery": true,
+      "uncertain_lookup": true,
+      "real_llm": false,
+      "feishu": false
+    }
+  },
+  "packaged_history": {
+    "passed": true,
+    "templates": 6,
+    "tasks": 2,
+    "favorite_restart": true,
+    "lazy_restore": true,
+    "offline_source_reuse": true
+  },
+  "packaged_http_asr": {
+    "passed": true,
+    "segments": 3,
+    "language": "zh",
+    "markdown_chars": 100,
+    "srt_chars": 157,
+    "archives": 1,
+    "public_task_result_device_exposed": false
+  },
+  "packaged_worker": {
+    "passed": true,
+    "model": "small",
+    "requested_model": "small",
+    "device": "cpu",
+    "segments": 3,
+    "worker_exit_code": 0,
+    "offline": true,
+    "real_llm": false
+  },
+  "previous_dist_metadata_and_checksum_unchanged": true,
+  "previous_dist_full_hash_recomputed": false,
+  "build_warnings": [
+    "optional curl_cffi data collection",
+    "optional yt_dlp_ejs data collection",
+    "tzdata hidden import unavailable"
+  ],
+  "local_io_observation": "Build copy/hash and a separate Python file open were delayed; completed without security-software changes. Cause unconfirmed.",
+  "release_workflow": "Draft Pre-release only; actual CI assets require independent downloaded acceptance before publication",
+  "limits": [
+    "not published",
+    "CI not executed",
+    "not a clean-machine certification",
+    "no real LLM/Feishu/platform/media/model downloads",
+    "no default cache speedup or 300ms guarantee",
+    "not a fully locked reproducible-build claim"
+  ],
+  "cleanup": {
+    "removed": [
+      "browser-workspace",
+      "client-workspace-new",
+      "client-workspace-legacy",
+      "worker-workspace",
+      "snapshot-product/acceptance-workspace",
+      "snapshot-product-final/acceptance-workspace",
+      "snapshot-tools/acceptance-workspace",
+      "snapshot-beta4-final/acceptance-workspace"
+    ],
+    "synthetic_wavs_removed": true,
+    "temporary_workspaces_removed": true,
+    "owned_candidate_processes_remaining": 0,
+    "credential_artifact_audit": "passed",
+    "method": "finite allowlisted files and empty directories; no recursive delete"
+  }
+}

@@ -11,7 +11,7 @@
 
 项目文档：[产品基线](PRD.md) · [当前状态](PROJECT_STATUS.md) · [当前任务](TODO.md) · [长期决定](DECISIONS.md) · [界面设计基线](DESIGN.md) · [开发约定](AGENTS.md)
 
-> **当前状态**：本分支正在收口 `1.0.0-beta.4`，尚未公开发布；下方下载入口仍指向已发布 Beta.3。源码、新版本候选与远端发布的验收状态分别记录在 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
+> **当前状态**：`1.0.0-beta.4` 已完成[本地候选验收](docs/strategy/27-beta4-local-release-acceptance.md)，尚未公开发布；下方下载入口仍指向已发布 Beta.3。源码、新版本候选与远端发布状态分别记录在 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
 ## Beta.4 带来什么
 

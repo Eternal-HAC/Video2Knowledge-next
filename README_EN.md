@@ -12,7 +12,7 @@
 
 Project documents: [Product baseline](PRD.md) · [Current status](PROJECT_STATUS.md) · [Current tasks](TODO.md) · [Decisions](DECISIONS.md) · [UI design baseline](DESIGN.md) · [Development rules](AGENTS.md)
 
-> **Current status**: this branch is preparing `1.0.0-beta.4`; it is not publicly released. The download below remains the published Beta.3. [PROJECT_STATUS.md](PROJECT_STATUS.md) separates source, candidate and public-release acceptance.
+> **Current status**: `1.0.0-beta.4` passed [local candidate acceptance](docs/strategy/27-beta4-local-release-acceptance.md); it is not publicly released. The download below remains the published Beta.3. [PROJECT_STATUS.md](PROJECT_STATUS.md) separates source, candidate and public-release acceptance.
 
 ## What Beta.4 adds
 

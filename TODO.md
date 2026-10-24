@@ -38,12 +38,15 @@ This file holds only the active gap-verification queue. For every item: close it
 
 ## Active development task
 
+- [x] Beta.4 local closeout: three independent commit snapshots, version/Draft gates, five browser matrices, isolated committed-input EXE, new/legacy clients, offline ASR/worker and finite synthetic cleanup. See [acceptance](docs/strategy/27-beta4-local-release-acceptance.md).
+- [ ] Separately authorize remote main/tag/Draft operations, accept the actual downloaded assets, then publish and push release evidence. Beta.4 remains unpublished.
+
 - [x] Authorize and create dependency-complete product and offline quality commits, each verified from an independent staged snapshot.
 - [x] Set Beta.4 runtime/page/capture versions, add failure-first Draft/version gates and refresh synthetic browser matrices/screenshots.
-- [ ] Finish the version/document snapshot, rebuild and accept the isolated Beta.4 candidate, then record local evidence. Remote publication remains separately gated.
+- [x] Finish the version/document snapshot, rebuild and accept the isolated Beta.4 candidate, then record local evidence. Remote publication remains separately gated.
 
 - [x] Define the [Beta.4 version/commit/release closeout contract](docs/strategy/26-beta4-release-closeout-plan.md).
-- [ ] With explicit local execution/commit authorization, reconcile accumulated files, version Beta.4, validate commit snapshots and rebuild/accept the new portable candidate.
+- [x] With explicit local execution/commit authorization, reconcile accumulated files, version Beta.4, validate commit snapshots and rebuild/accept the new portable candidate.
 - [ ] With separate remote authorization, push/tag, accept downloaded Draft assets, publish the Pre-release and record evidence. No default cache speedup or broad Provider compatibility claim.
 
 - [x] G1 source-first composition and lightweight reader: source/start and the selected-plan summary precede templates; long previews collapse by default; heading navigation and literal text-node search preserve original Markdown, formulas, images and exports; download feedback distinguishes actual MD/ZIP responses. `800 passed, 3 skipped`; G1 and G0 each pass 9 browser combinations. See [G1 acceptance](docs/strategy/08-g1-acceptance.md). Source-local only, no new build or release.

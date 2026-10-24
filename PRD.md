@@ -1,5 +1,7 @@
 # Video2Knowledge Product Baseline
 
+> Beta.4 本地准备已完成：[验收与边界](docs/strategy/27-beta4-local-release-acceptance.md)。进度、显式恢复、阅读/原文对照、历史刷新、本机请求安全已纳入新版本候选；完整 1382/3、打包 HTTP/MCP 和离线 small/CPU 通过。尚未公开发布，也不代表普遍 Provider/平台兼容；下方历史阶段的待办描述以本次验收为准。
+
 > Beta.4 本地收口已获授权，版本目标 `1.0.0-beta.4`。累计能力按 [收口合同](docs/strategy/26-beta4-release-closeout-plan.md) 整理提交并重建验收；源码、候选、公开发布分开记录。Beta.3 仍是现有下载版本，未公开 Beta.4。历史性能目标及真实 Provider 普遍兼容不列为达成。
 
 > 2026-10-24 打包验收更新：[隔离开发候选](docs/strategy/25-isolated-portable-acceptance.md) 已验证请求边界、模板/历史/收藏、HTTP/MCP 和离线 small/CPU 转录。该候选暂保留 Beta.3 版本，原 Release 未替换；下一阶段先确定 Beta.4 版本与提交边界，不能把本地通过写成已发布或全平台兼容。
